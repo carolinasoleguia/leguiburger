@@ -7,19 +7,27 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"leguiburger/internal/db"
+
+	"github.com/joho/godotenv"
 )
 
 //go:embed all:frontend/dist/*
 var frontendFS embed.FS
 
 func main() {
-	// 1. Endpoint de la API (Temporal)
+	// Usamos la librería inmediatamente para que VS Code no la borre al guardar
+	_ = godotenv.Load()
+
+	db.Connect()
+	defer db.Close()
+
 	http.HandleFunc("/api/hello", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"message": "¡Hola Mundo desde Go! Comunicación exitosa."}`)
+		fmt.Fprintf(w, `{"message": "¡Hola Mundo desde Go! Base de datos conectada con éxito."}`)
 	})
 
-	// 2. Servir los archivos estáticos del Frontend (Vue)
 	distFS, err := fs.Sub(frontendFS, "frontend/dist")
 	if err != nil {
 		log.Fatal("Error al crear el sub-sistema de archivos: ", err)
@@ -27,7 +35,6 @@ func main() {
 	fileServer := http.FileServer(http.FS(distFS))
 	http.Handle("/", fileServer)
 
-	// 3. Configuración del Puerto para Render
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
