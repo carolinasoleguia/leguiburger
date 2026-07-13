@@ -1,2 +1,11 @@
-.DS_Store
-Icon?
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Go
+main
+*.exe
+*.bin
+
+# Vercel
+.vercel/
