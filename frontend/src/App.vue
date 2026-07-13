@@ -2,7 +2,7 @@
   <div class="app-container">
     <header class="hero">
       <div class="hero-icon">🍔</div>
-      <h1 class="brand-title">LEGUIBURGER</h1>
+      <h1 class="brand-title">LEGUIBURGERRRRRRRRRRRRRRRR</h1>
       <p class="hero-subtitle">Production Cost Control & Multi-Tenant E-Commerce Platform</p>
       <div class="author-tag">Developed by the Eguia Brothers</div>
     </header>
