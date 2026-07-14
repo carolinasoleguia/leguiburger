@@ -1,39 +1,33 @@
 package main
 
 import (
-	"embed"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/http"
 	"os"
 
 	"leguiburger/internal/db"
+	"leguiburger/internal/tenants"
 
 	"github.com/joho/godotenv"
 )
 
-//go:embed all:frontend/dist/*
-var frontendFS embed.FS
-
 func main() {
-	// Usamos la librería inmediatamente para que VS Code no la borre al guardar
 	_ = godotenv.Load()
 
+	// Conectamos a Supabase con GORM
 	db.Connect()
-	defer db.Close()
 
-	http.HandleFunc("/api/hello", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"message": "¡Hola Mundo desde Go! Base de datos conectada con éxito."}`)
-	})
+	// Inicializamos las capas de Tenants (Inyección de Dependencias)
+	tenantRepo := tenants.NewRepository()
+	tenantService := tenants.NewService(tenantRepo)
+	tenantHandler := tenants.NewHandler(tenantService)
 
-	distFS, err := fs.Sub(frontendFS, "frontend/dist")
-	if err != nil {
-		log.Fatal("Error al crear el sub-sistema de archivos: ", err)
-	}
-	fileServer := http.FileServer(http.FS(distFS))
-	http.Handle("/", fileServer)
+	// Registramos las rutas
+
+	//TENANTS
+	http.HandleFunc("/api/tenants/", tenantHandler.HandleTenantRoutes)
+	http.HandleFunc("/api/tenants", tenantHandler.HandleTenantRoutes)
 
 	port := os.Getenv("PORT")
 	if port == "" {

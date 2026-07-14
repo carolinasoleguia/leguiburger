@@ -1,59 +1,41 @@
 package db
 
 import (
-	"context"
-	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-// DB guarda el pool de conexiones global
-var DB *pgxpool.Pool
+// DB es ahora el puntero global a la conexión de GORM
+var DB *gorm.DB
 
-// Connect inicializa la conexión a Supabase usando variables de entorno
 func Connect() {
-	// 1. Buscamos la variable de entorno DATABASE_URL (se configura en Render y .env)
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		log.Fatal("Error: La variable de entorno DATABASE_URL no está configurada")
+		log.Fatal("Error: DATABASE_URL no configurada en las variables de entorno")
 	}
 
-	// 2. Cargamos la configuración por defecto del pool
-	config, err := pgxpool.ParseConfig(dsn)
+	// Abrimos la conexión con GORM apuntando a Supabase
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger:      logger.Default.LogMode(logger.Info),
+		PrepareStmt: false,
+	})
 	if err != nil {
-		log.Fatalf("No se pudo parsear la configuración del DSN: %v", err)
+		log.Fatalf("Error al conectar con GORM a Supabase: %v", err)
 	}
 
-	// 3. Ajustes de rendimiento recomendados para producción
-	config.MaxConns = 10                      // Máximo de conexiones simultáneas
-	config.MinConns = 2                       // Conexiones mínimas activas en espera
-	config.MaxConnIdleTime = 15 * time.Minute // Tiempo de vida de conexiones inactivas
-
-	// 4. Crear el Pool
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	pool, err := pgxpool.NewWithConfig(ctx, config)
-	if err != nil {
-		log.Fatalf("No se pudo crear el pool de conexiones a la DB: %v", err)
+	// Configuramos el pool de conexiones básico bajo el capó
+	sqlDB, err := db.DB()
+	if err == nil {
+		sqlDB.SetMaxIdleConns(2)
+		sqlDB.SetMaxOpenConns(10)
+		sqlDB.SetConnMaxLifetime(15 * time.Minute)
 	}
 
-	// 5. Verificar que la DB responda (Ping)
-	if err := pool.Ping(ctx); err != nil {
-		log.Fatalf("Error al hacer ping a la base de datos de Supabase: %v", err)
-	}
-
-	DB = pool
-	fmt.Println("⚡ Conexión exitosa a la base de datos de Supabase (PostgreSQL)!")
-}
-
-// Close cierra todas las conexiones del pool de forma segura al apagar el servidor
-func Close() {
-	if DB != nil {
-		DB.Close()
-		fmt.Println("💤 Pool de conexiones a la base de datos cerrado de forma segura.")
-	}
+	DB = db
+	log.Println("⚡ Conexión exitosa a Supabase usando GORM!")
 }
