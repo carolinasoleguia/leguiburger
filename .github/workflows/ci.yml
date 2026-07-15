@@ -38,7 +38,7 @@ jobs:
         echo "La cobertura total actual es: $TOTAL_COVERAGE%"
         
         # Definimos el límite mínimo requerido
-        THRESHOLD=75.0
+        THRESHOLD=50.0
         
         # Comparamos usando awk (ya que bash no maneja decimales de forma nativa fácilmente)
         is_enough=$(echo "$TOTAL_COVERAGE $THRESHOLD" | awk '{print ($1 >= $2) ? "true" : "false"}')

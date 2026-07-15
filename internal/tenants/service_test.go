@@ -2,6 +2,7 @@ package tenants
 
 import (
 	"context"
+	"errors"
 	"leguiburger/internal/models"
 	"testing"
 )
@@ -99,5 +100,108 @@ func TestRegisterTenant_NormalizesSubdomain(t *testing.T) {
 	expectedNormalized := "legui-centro"
 	if savedSubdomain != expectedNormalized {
 		t.Errorf("Se esperaba el subdominio normalizado '%s', pero se guardó '%s'", expectedNormalized, savedSubdomain)
+	}
+}
+
+func TestUpdateTenant_Success(t *testing.T) {
+	mockRepo := &mockRepository{
+		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+			return &models.Tenant{ID: "test-id", Name: "Viejo Nombre", Subdomain: "viejo-sub"}, nil
+		},
+		OnGetBySubdomain: func(ctx context.Context, subdomain string) (*models.Tenant, error) {
+			return nil, nil // El nuevo subdominio está libre
+		},
+		OnUpdate: func(ctx context.Context, tenant *models.Tenant) error {
+			return nil
+		},
+	}
+
+	service := NewService(mockRepo)
+	nuevoActive := false
+
+	updated, err := service.UpdateTenant(context.Background(), "test-id", "Nuevo Nombre", "nuevo-sub", &nuevoActive)
+	if err != nil {
+		t.Fatalf("No se esperaba error, pero se obtuvo: %v", err)
+	}
+
+	if updated.Name != "Nuevo Nombre" || updated.Subdomain != "nuevo-sub" || updated.Active != false {
+		t.Errorf("Los campos no se actualizaron correctamente: %+v", updated)
+	}
+}
+
+func TestUpdateTenant_NotFound(t *testing.T) {
+	mockRepo := &mockRepository{
+		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+			return nil, ErrTenantNotFound // Simula que no existe
+		},
+	}
+
+	service := NewService(mockRepo)
+	_, err := service.UpdateTenant(context.Background(), "inexistente", "Nombre", "sub", nil)
+
+	if err != ErrTenantNotFound {
+		t.Errorf("Se esperaba error ErrTenantNotFound, se obtuvo: %v", err)
+	}
+}
+
+func TestDeleteTenant_Success(t *testing.T) {
+	deleteLlamado := false
+	mockRepo := &mockRepository{
+		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+			return &models.Tenant{ID: "test-id"}, nil
+		},
+		OnDelete: func(ctx context.Context, id string) error {
+			deleteLlamado = true
+			return nil
+		},
+	}
+
+	service := NewService(mockRepo)
+	err := service.DeleteTenant(context.Background(), "test-id")
+
+	if err != nil {
+		t.Fatalf("No se esperaba error al eliminar, se obtuvo: %v", err)
+	}
+
+	if !deleteLlamado {
+		t.Error("Se esperaba que se llamara al método Delete del repositorio")
+	}
+}
+
+func TestRegisterTenant_RepoError(t *testing.T) {
+	// Simula que la base de datos explota al intentar guardar
+	mockRepo := &mockRepository{
+		OnGetBySubdomain: func(ctx context.Context, subdomain string) (*models.Tenant, error) {
+			return nil, nil
+		},
+		OnCreate: func(ctx context.Context, tenant *models.Tenant) error {
+			return errors.New("error de conexion de base de datos")
+		},
+	}
+
+	service := NewService(mockRepo)
+	_, err := service.RegisterTenant(context.Background(), "Legui", "legui")
+
+	if err == nil {
+		t.Error("Se esperaba un error del repositorio, pero la creación fue exitosa")
+	}
+}
+
+func TestUpdateTenant_DuplicateSubdomain(t *testing.T) {
+	mockRepo := &mockRepository{
+		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+			return &models.Tenant{ID: "mi-id", Name: "Burger", Subdomain: "sub-actual"}, nil
+		},
+		OnGetBySubdomain: func(ctx context.Context, subdomain string) (*models.Tenant, error) {
+			// Simula que el nuevo subdominio ya lo tiene otro local con otra ID
+			return &models.Tenant{ID: "otro-id", Subdomain: "sub-ocupado"}, nil
+		},
+	}
+
+	service := NewService(mockRepo)
+	_, err := service.UpdateTenant(context.Background(), "mi-id", "Burger", "sub-ocupado", nil)
+
+	if err == nil || err.Error() != "este subdominio ya está registrado por otro comercio" {
+		t.Errorf("Se esperaba error de subdominio duplicado al actualizar, se obtuvo: %v", err)
 	}
 }
