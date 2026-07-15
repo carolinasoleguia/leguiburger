@@ -104,12 +104,9 @@ func (h *Handler) CreateTenant(w http.ResponseWriter, r *http.Request) {
 
 	tenant, err := h.service.RegisterTenant(r.Context(), req.Name, req.Subdomain, req.TaxID)
 	if err != nil {
-		if err == ErrSubdomainAlreadyExists {
-			h.respondWithError(w, http.StatusBadRequest, "SUBDOMAIN_ALREADY_EXISTS", err.Error(), nil)
-			return
-		}
-		if err == ErrTaxIdAlreadyExists {
-			h.respondWithError(w, http.StatusBadRequest, "TAX_ID_ALREADY_EXISTS", err.Error(), nil)
+
+		if err == ErrDuplicateBranch {
+			h.respondWithError(w, http.StatusBadRequest, "DUPLICATED_BRANCH", err.Error(), nil)
 			return
 		}
 		h.respondWithError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Error inesperado", nil)
@@ -151,12 +148,8 @@ func (h *Handler) UpdateTenant(w http.ResponseWriter, r *http.Request, id string
 			h.respondWithError(w, http.StatusNotFound, "TENANT_NOT_FOUND", err.Error(), nil)
 			return
 		}
-		if err == ErrSubdomainAlreadyExists {
-			h.respondWithError(w, http.StatusBadRequest, "SUBDOMAIN_ALREADY_EXISTS", err.Error(), nil)
-			return
-		}
-		if err == ErrTaxIdAlreadyExists {
-			h.respondWithError(w, http.StatusBadRequest, "TAX_ID_ALREADY_EXISTS", err.Error(), nil)
+		if err == ErrDuplicateBranch {
+			h.respondWithError(w, http.StatusBadRequest, "DUPLICATED_BRANCH", err.Error(), nil)
 			return
 		}
 		h.respondWithError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Error inesperado", nil)

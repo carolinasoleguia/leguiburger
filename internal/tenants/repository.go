@@ -2,8 +2,11 @@ package tenants
 
 import (
 	"context"
+	"errors"
 	"leguiburger/internal/db"
 	"leguiburger/internal/models"
+
+	"gorm.io/gorm"
 )
 
 type Repository interface {
@@ -11,6 +14,7 @@ type Repository interface {
 	GetByID(ctx context.Context, id string) (*models.Tenant, error)
 	GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error)
 	GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error)
+	GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error)
 	Update(ctx context.Context, tenant *models.Tenant) error
 	Delete(ctx context.Context, id string) error
 }
@@ -49,6 +53,24 @@ func (r *repository) GetByTaxID(ctx context.Context, taxID string) (*models.Tena
 	if err != nil {
 		return nil, err
 	}
+	return &tenant, nil
+}
+
+func (r *repository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
+	var tenant models.Tenant
+
+	// Buscamos usando "name" que ya existe en tu DB 🎉
+	err := db.DB.WithContext(ctx).
+		Where("name = ? AND subdomain = ?", name, subdomain).
+		First(&tenant).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
 	return &tenant, nil
 }
 

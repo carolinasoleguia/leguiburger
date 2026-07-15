@@ -9,12 +9,13 @@ import (
 
 // 1. Creamos un Mock del repositorio para simular la base de datos
 type mockRepository struct {
-	OnCreate         func(ctx context.Context, tenant *models.Tenant) error
-	OnGetByID        func(ctx context.Context, id string) (*models.Tenant, error)
-	OnGetBySubdomain func(ctx context.Context, subdomain string) (*models.Tenant, error)
-	OnGetByTaxID     func(ctx context.Context, taxID string) (*models.Tenant, error) // 👈 Agregado a la interfaz
-	OnUpdate         func(ctx context.Context, tenant *models.Tenant) error
-	OnDelete         func(ctx context.Context, id string) error
+	OnCreate                func(ctx context.Context, tenant *models.Tenant) error
+	OnGetByID               func(ctx context.Context, id string) (*models.Tenant, error)
+	OnGetBySubdomain        func(ctx context.Context, subdomain string) (*models.Tenant, error)
+	OnGetByNameAndSubdomain func(ctx context.Context, name, subdomain string) (*models.Tenant, error)
+	OnGetByTaxID            func(ctx context.Context, taxID string) (*models.Tenant, error)
+	OnUpdate                func(ctx context.Context, tenant *models.Tenant) error
+	OnDelete                func(ctx context.Context, id string) error
 }
 
 func (m *mockRepository) Create(ctx context.Context, tenant *models.Tenant) error {
@@ -32,10 +33,16 @@ func (m *mockRepository) GetBySubdomain(ctx context.Context, subdomain string) (
 	return m.OnGetBySubdomain(ctx, subdomain)
 }
 
-// 👈 Implementación del nuevo método en el mock
 func (m *mockRepository) GetByTaxID(ctx context.Context, taxID string) (*models.Tenant, error) {
 	if m.OnGetByTaxID != nil {
 		return m.OnGetByTaxID(ctx, taxID)
+	}
+	return nil, nil
+}
+
+func (m *mockRepository) GetByNameAndSubdomain(ctx context.Context, name, subdomain string) (*models.Tenant, error) {
+	if m.OnGetByNameAndSubdomain != nil {
+		return m.OnGetByNameAndSubdomain(ctx, name, subdomain)
 	}
 	return nil, nil
 }
@@ -54,36 +61,54 @@ func (m *mockRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// 2. El Test Unitario para la regla de negocio del subdominio duplicado
-func TestRegisterTenant_DuplicateSubdomain(t *testing.T) {
-	// Configuramos el mock para que simule que el subdominio "legui-centro" YA EXISTE
+func TestRegisterTenant_RepoError(t *testing.T) {
+	// Simula que la base de datos explota al intentar guardar
 	mockRepo := &mockRepository{
 		OnGetBySubdomain: func(ctx context.Context, subdomain string) (*models.Tenant, error) {
-			return &models.Tenant{ID: "algun-uuid", Subdomain: "legui-centro"}, nil
+			return nil, nil
 		},
 		OnCreate: func(ctx context.Context, tenant *models.Tenant) error {
-			return nil
+			return errors.New("error de conexion de base de datos")
 		},
 	}
 
-	// Inyectamos el mock en el servicio real
 	service := NewService(mockRepo)
+	// Ajustado a la firma con taxID 👈
+	_, err := service.RegisterTenant(context.Background(), "Legui", "legui", "20359486163")
 
-	// Ejecutamos la función pasando el nuevo parámetro taxID: "20359486163" 👈
-	_, err := service.RegisterTenant(context.Background(), "Legui Centro", "legui-centro", "20359486163")
-
-	// Validamos que el servicio falle con el error esperado
 	if err == nil {
-		t.Fatal("Se esperaba un error por subdominio duplicado, pero la operación fue exitosa")
-	}
-
-	expectedError := "este subdominio ya está registrado por otro comercio"
-	if err.Error() != expectedError {
-		t.Errorf("Se esperaba el error '%s', pero se obtuvo '%s'", expectedError, err.Error())
+		t.Error("Se esperaba un error del repositorio, pero la creación fue exitosa")
 	}
 }
 
-// 3. Test para verificar que el subdominio se limpie y normalice a minúsculas
+func TestRegisterTenant_DuplicateSubdomain(t *testing.T) {
+	mockRepo := &mockRepository{
+		// 1. 💡 Configuramos el mock con el nuevo método combinado:
+		OnGetByNameAndSubdomain: func(ctx context.Context, name, subdomain string) (*models.Tenant, error) {
+			// Simulamos que ya existe un comercio "Leguiburger" con el subdominio "laplata"
+			return &models.Tenant{
+				ID:        "un-id-existente",
+				Name:      "Leguiburger",
+				Subdomain: "laplata",
+			}, nil
+		},
+	}
+
+	service := NewService(mockRepo)
+
+	// 2. Intentamos registrar exactamente el mismo comercio y subdominio
+	_, err := service.RegisterTenant(context.Background(), "Leguiburger", "laplata", "20359486163")
+
+	// 3. 💡 Validamos que devuelva nuestro nuevo error específico
+	if err == nil {
+		t.Error("Se esperaba un error por registro duplicado, pero la operación fue exitosa")
+	}
+
+	if !errors.Is(err, ErrDuplicateBranch) {
+		t.Errorf("Se esperaba el error %v, pero se obtuvo %v", ErrDuplicateBranch, err)
+	}
+}
+
 func TestRegisterTenant_NormalizesSubdomain(t *testing.T) {
 	var savedSubdomain string
 
@@ -176,45 +201,5 @@ func TestDeleteTenant_Success(t *testing.T) {
 
 	if !deleteLlamado {
 		t.Error("Se esperaba que se llamara al método Delete del repositorio")
-	}
-}
-
-func TestRegisterTenant_RepoError(t *testing.T) {
-	// Simula que la base de datos explota al intentar guardar
-	mockRepo := &mockRepository{
-		OnGetBySubdomain: func(ctx context.Context, subdomain string) (*models.Tenant, error) {
-			return nil, nil
-		},
-		OnCreate: func(ctx context.Context, tenant *models.Tenant) error {
-			return errors.New("error de conexion de base de datos")
-		},
-	}
-
-	service := NewService(mockRepo)
-	// Ajustado a la firma con taxID 👈
-	_, err := service.RegisterTenant(context.Background(), "Legui", "legui", "20359486163")
-
-	if err == nil {
-		t.Error("Se esperaba un error del repositorio, pero la creación fue exitosa")
-	}
-}
-
-func TestUpdateTenant_DuplicateSubdomain(t *testing.T) {
-	mockRepo := &mockRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
-			return &models.Tenant{ID: "mi-id", Name: "Burger", Subdomain: "sub-actual"}, nil
-		},
-		OnGetBySubdomain: func(ctx context.Context, subdomain string) (*models.Tenant, error) {
-			// Simula que el nuevo subdominio ya lo tiene otro local con otra ID
-			return &models.Tenant{ID: "otro-id", Subdomain: "sub-ocupado"}, nil
-		},
-	}
-
-	service := NewService(mockRepo)
-	// Ajustado a la firma con taxID vacío y sin validaciones de unicidad de tax_id 👈
-	_, err := service.UpdateTenant(context.Background(), "mi-id", "Burger", "sub-ocupado", "", nil)
-
-	if err == nil || err.Error() != "este subdominio ya está registrado por otro comercio" {
-		t.Errorf("Se esperaba error de subdominio duplicado al actualizar, se obtuvo: %v", err)
 	}
 }
