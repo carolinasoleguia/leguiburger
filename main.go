@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"leguiburger/internal/db"
+	"leguiburger/internal/shipping"
 	"leguiburger/internal/tenants"
 
 	"github.com/joho/godotenv"
@@ -15,19 +16,26 @@ import (
 func main() {
 	_ = godotenv.Load()
 
-	// Conectamos a Supabase con GORM
 	db.Connect()
 
-	// Inicializamos las capas de Tenants (Inyección de Dependencias)
+	//----------------------------------------------------------------//
 	tenantRepo := tenants.NewRepository()
 	tenantService := tenants.NewService(tenantRepo)
 	tenantHandler := tenants.NewHandler(tenantService)
 
-	// Registramos las rutas
-
-	//TENANTS
 	http.HandleFunc("/api/tenants/", tenantHandler.HandleTenantRoutes)
 	http.HandleFunc("/api/tenants", tenantHandler.HandleTenantRoutes)
+
+	//----------------------------------------------------------------//
+
+	shippingRepo := shipping.NewRepository()
+	shippingService := shipping.NewService(shippingRepo, tenantRepo)
+	shippingHandler := shipping.NewHandler(shippingService)
+
+	http.HandleFunc("/api/shipping-methods/", shippingHandler.HandleShippingRoutes)
+	http.HandleFunc("/api/shipping-methods", shippingHandler.HandleShippingRoutes)
+
+	//----------------------------------------------------------------//
 
 	port := os.Getenv("PORT")
 	if port == "" {
