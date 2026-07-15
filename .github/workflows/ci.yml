@@ -1,0 +1,52 @@
+name: Go CI (Tests & Coverage)
+
+on:
+  pull_request:
+    branches: [ develop, master ]
+  push:
+    branches: [ develop, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Traer el código del repositorio
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. Configurar Go
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21' # Ajustalo a tu versión exacta si es necesario
+
+    # 3. Descargar dependencias
+    - name: Install dependencies
+      run: go mod download
+
+    # 4. Correr los tests generando el reporte de cobertura
+    - name: Run Tests with Coverage
+      run: |
+        go test -v -coverprofile=coverage.txt -covermode=atomic ./internal/tenants/...
+
+    # 5. Validar que la cobertura sea mayor o igual al 40%
+    - name: Verify Coverage Threshold (40%)
+      run: |
+        # Extraemos el porcentaje total del reporte usando herramientas nativas de Go
+        TOTAL_COVERAGE=$(go tool cover -func=coverage.txt | grep total | grep -Eo '[0-9]+\.[0-9]+')
+        echo "La cobertura total actual es: $TOTAL_COVERAGE%"
+        
+        # Definimos el límite mínimo requerido
+        THRESHOLD=40.0
+        
+        # Comparamos usando awk (ya que bash no maneja decimales de forma nativa fácilmente)
+        is_enough=$(echo "$TOTAL_COVERAGE $THRESHOLD" | awk '{print ($1 >= $2) ? "true" : "false"}')
+        
+        if [ "$is_enough" = "false" ]; then
+          echo "❌ ERROR: El coverage de los tests ($TOTAL_COVERAGE%) es menor al mínimo requerido ($THRESHOLD%)."
+          echo "Por favor, agregá más pruebas unitarias para cubrir las líneas faltantes."
+          exit 1
+        else
+          echo "✅ ¡ÉXITO! El coverage de los tests ($TOTAL_COVERAGE%) supera el límite requerido ($THRESHOLD%)."
+        fi
