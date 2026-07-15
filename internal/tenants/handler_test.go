@@ -13,10 +13,26 @@ import (
 // Mock de la capa de servicio para no depender de la lógica real en el test del handler
 type mockService struct {
 	OnRegisterTenant func(ctx context.Context, name, subdomain string) (*models.Tenant, error)
+	OnUpdateTenant   func(ctx context.Context, id string, name string, subdomain string, active *bool) (*models.Tenant, error)
+	OnDeleteTenant   func(ctx context.Context, id string) error
 }
 
 func (m *mockService) RegisterTenant(ctx context.Context, name, subdomain string) (*models.Tenant, error) {
 	return m.OnRegisterTenant(ctx, name, subdomain)
+}
+
+func (m *mockService) UpdateTenant(ctx context.Context, id string, name string, subdomain string, active *bool) (*models.Tenant, error) {
+	if m.OnUpdateTenant != nil {
+		return m.OnUpdateTenant(ctx, id, name, subdomain, active)
+	}
+	return nil, nil
+}
+
+func (m *mockService) DeleteTenant(ctx context.Context, id string) error {
+	if m.OnDeleteTenant != nil {
+		return m.OnDeleteTenant(ctx, id)
+	}
+	return nil
 }
 
 func TestCreateTenantHandler_Success(t *testing.T) {

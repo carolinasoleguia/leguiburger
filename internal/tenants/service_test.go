@@ -9,16 +9,39 @@ import (
 // 1. Creamos un Mock del repositorio para simular la base de datos
 type mockRepository struct {
 	OnCreate         func(ctx context.Context, tenant *models.Tenant) error
+	OnGetByID        func(ctx context.Context, id string) (*models.Tenant, error)
 	OnGetBySubdomain func(ctx context.Context, subdomain string) (*models.Tenant, error)
+	OnUpdate         func(ctx context.Context, tenant *models.Tenant) error
+	OnDelete         func(ctx context.Context, id string) error
 }
 
-// Implementamos la interfaz Repository en nuestro mock
 func (m *mockRepository) Create(ctx context.Context, tenant *models.Tenant) error {
 	return m.OnCreate(ctx, tenant)
 }
 
+func (m *mockRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
+	if m.OnGetByID != nil {
+		return m.OnGetByID(ctx, id)
+	}
+	return nil, nil
+}
+
 func (m *mockRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
 	return m.OnGetBySubdomain(ctx, subdomain)
+}
+
+func (m *mockRepository) Update(ctx context.Context, tenant *models.Tenant) error {
+	if m.OnUpdate != nil {
+		return m.OnUpdate(ctx, tenant)
+	}
+	return nil
+}
+
+func (m *mockRepository) Delete(ctx context.Context, id string) error {
+	if m.OnDelete != nil {
+		return m.OnDelete(ctx, id)
+	}
+	return nil
 }
 
 // 2. El Test Unitario para la regla de negocio del subdominio duplicado
