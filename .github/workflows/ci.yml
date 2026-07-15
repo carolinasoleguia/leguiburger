@@ -2,9 +2,9 @@ name: Go CI (Tests & Coverage)
 
 on:
   pull_request:
-    branches: [ main, master ]
+    branches: [ develop, master ]
   push:
-    branches: [ main, master ]
+    branches: [ develop, master ]
 
 jobs:
   test:
