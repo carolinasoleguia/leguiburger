@@ -29,7 +29,7 @@ func main() {
 	//----------------------------------------------------------------//
 
 	shippingRepo := shipping.NewRepository()
-	shippingService := shipping.NewService(shippingRepo)
+	shippingService := shipping.NewService(shippingRepo, tenantRepo)
 	shippingHandler := shipping.NewHandler(shippingService)
 
 	http.HandleFunc("/api/shipping-methods/", shippingHandler.HandleShippingRoutes)

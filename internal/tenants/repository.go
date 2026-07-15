@@ -33,6 +33,9 @@ func (r *repository) GetByID(ctx context.Context, id string) (*models.Tenant, er
 	var tenant models.Tenant
 	err := db.DB.WithContext(ctx).First(&tenant, "id = ?", id).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &tenant, nil

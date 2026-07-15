@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"leguiburger/internal/models"
+	"leguiburger/internal/tenants"
 	"strings"
 )
 
@@ -23,11 +24,15 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo       Repository
+	tenantRepo tenants.Repository
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, tenantRepo tenants.Repository) Service {
+	return &service{
+		repo:       repo,
+		tenantRepo: tenantRepo,
+	}
 }
 
 func (s *service) CreateMethod(ctx context.Context, tenantID, name, typification, description string, cost float64, estTime string) (*models.ShippingMethod, error) {
@@ -134,6 +139,17 @@ func (s *service) GetMethod(ctx context.Context, tenantID, id string) (*models.S
 }
 
 func (s *service) ListMethods(ctx context.Context, tenantID string) ([]models.ShippingMethod, error) {
+	// 1. Validamos si el tenant existe en el sistema
+	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if tenant == nil {
+		// 💡 Si no existe el tenant, devolvemos el error customizado
+		return nil, ErrTenantNotFoundForShipping
+	}
+
+	// 2. Si existe, procedemos a buscar sus métodos de envío
 	return s.repo.FetchAll(ctx, tenantID)
 }
 
