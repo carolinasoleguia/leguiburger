@@ -20,10 +20,14 @@ func Connect() {
 	}
 
 	// Abrimos la conexión con GORM apuntando a Supabase
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  dsn,
+		PreferSimpleProtocol: true,
+	}), &gorm.Config{
 		Logger:      logger.Default.LogMode(logger.Info),
 		PrepareStmt: false,
 	})
+
 	if err != nil {
 		log.Fatalf("Error al conectar con GORM a Supabase: %v", err)
 	}

@@ -96,7 +96,7 @@ Para ejecutar las pruebas del proyecto, utiliza la terminal en la raíz de la ap
 Ejecutar todos los tests del proyecto:
 
 ```text
-go test ./...
+go test -v -cover ./...
 ```
 
 Backend: Configurado y optimizado para ejecutarse en Render. Al hacer un git push a la rama principal, el pipeline compila el archivo cmd/api/main.go automáticamente.

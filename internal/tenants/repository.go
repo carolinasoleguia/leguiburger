@@ -9,6 +9,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, tenant *models.Tenant) error
 	GetByID(ctx context.Context, id string) (*models.Tenant, error)
+	GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error)
 	GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error)
 	Update(ctx context.Context, tenant *models.Tenant) error
 	Delete(ctx context.Context, id string) error
@@ -36,6 +37,15 @@ func (r *repository) GetByID(ctx context.Context, id string) (*models.Tenant, er
 func (r *repository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
 	var tenant models.Tenant
 	err := db.DB.WithContext(ctx).First(&tenant, "subdomain = ?", subdomain).Error
+	if err != nil {
+		return nil, err
+	}
+	return &tenant, nil
+}
+
+func (r *repository) GetByTaxID(ctx context.Context, taxID string) (*models.Tenant, error) {
+	var tenant models.Tenant
+	err := db.DB.WithContext(ctx).First(&tenant, "tax_id = ?", taxID).Error
 	if err != nil {
 		return nil, err
 	}
