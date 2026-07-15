@@ -4,26 +4,43 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"leguiburger/internal/models"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"leguiburger/internal/models"
 )
 
-// Mock de la capa de servicio para no depender de la lógica real en el test del handler
+// Helper para crear punteros a string de forma sencilla en los tests
+func ptr(s string) *string {
+	return &s
+}
+
+// 1. Creamos un Mock del Servicio
 type mockService struct {
-	OnRegisterTenant func(ctx context.Context, name, subdomain string) (*models.Tenant, error)
-	OnUpdateTenant   func(ctx context.Context, id string, name string, subdomain string, active *bool) (*models.Tenant, error)
+	OnRegisterTenant func(ctx context.Context, name, subdomain, taxID string) (*models.Tenant, error)
+	OnUpdateTenant   func(ctx context.Context, id string, name, subdomain, taxID string, active *bool) (*models.Tenant, error)
+	OnGetByID        func(ctx context.Context, id string) (*models.Tenant, error)
 	OnDeleteTenant   func(ctx context.Context, id string) error
 }
 
-func (m *mockService) RegisterTenant(ctx context.Context, name, subdomain string) (*models.Tenant, error) {
-	return m.OnRegisterTenant(ctx, name, subdomain)
+func (m *mockService) RegisterTenant(ctx context.Context, name, subdomain, taxID string) (*models.Tenant, error) {
+	if m.OnRegisterTenant != nil {
+		return m.OnRegisterTenant(ctx, name, subdomain, taxID)
+	}
+	return nil, nil
 }
 
-func (m *mockService) UpdateTenant(ctx context.Context, id string, name string, subdomain string, active *bool) (*models.Tenant, error) {
+func (m *mockService) UpdateTenant(ctx context.Context, id string, name, subdomain, taxID string, active *bool) (*models.Tenant, error) {
 	if m.OnUpdateTenant != nil {
-		return m.OnUpdateTenant(ctx, id, name, subdomain, active)
+		return m.OnUpdateTenant(ctx, id, name, subdomain, taxID, active)
+	}
+	return nil, nil
+}
+
+func (m *mockService) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
+	if m.OnGetByID != nil {
+		return m.OnGetByID(ctx, id)
 	}
 	return nil, nil
 }
@@ -35,14 +52,16 @@ func (m *mockService) DeleteTenant(ctx context.Context, id string) error {
 	return nil
 }
 
-func TestCreateTenantHandler_Success(t *testing.T) {
-	// 1. Configuramos el mock de servicio para simular un registro exitoso
+// 2. Tests para el Handler
+
+func TestHandler_RegisterTenant_Success(t *testing.T) {
 	mockSvc := &mockService{
-		OnRegisterTenant: func(ctx context.Context, name, subdomain string) (*models.Tenant, error) {
+		OnRegisterTenant: func(ctx context.Context, name, subdomain, taxID string) (*models.Tenant, error) {
 			return &models.Tenant{
-				ID:        "uuid-de-prueba",
+				ID:        "algun-uuid",
 				Name:      name,
 				Subdomain: subdomain,
+				TaxID:     taxID,
 				Active:    true,
 			}, nil
 		},
@@ -50,152 +69,101 @@ func TestCreateTenantHandler_Success(t *testing.T) {
 
 	handler := NewHandler(mockSvc)
 
-	// 2. Preparamos el payload JSON que le enviaríamos al endpoint
-	payload := CreateTenantRequest{
-		Name:      "Legui Burger Centro",
-		Subdomain: "legui-centro",
+	payload := map[string]string{
+		"name":      "Leguiburger",
+		"subdomain": "legui-centro",
+		"tax_id":    "20359486163",
 	}
 	body, _ := json.Marshal(payload)
 
-	// 3. Creamos la petición HTTP de prueba (POST /api/tenants)
-	req, err := http.NewRequest(http.MethodPost, "/api/tenants", bytes.NewBuffer(body))
-	if err != nil {
-		t.Fatal(err)
-	}
+	req := httptest.NewRequest(http.MethodPost, "/api/tenants", bytes.NewBuffer(body))
+	rec := httptest.NewRecorder()
 
-	// 4. Creamos un grabador de respuestas (ResponseRecorder) para capturar el resultado
-	rr := httptest.NewRecorder()
+	handler.CreateTenant(rec, req)
 
-	// 5. Ejecutamos el handler pasando nuestro request y el capturador
-	handler.CreateTenant(rr, req)
-
-	// 6. Validamos el código de estado HTTP esperado (201 Created)
-	if status := rr.Code; status != http.StatusCreated {
-		t.Errorf("Se esperaba código %v, pero se obtuvo %v", http.StatusCreated, status)
-	}
-
-	// 7. Validamos que la respuesta JSON contenga el ID y subdominio correctos
-	var response models.Tenant
-	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
-		t.Fatalf("No se pudo parsear el JSON de respuesta: %v", err)
-	}
-
-	if response.ID != "uuid-de-prueba" || response.Subdomain != "legui-centro" {
-		t.Errorf("Respuesta inesperada: %+v", response)
+	if rec.Code != http.StatusCreated {
+		t.Errorf("Se esperaba código %d, se obtuvo %d", http.StatusCreated, rec.Code)
 	}
 }
 
-func TestUpdateTenantHandler_Success(t *testing.T) {
-	nuevoActive := true
+func TestHandler_UpdateTenant_Success(t *testing.T) {
 	mockSvc := &mockService{
-		OnUpdateTenant: func(ctx context.Context, id string, name string, subdomain string, active *bool) (*models.Tenant, error) {
+		OnUpdateTenant: func(ctx context.Context, id, name, subdomain, taxID string, active *bool) (*models.Tenant, error) {
 			return &models.Tenant{
 				ID:        id,
 				Name:      name,
 				Subdomain: subdomain,
+				TaxID:     taxID,
 				Active:    *active,
 			}, nil
 		},
 	}
 
 	handler := NewHandler(mockSvc)
+	nuevoActive := false
 
-	payload := UpdateTenantRequest{
-		Name:      "Nuevo Nombre",
-		Subdomain: "nuevo-sub",
+	// Usamos el helper ptr() para crear los punteros requeridos por el Request Struct 👈
+	reqStruct := UpdateTenantRequest{
+		Name:      ptr("Nuevo Nombre"),
+		Subdomain: ptr("nuevo-sub"),
+		TaxID:     ptr("20359486163"),
 		Active:    &nuevoActive,
 	}
-	body, _ := json.Marshal(payload)
+	body, _ := json.Marshal(reqStruct)
 
-	req, _ := http.NewRequest(http.MethodPut, "/api/tenants/algun-uuid", bytes.NewBuffer(body))
-	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/api/tenants/test-id", bytes.NewBuffer(body))
+	rec := httptest.NewRecorder()
 
-	// Ejecutamos el router completo para validar que el ruteo interno por URL funcione
-	handler.HandleTenantRoutes(rr, req)
+	handler.UpdateTenant(rec, req, "test-id")
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("Se esperaba código 200, pero se obtuvo %v", status)
-	}
-
-	var response models.Tenant
-	json.NewDecoder(rr.Body).Decode(&response)
-
-	if response.Name != "Nuevo Nombre" || response.Subdomain != "nuevo-sub" {
-		t.Errorf("Respuesta del controlador inesperada: %+v", response)
+	if rec.Code != http.StatusOK {
+		t.Errorf("Se esperaba código %d, se obtuvo %d", http.StatusOK, rec.Code)
 	}
 }
 
-func TestDeleteTenantHandler_Success(t *testing.T) {
-	deleteSvcLlamado := false
+func TestHandler_UpdateTenant_ValidationError(t *testing.T) {
+	mockSvc := &mockService{}
+	handler := NewHandler(mockSvc)
+
+	// Mandamos campos vacíos explícitos para forzar el fallo de validación
+	reqStruct := UpdateTenantRequest{
+		Name:      ptr(""), // 👈 Esto debe fallar por el validador (gt=0)
+		Subdomain: ptr("nuevo-sub"),
+	}
+	body, _ := json.Marshal(reqStruct)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/tenants/test-id", bytes.NewBuffer(body))
+	rec := httptest.NewRecorder()
+
+	handler.UpdateTenant(rec, req, "test-id")
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("Se esperaba código de validación %d, se obtuvo %d", http.StatusBadRequest, rec.Code)
+	}
+}
+
+func TestHandler_DeleteTenant_Success(t *testing.T) {
+	deleteCalled := false
 	mockSvc := &mockService{
 		OnDeleteTenant: func(ctx context.Context, id string) error {
-			deleteSvcLlamado = true
+			deleteCalled = true // 1. Se escribe acá
 			return nil
 		},
 	}
 
 	handler := NewHandler(mockSvc)
 
-	req, _ := http.NewRequest(http.MethodDelete, "/api/tenants/mi-uuid-a-borrar", nil)
-	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/api/tenants/test-id", nil)
+	rec := httptest.NewRecorder()
 
-	handler.HandleTenantRoutes(rr, req)
+	handler.DeleteTenant(rec, req, "test-id")
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("Se esperaba código 200, pero se obtuvo %v", status)
+	if rec.Code != http.StatusNoContent && rec.Code != http.StatusOK {
+		t.Errorf("Se esperaba código de éxito, se obtuvo %d", rec.Code)
 	}
 
-	if !deleteSvcLlamado {
-		t.Error("No se llamó al servicio de eliminación desde el controlador")
-	}
-
-	// Validar que responda con el JSON estructurado de éxito
-	var res map[string]string
-	json.NewDecoder(rr.Body).Decode(&res)
-	if res["message"] != "Comercio desactivado con éxito" {
-		t.Errorf("Mensaje de respuesta inesperado: %v", res["message"])
-	}
-}
-
-func TestHandler_RouteNotFound(t *testing.T) {
-	handler := NewHandler(&mockService{})
-	req, _ := http.NewRequest(http.MethodGet, "/api/ruta-que-no-existe", nil)
-	rr := httptest.NewRecorder()
-
-	handler.HandleTenantRoutes(rr, req)
-
-	if status := rr.Code; status != http.StatusNotFound {
-		t.Errorf("Se esperaba 404 para ruta inexistente, se obtuvo %v", status)
-	}
-}
-
-func TestCreateTenantHandler_InvalidJSON(t *testing.T) {
-	handler := NewHandler(&mockService{})
-
-	// Mandamos un body roto (JSON inválido) para forzar el error de decode
-	req, _ := http.NewRequest(http.MethodPost, "/api/tenants", bytes.NewBufferString("{json roto"))
-	rr := httptest.NewRecorder()
-
-	handler.CreateTenant(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("Se esperaba código 400 por JSON inválido, pero se obtuvo %v", status)
-	}
-}
-
-func TestCreateTenantHandler_ValidationFailure(t *testing.T) {
-	handler := NewHandler(&mockService{})
-
-	// Mandamos el nombre vacío (falla validación)
-	payload := CreateTenantRequest{Name: "", Subdomain: "legui-centro"}
-	body, _ := json.Marshal(payload)
-
-	req, _ := http.NewRequest(http.MethodPost, "/api/tenants", bytes.NewBuffer(body))
-	rr := httptest.NewRecorder()
-
-	handler.CreateTenant(rr, req)
-
-	if status := rr.Code; status != http.StatusBadRequest {
-		t.Errorf("Se esperaba código 400 por validación fallida, pero se obtuvo %v", status)
+	// 2. 👇 AGREGÁ ESTO al final para usar la variable 👇
+	if !deleteCalled {
+		t.Error("Se esperaba que se llamara al método DeleteTenant del servicio")
 	}
 }

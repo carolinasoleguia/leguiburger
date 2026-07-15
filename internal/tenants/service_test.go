@@ -12,6 +12,7 @@ type mockRepository struct {
 	OnCreate         func(ctx context.Context, tenant *models.Tenant) error
 	OnGetByID        func(ctx context.Context, id string) (*models.Tenant, error)
 	OnGetBySubdomain func(ctx context.Context, subdomain string) (*models.Tenant, error)
+	OnGetByTaxID     func(ctx context.Context, taxID string) (*models.Tenant, error) // 👈 Agregado a la interfaz
 	OnUpdate         func(ctx context.Context, tenant *models.Tenant) error
 	OnDelete         func(ctx context.Context, id string) error
 }
@@ -29,6 +30,14 @@ func (m *mockRepository) GetByID(ctx context.Context, id string) (*models.Tenant
 
 func (m *mockRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
 	return m.OnGetBySubdomain(ctx, subdomain)
+}
+
+// 👈 Implementación del nuevo método en el mock
+func (m *mockRepository) GetByTaxID(ctx context.Context, taxID string) (*models.Tenant, error) {
+	if m.OnGetByTaxID != nil {
+		return m.OnGetByTaxID(ctx, taxID)
+	}
+	return nil, nil
 }
 
 func (m *mockRepository) Update(ctx context.Context, tenant *models.Tenant) error {
@@ -60,8 +69,8 @@ func TestRegisterTenant_DuplicateSubdomain(t *testing.T) {
 	// Inyectamos el mock en el servicio real
 	service := NewService(mockRepo)
 
-	// Ejecutamos la función que queremos testear
-	_, err := service.RegisterTenant(context.Background(), "Legui Centro", "legui-centro")
+	// Ejecutamos la función pasando el nuevo parámetro taxID: "20359486163" 👈
+	_, err := service.RegisterTenant(context.Background(), "Legui Centro", "legui-centro", "20359486163")
 
 	// Validamos que el servicio falle con el error esperado
 	if err == nil {
@@ -90,8 +99,8 @@ func TestRegisterTenant_NormalizesSubdomain(t *testing.T) {
 
 	service := NewService(mockRepo)
 
-	// Mandamos un subdominio con mayúsculas y espacios
-	_, err := service.RegisterTenant(context.Background(), "Burger", "  LeGui-CeNtRo  ")
+	// Mandamos un subdominio con mayúsculas, espacios y taxID 👈
+	_, err := service.RegisterTenant(context.Background(), "Burger", "  LeGui-CeNtRo  ", "20359486163")
 	if err != nil {
 		t.Fatalf("No se esperaba un error, pero ocurrió: %v", err)
 	}
@@ -106,7 +115,7 @@ func TestRegisterTenant_NormalizesSubdomain(t *testing.T) {
 func TestUpdateTenant_Success(t *testing.T) {
 	mockRepo := &mockRepository{
 		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
-			return &models.Tenant{ID: "test-id", Name: "Viejo Nombre", Subdomain: "viejo-sub"}, nil
+			return &models.Tenant{ID: "test-id", Name: "Viejo Nombre", Subdomain: "viejo-sub", TaxID: "11111111"}, nil
 		},
 		OnGetBySubdomain: func(ctx context.Context, subdomain string) (*models.Tenant, error) {
 			return nil, nil // El nuevo subdominio está libre
@@ -119,12 +128,13 @@ func TestUpdateTenant_Success(t *testing.T) {
 	service := NewService(mockRepo)
 	nuevoActive := false
 
-	updated, err := service.UpdateTenant(context.Background(), "test-id", "Nuevo Nombre", "nuevo-sub", &nuevoActive)
+	// Actualizado para usar los 6 parámetros de la firma, incluyendo taxID 👈
+	updated, err := service.UpdateTenant(context.Background(), "test-id", "Nuevo Nombre", "nuevo-sub", "22222222", &nuevoActive)
 	if err != nil {
 		t.Fatalf("No se esperaba error, pero se obtuvo: %v", err)
 	}
 
-	if updated.Name != "Nuevo Nombre" || updated.Subdomain != "nuevo-sub" || updated.Active != false {
+	if updated.Name != "Nuevo Nombre" || updated.Subdomain != "nuevo-sub" || updated.TaxID != "22222222" || updated.Active != false {
 		t.Errorf("Los campos no se actualizaron correctamente: %+v", updated)
 	}
 }
@@ -137,7 +147,8 @@ func TestUpdateTenant_NotFound(t *testing.T) {
 	}
 
 	service := NewService(mockRepo)
-	_, err := service.UpdateTenant(context.Background(), "inexistente", "Nombre", "sub", nil)
+	// Ajustado a la firma con taxID como string vacío "" 👈
+	_, err := service.UpdateTenant(context.Background(), "inexistente", "Nombre", "sub", "", nil)
 
 	if err != ErrTenantNotFound {
 		t.Errorf("Se esperaba error ErrTenantNotFound, se obtuvo: %v", err)
@@ -180,7 +191,8 @@ func TestRegisterTenant_RepoError(t *testing.T) {
 	}
 
 	service := NewService(mockRepo)
-	_, err := service.RegisterTenant(context.Background(), "Legui", "legui")
+	// Ajustado a la firma con taxID 👈
+	_, err := service.RegisterTenant(context.Background(), "Legui", "legui", "20359486163")
 
 	if err == nil {
 		t.Error("Se esperaba un error del repositorio, pero la creación fue exitosa")
@@ -199,7 +211,8 @@ func TestUpdateTenant_DuplicateSubdomain(t *testing.T) {
 	}
 
 	service := NewService(mockRepo)
-	_, err := service.UpdateTenant(context.Background(), "mi-id", "Burger", "sub-ocupado", nil)
+	// Ajustado a la firma con taxID vacío y sin validaciones de unicidad de tax_id 👈
+	_, err := service.UpdateTenant(context.Background(), "mi-id", "Burger", "sub-ocupado", "", nil)
 
 	if err == nil || err.Error() != "este subdominio ya está registrado por otro comercio" {
 		t.Errorf("Se esperaba error de subdominio duplicado al actualizar, se obtuvo: %v", err)
