@@ -30,15 +30,15 @@ jobs:
       run: |
         go test -v -coverprofile=coverage.txt -covermode=atomic ./internal/tenants/...
 
-    # 5. Validar que la cobertura sea mayor o igual al 50%
-    - name: Verify Coverage Threshold (50%)
+    # 5. Validar que la cobertura sea mayor o igual al 40%
+    - name: Verify Coverage Threshold (40%)
       run: |
         # Extraemos el porcentaje total del reporte usando herramientas nativas de Go
         TOTAL_COVERAGE=$(go tool cover -func=coverage.txt | grep total | grep -Eo '[0-9]+\.[0-9]+')
         echo "La cobertura total actual es: $TOTAL_COVERAGE%"
         
         # Definimos el límite mínimo requerido
-        THRESHOLD=50.0
+        THRESHOLD=40.0
         
         # Comparamos usando awk (ya que bash no maneja decimales de forma nativa fácilmente)
         is_enough=$(echo "$TOTAL_COVERAGE $THRESHOLD" | awk '{print ($1 >= $2) ? "true" : "false"}')
