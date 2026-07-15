@@ -28,9 +28,9 @@ jobs:
     # 4. Correr los tests generando el reporte de cobertura
     - name: Run Tests with Coverage
       run: |
-      go test -v -coverprofile=coverage.txt -covermode=atomic ./internal/tenants/...
+        go test -v -coverprofile=coverage.txt -covermode=atomic ./internal/tenants/...
 
-    # 5. Validar que la cobertura sea mayor o igual al 75%
+    # 5. Validar que la cobertura sea mayor o igual al 50%
     - name: Verify Coverage Threshold (50%)
       run: |
         # Extraemos el porcentaje total del reporte usando herramientas nativas de Go
