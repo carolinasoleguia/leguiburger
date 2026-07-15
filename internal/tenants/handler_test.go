@@ -102,7 +102,7 @@ func TestHandler_UpdateTenant_Success(t *testing.T) {
 	handler := NewHandler(mockSvc)
 	nuevoActive := false
 
-	// Usamos el helper ptr() para crear los punteros requeridos por el Request Struct 👈
+	// Usamos el helper ptr() para crear los punteros requeridos por el Request Struct
 	reqStruct := UpdateTenantRequest{
 		Name:      ptr("Nuevo Nombre"),
 		Subdomain: ptr("nuevo-sub"),
@@ -127,7 +127,7 @@ func TestHandler_UpdateTenant_ValidationError(t *testing.T) {
 
 	// Mandamos campos vacíos explícitos para forzar el fallo de validación
 	reqStruct := UpdateTenantRequest{
-		Name:      ptr(""), // 👈 Esto debe fallar por el validador (gt=0)
+		Name:      ptr(""),
 		Subdomain: ptr("nuevo-sub"),
 	}
 	body, _ := json.Marshal(reqStruct)
@@ -162,7 +162,6 @@ func TestHandler_DeleteTenant_Success(t *testing.T) {
 		t.Errorf("Se esperaba código de éxito, se obtuvo %d", rec.Code)
 	}
 
-	// 2. 👇 AGREGÁ ESTO al final para usar la variable 👇
 	if !deleteCalled {
 		t.Error("Se esperaba que se llamara al método DeleteTenant del servicio")
 	}
