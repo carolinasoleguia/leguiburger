@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"leguiburger/internal/customers"
 	"leguiburger/internal/db"
 	"leguiburger/internal/shipping"
 	"leguiburger/internal/tenants"
@@ -34,6 +35,15 @@ func main() {
 
 	http.HandleFunc("/api/shipping-methods/", shippingHandler.HandleShippingRoutes)
 	http.HandleFunc("/api/shipping-methods", shippingHandler.HandleShippingRoutes)
+
+	//----------------------------------------------------------------//
+
+	customerRepo := customers.NewRepository()
+	customerService := customers.NewService(customerRepo, tenantRepo)
+	customerHandler := customers.NewHandler(customerService)
+
+	http.HandleFunc("/api/customers/", customerHandler.HandleCustomerRoutes)
+	http.HandleFunc("/api/customers", customerHandler.HandleCustomerRoutes)
 
 	//----------------------------------------------------------------//
 
