@@ -40,7 +40,7 @@ func TestHandler_CreateEmployee_Success(t *testing.T) {
 		OnCreateEmployee: func(ctx context.Context, tenantID, firstName, lastName, email, passwordHash, phone, role string) (*models.Employee, error) {
 			return &models.Employee{
 				ID:           "new-id",
-				TenantID:     tenantID,
+				TenantID:     &tenantID,
 				FirstName:    firstName,
 				LastName:     lastName,
 				Email:        email,
@@ -79,8 +79,8 @@ func TestHandler_CreateEmployee_Success(t *testing.T) {
 		t.Fatalf("error al decodificar la respuesta JSON: %v", err)
 	}
 
-	if response.TenantID != "tenant-ok" || response.Email != "ana@email.com" || response.Role != "admin" {
-		t.Errorf("se recibió una respuesta incorrecta: %+v", response)
+	if response.TenantID == nil || *response.TenantID != "tenant-ok" || response.Email != "ana@email.com" || response.Role != "admin" {
+		t.Errorf("respuesta inesperada: %+v", response)
 	}
 }
 

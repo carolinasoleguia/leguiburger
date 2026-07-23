@@ -6,13 +6,23 @@ import (
 	"testing"
 
 	"leguiburger/internal/models"
+
+	"golang.org/x/crypto/bcrypt"
 )
+
+// Helper para convertir strings en punteros (*string) en los mocks y structs
+func stringPtr(s string) *string {
+	return &s
+}
 
 type MockTenantRepository struct {
 	OnGetByID func(ctx context.Context, id string) (*models.Tenant, error)
 }
 
 func (m *MockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
+	if m.OnGetByID == nil {
+		return &models.Tenant{ID: id}, nil
+	}
 	return m.OnGetByID(ctx, id)
 }
 func (m *MockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
@@ -36,7 +46,7 @@ func (m *MockTenantRepository) Delete(ctx context.Context, id string) error {
 
 func TestCreateEmployee_Success(t *testing.T) {
 	repo := &MockRepository{
-		OnGetByEmail: func(ctx context.Context, email string) (*models.Employee, error) {
+		OnGetByEmail: func(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 			if email != "admin@email.com" {
 				t.Errorf("se esperaba email normalizado, se obtuvo: %s", email)
 			}
@@ -55,25 +65,73 @@ func TestCreateEmployee_Success(t *testing.T) {
 	}
 
 	service := NewService(repo, tenantRepo)
-	res, err := service.CreateEmployee(context.Background(), "tenant-1", " Ana ", " Eguia ", " ADMIN@EMAIL.COM ", " hash123 ", " 2215555555 ", "ADMIN")
+	rawPassword := "PasswordSegura123!"
+
+	res, err := service.CreateEmployee(context.Background(), "tenant-1", " Ana ", " Eguia ", " ADMIN@EMAIL.COM ", rawPassword, " 2215555555 ", "ADMIN")
 	if err != nil {
 		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
 	}
 
-	if res.FirstName != "Ana" || res.LastName != "Eguia" || res.Email != "admin@email.com" || res.PasswordHash != "hash123" || res.Phone != "2215555555" || res.Role != "admin" || res.IsActive != true {
+	// 🔒 Validar que el hash se haya generado correctamente con bcrypt
+	err = bcrypt.CompareHashAndPassword([]byte(res.PasswordHash), []byte(rawPassword))
+	if err != nil {
+		t.Errorf("la contraseña no se hasheó correctamente con bcrypt: %v", err)
+	}
+
+	if res.TenantID == nil || *res.TenantID != "tenant-1" {
+		t.Errorf("se esperaba TenantID 'tenant-1', se obtuvo: %v", res.TenantID)
+	}
+
+	if res.FirstName != "Ana" || res.LastName != "Eguia" || res.Email != "admin@email.com" || res.Phone != "2215555555" || res.Role != "admin" || res.IsActive != true {
 		t.Errorf("los datos no se normalizaron correctamente: %+v", res)
+	}
+}
+
+func TestCreateEmployee_Owner_Success(t *testing.T) {
+	repo := &MockRepository{
+		OnGetByEmail: func(ctx context.Context, tenantID, email string) (*models.Employee, error) {
+			return nil, nil
+		},
+		OnCreate: func(ctx context.Context, employee *models.Employee) error {
+			employee.ID = "generated-owner-id"
+			return nil
+		},
+	}
+
+	service := NewService(repo, &MockTenantRepository{})
+	res, err := service.CreateEmployee(context.Background(), "", "Carolina", "Eguia", "owner@admin.com", "Password123!", "2214347305", "owner")
+	if err != nil {
+		t.Fatalf("se esperaba éxito al crear owner sin tenant, se obtuvo error: %v", err)
+	}
+
+	if res.TenantID != nil {
+		t.Errorf("se esperaba TenantID nil para el owner, se obtuvo: %v", *res.TenantID)
+	}
+
+	if res.Role != "owner" {
+		t.Errorf("se esperaba rol owner, se obtuvo: %s", res.Role)
+	}
+}
+
+func TestCreateEmployee_NormalUser_RequiresTenantID(t *testing.T) {
+	service := NewService(&MockRepository{}, &MockTenantRepository{})
+
+	// Usuario 'employee' sin tenantID debe rebotar
+	_, err := service.CreateEmployee(context.Background(), "", "Ana", "Eguia", "ana@email.com", "PasswordSegura123!", "", "employee")
+	if !errors.Is(err, ErrTenantNotFoundForEmployee) {
+		t.Errorf("se esperaba ErrTenantNotFoundForEmployee al crear usuario normal sin tenantID, se obtuvo: %v", err)
 	}
 }
 
 func TestCreateEmployee_DefaultRole(t *testing.T) {
 	repo := &MockRepository{
-		OnGetByEmail: func(ctx context.Context, email string) (*models.Employee, error) {
+		OnGetByEmail: func(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 			return nil, nil
 		},
 	}
 
 	service := NewService(repo, &MockTenantRepository{})
-	res, err := service.CreateEmployee(context.Background(), "tenant-1", "Ana", "Eguia", "ana@email.com", "hash123", "", "")
+	res, err := service.CreateEmployee(context.Background(), "tenant-1", "Ana", "Eguia", "ana@email.com", "PasswordSegura123!", "", "")
 	if err != nil {
 		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
 	}
@@ -86,7 +144,7 @@ func TestCreateEmployee_DefaultRole(t *testing.T) {
 func TestCreateEmployee_InvalidData(t *testing.T) {
 	service := NewService(&MockRepository{}, &MockTenantRepository{})
 
-	_, err := service.CreateEmployee(context.Background(), "tenant-1", "", "Eguia", "ana@email.com", "hash123", "", "employee")
+	_, err := service.CreateEmployee(context.Background(), "tenant-1", "", "Eguia", "ana@email.com", "PasswordSegura123!", "", "employee")
 	if !errors.Is(err, ErrInvalidEmployeeData) {
 		t.Errorf("se esperaba ErrInvalidEmployeeData, se obtuvo: %v", err)
 	}
@@ -95,7 +153,8 @@ func TestCreateEmployee_InvalidData(t *testing.T) {
 func TestCreateEmployee_InvalidRole(t *testing.T) {
 	service := NewService(&MockRepository{}, &MockTenantRepository{})
 
-	_, err := service.CreateEmployee(context.Background(), "tenant-1", "Ana", "Eguia", "ana@email.com", "hash123", "", "owner")
+	// 'super_chef' no existe dentro de la jerarquía de roles permitida
+	_, err := service.CreateEmployee(context.Background(), "tenant-1", "Ana", "Eguia", "ana@email.com", "PasswordSegura123!", "", "super_chef")
 	if !errors.Is(err, ErrInvalidEmployeeRole) {
 		t.Errorf("se esperaba ErrInvalidEmployeeRole, se obtuvo: %v", err)
 	}
@@ -103,13 +162,13 @@ func TestCreateEmployee_InvalidRole(t *testing.T) {
 
 func TestCreateEmployee_DuplicateEmail(t *testing.T) {
 	repo := &MockRepository{
-		OnGetByEmail: func(ctx context.Context, email string) (*models.Employee, error) {
-			return &models.Employee{ID: "existing-id", Email: email}, nil
+		OnGetByEmail: func(ctx context.Context, tenantID, email string) (*models.Employee, error) {
+			return &models.Employee{ID: "existing-id", Email: email, TenantID: stringPtr(tenantID)}, nil
 		},
 	}
 
 	service := NewService(repo, &MockTenantRepository{})
-	_, err := service.CreateEmployee(context.Background(), "tenant-1", "Ana", "Eguia", "ana@email.com", "hash123", "", "employee")
+	_, err := service.CreateEmployee(context.Background(), "tenant-1", "Ana", "Eguia", "ana@email.com", "PasswordSegura123!", "", "employee")
 
 	if !errors.Is(err, ErrDuplicateEmployeeEmail) {
 		t.Errorf("se esperaba ErrDuplicateEmployeeEmail, se obtuvo: %v", err)
@@ -135,9 +194,9 @@ func TestListEmployees_TenantNotFound(t *testing.T) {
 func TestUpdateEmployee_Success(t *testing.T) {
 	repo := &MockRepository{
 		OnGetByID: func(ctx context.Context, tenantID, id string) (*models.Employee, error) {
-			return &models.Employee{ID: id, TenantID: tenantID, FirstName: "Ana", LastName: "Eguia", Email: "ana@email.com", PasswordHash: "oldhash", Role: "employee", IsActive: true}, nil
+			return &models.Employee{ID: id, TenantID: stringPtr(tenantID), FirstName: "Ana", LastName: "Eguia", Email: "ana@email.com", PasswordHash: "oldhash", Role: "employee", IsActive: true}, nil
 		},
-		OnGetByEmail: func(ctx context.Context, email string) (*models.Employee, error) {
+		OnGetByEmail: func(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 			return nil, nil
 		},
 		OnUpdate: func(ctx context.Context, employee *models.Employee) error {
@@ -148,7 +207,10 @@ func TestUpdateEmployee_Success(t *testing.T) {
 	service := NewService(repo, &MockTenantRepository{})
 	newActive := false
 
-	res, err := service.UpdateEmployee(context.Background(), "tenant-1", "employee-1", "Juana", "", "JUANA@EMAIL.COM", "", "2219999999", "cashier", &newActive)
+	// 🔑 Agregamos el rol del actor en el contexto para que tenga permisos de actualización
+	ctx := context.WithValue(context.Background(), "role", "admin")
+
+	res, err := service.UpdateEmployee(ctx, "tenant-1", "employee-1", "Juana", "", "JUANA@EMAIL.COM", "", "2219999999", "cashier", &newActive)
 	if err != nil {
 		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
 	}
@@ -166,7 +228,11 @@ func TestDeleteEmployee_NotFound(t *testing.T) {
 	}
 
 	service := NewService(repo, &MockTenantRepository{})
-	err := service.DeleteEmployee(context.Background(), "tenant-1", "missing")
+
+	// (Opcional, pero recomendado si DeleteEmployee también valida el rol antes de buscar)
+	ctx := context.WithValue(context.Background(), "role", "admin")
+
+	err := service.DeleteEmployee(ctx, "tenant-1", "missing")
 
 	if !errors.Is(err, ErrEmployeeNotFound) {
 		t.Errorf("se esperaba ErrEmployeeNotFound, se obtuvo: %v", err)

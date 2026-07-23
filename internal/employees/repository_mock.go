@@ -2,13 +2,14 @@ package employees
 
 import (
 	"context"
+
 	"leguiburger/internal/models"
 )
 
 type MockRepository struct {
 	OnCreate     func(ctx context.Context, employee *models.Employee) error
 	OnGetByID    func(ctx context.Context, tenantID, id string) (*models.Employee, error)
-	OnGetByEmail func(ctx context.Context, email string) (*models.Employee, error)
+	OnGetByEmail func(ctx context.Context, tenantID, email string) (*models.Employee, error) // 🔑 Recibe tenantID y email
 	OnFetchAll   func(ctx context.Context, tenantID string) ([]models.Employee, error)
 	OnUpdate     func(ctx context.Context, employee *models.Employee) error
 	OnDelete     func(ctx context.Context, tenantID, id string) error
@@ -28,11 +29,12 @@ func (m *MockRepository) GetByID(ctx context.Context, tenantID, id string) (*mod
 	return m.OnGetByID(ctx, tenantID, id)
 }
 
-func (m *MockRepository) GetByEmail(ctx context.Context, email string) (*models.Employee, error) {
+// 🔑 Corregido: firma con (ctx, tenantID, email)
+func (m *MockRepository) GetByEmail(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 	if m.OnGetByEmail == nil {
 		return nil, nil
 	}
-	return m.OnGetByEmail(ctx, email)
+	return m.OnGetByEmail(ctx, tenantID, email)
 }
 
 func (m *MockRepository) FetchAll(ctx context.Context, tenantID string) ([]models.Employee, error) {

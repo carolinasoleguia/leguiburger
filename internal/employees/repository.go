@@ -12,7 +12,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, employee *models.Employee) error
 	GetByID(ctx context.Context, tenantID, id string) (*models.Employee, error)
-	GetByEmail(ctx context.Context, email string) (*models.Employee, error)
+	GetByEmail(ctx context.Context, tenantID, email string) (*models.Employee, error)
 	FetchAll(ctx context.Context, tenantID string) ([]models.Employee, error)
 	Update(ctx context.Context, employee *models.Employee) error
 	Delete(ctx context.Context, tenantID, id string) error
@@ -40,7 +40,7 @@ func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.
 	return &employee, nil
 }
 
-func (r *repository) GetByEmail(ctx context.Context, email string) (*models.Employee, error) {
+func (r *repository) GetByEmail(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 	var employee models.Employee
 	err := db.DB.WithContext(ctx).Where("email = ?", email).First(&employee).Error
 	if err != nil {

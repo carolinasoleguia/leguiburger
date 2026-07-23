@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"leguiburger/internal/auth"
 	"leguiburger/internal/customers"
 	"leguiburger/internal/db"
 	"leguiburger/internal/employees"
@@ -73,9 +74,22 @@ func main() {
 	employeeHandler := employees.NewHandler(employeeService)
 
 	http.HandleFunc("/api/employees/", employeeHandler.HandleEmployeeRoutes)
-	http.HandleFunc("/api/employees", employeeHandler.HandleEmployeeRoutes)
 
 	//----------------------------------------------------------------//
+
+	authRepo := auth.NewRepository()
+	authSvc := auth.NewService(authRepo, tenantRepo)
+	authHandler := auth.NewHandler(authSvc)
+
+	http.HandleFunc("/api/auth/", authHandler.HandleAuthRoutes)
+
+	http.HandleFunc("/api/employees", auth.AuthMiddleware(employeeHandler.CreateEmployee))
+
+	//----------------------------------------------------------------//
+	// 📂 SERVIR EL FRONTEND ESTÁTICO EN LA RAIZ (/)
+	//----------------------------------------------------------------//
+	fs := http.FileServer(http.Dir("./frontend/dist"))
+	http.Handle("/", fs)
 
 	port := os.Getenv("PORT")
 	if port == "" {
