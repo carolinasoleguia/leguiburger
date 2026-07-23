@@ -25,6 +25,7 @@ type Service interface {
 	CreateEmployee(ctx context.Context, tenantID, firstName, lastName, email, password, phone, role string) (*models.Employee, error)
 	GetEmployee(ctx context.Context, tenantID, id string) (*models.Employee, error)
 	ListEmployees(ctx context.Context, tenantID string) ([]models.Employee, error)
+	GetAllEmployees(ctx context.Context) ([]models.Employee, error) // <--- Agregado a la interfaz
 	UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, password, phone, role string, isActive *bool) (*models.Employee, error)
 	DeleteEmployee(ctx context.Context, tenantID, id string) error
 }
@@ -124,8 +125,15 @@ func (s *service) ListEmployees(ctx context.Context, tenantID string) ([]models.
 	return s.repo.FetchAll(ctx, tenantID)
 }
 
+func (s *service) GetAllEmployees(ctx context.Context) ([]models.Employee, error) {
+	employees, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return employees, nil
+}
+
 func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, password, phone, role string, isActive *bool) (*models.Employee, error) {
-	// Extraer rol del actor desde el contexto (inyectado por el middleware JWT)
 	actorRole, _ := ctx.Value("role").(string)
 
 	employee, err := s.repo.GetByID(ctx, tenantID, id)
@@ -136,7 +144,6 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 		return nil, ErrEmployeeNotFound
 	}
 
-	// Validación de jerarquía para actualizar (Salvo que sea el Owner)
 	if getRoleWeight(actorRole) <= getRoleWeight(employee.Role) && actorRole != "owner" {
 		if actorRole != employee.Role {
 			return nil, ErrUnauthorizedAction
@@ -197,7 +204,6 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 }
 
 func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error {
-	// Extraer rol del actor desde el contexto
 	actorRole, _ := ctx.Value("role").(string)
 
 	employee, err := s.repo.GetByID(ctx, tenantID, id)
@@ -208,7 +214,6 @@ func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error
 		return ErrEmployeeNotFound
 	}
 
-	// Validación de jerarquía estricta para borrar
 	if getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
 		return ErrUnauthorizedAction
 	}
@@ -233,7 +238,6 @@ func isValidRole(role string) bool {
 	}
 }
 
-// Ponderación numérica para validar la jerarquía: Owner (3) > Admin (2) > Resto (1)
 func getRoleWeight(role string) int {
 	switch strings.ToLower(strings.TrimSpace(role)) {
 	case "owner", "super_admin":

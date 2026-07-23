@@ -43,11 +43,19 @@ type mockTenantRepository struct {
 	updateFn                func(ctx context.Context, tenant *models.Tenant) error
 	deleteFn                func(ctx context.Context, id string) error
 	listFn                  func(ctx context.Context) ([]*models.Tenant, error)
+	getAllFn                func(ctx context.Context) ([]models.Tenant, error)
 }
 
 func (m *mockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
 	if m.getByIDFn != nil {
 		return m.getByIDFn(ctx, id)
+	}
+	return nil, nil
+}
+
+func (m *mockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
+	if m.getAllFn != nil {
+		return m.getAllFn(ctx)
 	}
 	return nil, nil
 }
@@ -156,6 +164,9 @@ func TestService_Login(t *testing.T) {
 			mockRepo: func(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 				return dummyEmployee, nil
 			},
+			mockRepoGlobal: func(ctx context.Context, email string) (*models.Employee, error) {
+				return dummyEmployee, nil
+			},
 			expectedErr:   nil,
 			expectSuccess: true,
 		},
@@ -182,7 +193,7 @@ func TestService_Login(t *testing.T) {
 			mockRepo: func(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 				return nil, nil
 			},
-			expectedErr:   ErrTenantNotFoundForAuth,
+			expectedErr:   ErrInvalidCredentials,
 			expectSuccess: false,
 		},
 		{

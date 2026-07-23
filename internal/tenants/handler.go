@@ -43,21 +43,25 @@ func (h *Handler) HandleTenantRoutes(w http.ResponseWriter, r *http.Request) {
 	trimmedPath := strings.Trim(r.URL.Path, "/")
 	pathParts := strings.Split(trimmedPath, "/")
 
-	// CASO A: /api/tenants (Creación - POST)
+	// CASO A: /api/tenants (Listar - GET / Creación - POST)
 	if len(pathParts) == 2 && pathParts[0] == "api" && pathParts[1] == "tenants" {
-		if r.Method == http.MethodPost {
+		switch r.Method {
+		case http.MethodGet:
+			h.GetTenants(w, r) // <--- Agregamos este método para listar
+			return
+		case http.MethodPost:
 			h.CreateTenant(w, r)
 			return
+		default:
+			h.respondWithError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Método no permitido", nil)
+			return
 		}
-		h.respondWithError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Método no permitido", nil)
-		return
 	}
 
 	// CASO B: /api/tenants/{id} (Editar - PUT, Eliminar - DELETE)
 	if len(pathParts) == 3 && pathParts[0] == "api" && pathParts[1] == "tenants" {
 		id := pathParts[2]
 
-		// Pequeña validación: si el ID viene vacío
 		if id == "" {
 			h.respondWithError(w, http.StatusBadRequest, "INVALID_ID", "ID de comercio inválido", nil)
 			return
@@ -114,6 +118,15 @@ func (h *Handler) CreateTenant(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.respondWithJSON(w, http.StatusCreated, tenant)
+}
+
+func (h *Handler) GetTenants(w http.ResponseWriter, r *http.Request) {
+	tenants, err := h.service.GetAllTenants(r.Context())
+	if err != nil {
+		h.respondWithError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Error al obtener los comercios", nil)
+		return
+	}
+	h.respondWithJSON(w, http.StatusOK, tenants)
 }
 
 func (h *Handler) UpdateTenant(w http.ResponseWriter, r *http.Request, id string) {

@@ -3,6 +3,7 @@ package employees
 import (
 	"encoding/json"
 	"errors"
+	"leguiburger/internal/auth"
 	"net/http"
 	"strings"
 )
@@ -125,12 +126,18 @@ func (h *Handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ListEmployees(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.Header.Get("X-Tenant-ID")
+
+	var employees interface{}
+	var err error
+
 	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-		return
+		// Si no hay tenant_id (es el Owner global), llamamos a un método que liste todo
+		employees, err = h.service.GetAllEmployees(r.Context())
+	} else {
+		// Si viene el header, filtramos por ese tenant específico
+		employees, err = h.service.ListEmployees(r.Context(), tenantID)
 	}
 
-	employees, err := h.service.ListEmployees(r.Context(), tenantID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -141,11 +148,18 @@ func (h *Handler) ListEmployees(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetEmployee(w http.ResponseWriter, r *http.Request, id string) {
 	tenantID := r.Header.Get("X-Tenant-ID")
+
 	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-		return
+		// Verificamos si el usuario es owner a través de los claims del token
+		claims, ok := auth.GetClaimsFromContext(r.Context())
+		if !ok || claims.Role != "owner" {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
 	}
 
+	// Si es owner y tenantID está vacío, tu service deberá manejarlo
+	// (o podés pasarle tenantID vacío según cómo tengas armado el service)
 	employee, err := h.service.GetEmployee(r.Context(), tenantID, id)
 	if err != nil {
 		h.handleError(w, err)

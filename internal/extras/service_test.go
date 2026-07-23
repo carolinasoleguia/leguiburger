@@ -10,6 +10,7 @@ import (
 
 type MockTenantRepository struct {
 	OnGetByID func(ctx context.Context, id string) (*models.Tenant, error)
+	OnGetAll  func(ctx context.Context) ([]models.Tenant, error)
 }
 
 func (m *MockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
@@ -17,6 +18,12 @@ func (m *MockTenantRepository) GetByID(ctx context.Context, id string) (*models.
 }
 func (m *MockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
 	return nil
+}
+func (m *MockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
+	if m.OnGetAll != nil {
+		return m.OnGetAll(ctx)
+	}
+	return nil, nil
 }
 func (m *MockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
 	return nil, nil

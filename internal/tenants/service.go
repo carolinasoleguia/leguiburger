@@ -16,6 +16,7 @@ type Service interface {
 	RegisterTenant(ctx context.Context, name, subdomain string, taxId string) (*models.Tenant, error)
 	UpdateTenant(ctx context.Context, id string, name string, subdomain string, tax_id string, active *bool) (*models.Tenant, error)
 	DeleteTenant(ctx context.Context, id string) error
+	GetAllTenants(ctx context.Context) ([]models.Tenant, error)
 }
 
 type service struct {
@@ -55,6 +56,10 @@ func (s *service) RegisterTenant(ctx context.Context, name, subdomain, taxID str
 	}
 
 	return tenant, nil
+}
+
+func (s *service) GetAllTenants(ctx context.Context) ([]models.Tenant, error) {
+	return s.repo.GetAll(ctx)
 }
 
 func (s *service) UpdateTenant(ctx context.Context, id string, name string, subdomain string, taxID string, active *bool) (*models.Tenant, error) {

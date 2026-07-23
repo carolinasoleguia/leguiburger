@@ -11,6 +11,7 @@ type MockRepository struct {
 	OnGetByID    func(ctx context.Context, tenantID, id string) (*models.Employee, error)
 	OnGetByEmail func(ctx context.Context, tenantID, email string) (*models.Employee, error) // 🔑 Recibe tenantID y email
 	OnFetchAll   func(ctx context.Context, tenantID string) ([]models.Employee, error)
+	OnGetAll     func(ctx context.Context) ([]models.Employee, error) // 🔑 Agregado aquí
 	OnUpdate     func(ctx context.Context, employee *models.Employee) error
 	OnDelete     func(ctx context.Context, tenantID, id string) error
 }
@@ -29,12 +30,18 @@ func (m *MockRepository) GetByID(ctx context.Context, tenantID, id string) (*mod
 	return m.OnGetByID(ctx, tenantID, id)
 }
 
-// 🔑 Corregido: firma con (ctx, tenantID, email)
 func (m *MockRepository) GetByEmail(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 	if m.OnGetByEmail == nil {
 		return nil, nil
 	}
 	return m.OnGetByEmail(ctx, tenantID, email)
+}
+
+func (m *MockRepository) GetAll(ctx context.Context) ([]models.Employee, error) {
+	if m.OnGetAll != nil {
+		return m.OnGetAll(ctx)
+	}
+	return nil, nil
 }
 
 func (m *MockRepository) FetchAll(ctx context.Context, tenantID string) ([]models.Employee, error) {

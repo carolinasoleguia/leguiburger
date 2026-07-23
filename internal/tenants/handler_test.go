@@ -22,11 +22,19 @@ type mockService struct {
 	OnUpdateTenant   func(ctx context.Context, id string, name, subdomain, taxID string, active *bool) (*models.Tenant, error)
 	OnGetByID        func(ctx context.Context, id string) (*models.Tenant, error)
 	OnDeleteTenant   func(ctx context.Context, id string) error
+	OnGetAllTenants  func(ctx context.Context) ([]models.Tenant, error)
 }
 
 func (m *mockService) RegisterTenant(ctx context.Context, name, subdomain, taxID string) (*models.Tenant, error) {
 	if m.OnRegisterTenant != nil {
 		return m.OnRegisterTenant(ctx, name, subdomain, taxID)
+	}
+	return nil, nil
+}
+
+func (m *mockService) GetAllTenants(ctx context.Context) ([]models.Tenant, error) {
+	if m.OnGetAllTenants != nil {
+		return m.OnGetAllTenants(ctx)
 	}
 	return nil, nil
 }

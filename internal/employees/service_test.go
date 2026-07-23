@@ -17,6 +17,7 @@ func stringPtr(s string) *string {
 
 type MockTenantRepository struct {
 	OnGetByID func(ctx context.Context, id string) (*models.Tenant, error)
+	OnGetAll  func(ctx context.Context) ([]models.Tenant, error)
 }
 
 func (m *MockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
@@ -25,9 +26,17 @@ func (m *MockTenantRepository) GetByID(ctx context.Context, id string) (*models.
 	}
 	return m.OnGetByID(ctx, id)
 }
+func (m *MockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
+	if m.OnGetAll != nil {
+		return m.OnGetAll(ctx)
+	}
+	return nil, nil
+}
+
 func (m *MockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
 	return nil
 }
+
 func (m *MockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
 	return nil, nil
 }
@@ -229,7 +238,6 @@ func TestDeleteEmployee_NotFound(t *testing.T) {
 
 	service := NewService(repo, &MockTenantRepository{})
 
-	// (Opcional, pero recomendado si DeleteEmployee también valida el rol antes de buscar)
 	ctx := context.WithValue(context.Background(), "role", "admin")
 
 	err := service.DeleteEmployee(ctx, "tenant-1", "missing")

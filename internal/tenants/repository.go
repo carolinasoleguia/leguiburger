@@ -17,6 +17,7 @@ type Repository interface {
 	GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error)
 	Update(ctx context.Context, tenant *models.Tenant) error
 	Delete(ctx context.Context, id string) error
+	GetAll(ctx context.Context) ([]models.Tenant, error)
 }
 
 type repository struct{}
@@ -27,6 +28,15 @@ func NewRepository() Repository {
 
 func (r *repository) Create(ctx context.Context, tenant *models.Tenant) error {
 	return db.DB.WithContext(ctx).Create(tenant).Error
+}
+
+func (r *repository) GetAll(ctx context.Context) ([]models.Tenant, error) {
+	var tenants []models.Tenant
+	err := db.DB.WithContext(ctx).Find(&tenants).Error
+	if err != nil {
+		return nil, err
+	}
+	return tenants, nil
 }
 
 func (r *repository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {

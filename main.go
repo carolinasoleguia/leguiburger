@@ -75,6 +75,7 @@ func main() {
 	employeeHandler := employees.NewHandler(employeeService)
 
 	http.HandleFunc("/api/employees/", employeeHandler.HandleEmployeeRoutes)
+	http.HandleFunc("/api/employees", employeeHandler.HandleEmployeeRoutes)
 
 	//----------------------------------------------------------------//
 
@@ -92,8 +93,6 @@ func main() {
 	authHandler := auth.NewHandler(authSvc)
 
 	http.HandleFunc("/api/auth/", authHandler.HandleAuthRoutes)
-
-	http.HandleFunc("/api/employees", auth.AuthMiddleware(employeeHandler.CreateEmployee))
 
 	//----------------------------------------------------------------//
 	// 📂 SERVIR EL FRONTEND ESTÁTICO EN LA RAIZ (/)

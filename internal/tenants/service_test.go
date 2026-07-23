@@ -16,6 +16,14 @@ type mockRepository struct {
 	OnGetByTaxID            func(ctx context.Context, taxID string) (*models.Tenant, error)
 	OnUpdate                func(ctx context.Context, tenant *models.Tenant) error
 	OnDelete                func(ctx context.Context, id string) error
+	OnGetAll                func(ctx context.Context) ([]models.Tenant, error) // 👈 Faltaba esto
+}
+
+func (m *mockRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
+	if m.OnGetAll != nil {
+		return m.OnGetAll(ctx)
+	}
+	return nil, nil
 }
 
 func (m *mockRepository) Create(ctx context.Context, tenant *models.Tenant) error {
