@@ -78,7 +78,15 @@ func main() {
 
 	//----------------------------------------------------------------//
 
-<<<<<<< HEAD
+	recipeRepo := recipes.NewRepository()
+	recipeService := recipes.NewService(recipeRepo, tenantRepo)
+	recipeHandler := recipes.NewHandler(recipeService)
+
+	http.HandleFunc("/api/recipes/", recipeHandler.HandleRecipeRoutes)
+	http.HandleFunc("/api/recipes", recipeHandler.HandleRecipeRoutes)
+
+	//----------------------------------------------------------------//
+
 	authRepo := auth.NewRepository()
 	authSvc := auth.NewService(authRepo, tenantRepo)
 	authHandler := auth.NewHandler(authSvc)
@@ -92,16 +100,6 @@ func main() {
 	//----------------------------------------------------------------//
 	fs := http.FileServer(http.Dir("./frontend/dist"))
 	http.Handle("/", fs)
-=======
-	recipeRepo := recipes.NewRepository()
-	recipeService := recipes.NewService(recipeRepo, tenantRepo)
-	recipeHandler := recipes.NewHandler(recipeService)
-
-	http.HandleFunc("/api/recipes/", recipeHandler.HandleRecipeRoutes)
-	http.HandleFunc("/api/recipes", recipeHandler.HandleRecipeRoutes)
-
-	//----------------------------------------------------------------//
->>>>>>> 900285f1b4d4444e35f5a8950fb57ee13ce8606a
 
 	port := os.Getenv("PORT")
 	if port == "" {
