@@ -20,19 +20,19 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Se requiere token de autenticación")
+			RespondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Se requiere token de autenticacion")
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			respondWithError(w, http.StatusUnauthorized, "INVALID_TOKEN_FORMAT", "Formato de token inválido (se esperaba Bearer <token>)")
+			RespondWithError(w, http.StatusUnauthorized, "INVALID_TOKEN_FORMAT", "Formato de token invalido (se esperaba Bearer <token>)")
 			return
 		}
 
 		claims, err := ValidateToken(parts[1])
 		if err != nil {
-			respondWithError(w, http.StatusUnauthorized, "INVALID_OR_EXPIRED_TOKEN", "Token inválido o expirado")
+			RespondWithError(w, http.StatusUnauthorized, "INVALID_OR_EXPIRED_TOKEN", "Token invalido o expirado")
 			return
 		}
 
@@ -46,8 +46,7 @@ func GetClaimsFromContext(ctx context.Context) (*Claims, bool) {
 	return claims, ok
 }
 
-// Helper para responder errores de autenticación uniformemente en JSON
-func respondWithError(w http.ResponseWriter, status int, code, message string) {
+func RespondWithError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(ErrorResponse{

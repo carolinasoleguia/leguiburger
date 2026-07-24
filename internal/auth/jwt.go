@@ -2,10 +2,13 @@ package auth
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+var jwtSecret []byte
 
 type Claims struct {
 	UserID   string `json:"user_id"`
@@ -15,8 +18,22 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// GenerateToken firma un JWT válido por 24 horas
+func ConfigureJWTSecret(secret string) error {
+	cleanSecret := strings.TrimSpace(secret)
+	if cleanSecret == "" {
+		return ErrJWTSecretRequired
+	}
+
+	jwtSecret = []byte(cleanSecret)
+	return nil
+}
+
+// GenerateToken firma un JWT valido por 24 horas.
 func GenerateToken(userID, email, role string, tenantID *string) (string, error) {
+	if len(jwtSecret) == 0 {
+		return "", ErrJWTSecretRequired
+	}
+
 	tID := ""
 	if tenantID != nil {
 		tID = *tenantID
@@ -37,11 +54,15 @@ func GenerateToken(userID, email, role string, tenantID *string) (string, error)
 	return token.SignedString(jwtSecret)
 }
 
-// ValidateToken comprueba la validez de una cadena JWT recibida en la petición
+// ValidateToken comprueba la validez de una cadena JWT recibida en la peticion.
 func ValidateToken(tokenString string) (*Claims, error) {
+	if len(jwtSecret) == 0 {
+		return nil, ErrJWTSecretRequired
+	}
+
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("método de firma no válido")
+			return nil, errors.New("metodo de firma no valido")
 		}
 		return jwtSecret, nil
 	})
@@ -52,7 +73,7 @@ func ValidateToken(tokenString string) (*Claims, error) {
 
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
-		return nil, errors.New("token inválido o expirado")
+		return nil, errors.New("token invalido o expirado")
 	}
 
 	return claims, nil

@@ -8,58 +8,58 @@ import (
 	"leguiburger/internal/models"
 )
 
-type MockTenantRepository struct {
-	OnGetByID func(ctx context.Context, id string) (*models.Tenant, error)
-	OnGetAll  func(ctx context.Context) ([]models.Tenant, error)
+type mockTenantRepository struct {
+	getByIDFunc func(ctx context.Context, id string) (*models.Tenant, error)
+	getAllFunc  func(ctx context.Context) ([]models.Tenant, error)
 }
 
-func (m *MockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
-	return m.OnGetByID(ctx, id)
+func (m *mockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
+	return m.getByIDFunc(ctx, id)
 }
 
-func (m *MockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
-	if m.OnGetAll != nil {
-		return m.OnGetAll(ctx)
+func (m *mockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
+	if m.getAllFunc != nil {
+		return m.getAllFunc(ctx)
 	}
 	return nil, nil
 }
-func (m *MockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
+func (m *mockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
 	return nil
 }
-func (m *MockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
 	return nil, nil
 }
-func (m *MockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
 	return nil, nil
 }
-func (m *MockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
 	return nil, nil
 }
-func (m *MockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
+func (m *mockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
 	return nil
 }
-func (m *MockTenantRepository) Delete(ctx context.Context, id string) error {
+func (m *mockTenantRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
 func TestCreateRecipe_Success(t *testing.T) {
-	repo := &MockRepository{
-		OnProductExistsForTenant: func(ctx context.Context, tenantID, productID string) (bool, error) {
+	repo := &mockRepository{
+		productExistsForTenantFunc: func(ctx context.Context, tenantID, productID string) (bool, error) {
 			return true, nil
 		},
-		OnSupplyExistsForTenant: func(ctx context.Context, tenantID, supplyID string) (bool, error) {
+		supplyExistsForTenantFunc: func(ctx context.Context, tenantID, supplyID string) (bool, error) {
 			return true, nil
 		},
-		OnGetByID: func(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
+		getByIDFunc: func(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
 			return nil, nil
 		},
-		OnCreate: func(ctx context.Context, recipe *models.Recipe) error {
+		createFunc: func(ctx context.Context, recipe *models.Recipe) error {
 			return nil
 		},
 	}
 
-	tenantRepo := &MockTenantRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+	tenantRepo := &mockTenantRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
 			return &models.Tenant{ID: id}, nil
 		},
 	}
@@ -67,7 +67,7 @@ func TestCreateRecipe_Success(t *testing.T) {
 	service := NewService(repo, tenantRepo)
 	res, err := service.CreateRecipe(context.Background(), "tenant-1", " product-1 ", " supply-1 ", 0.250)
 	if err != nil {
-		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
+		t.Fatalf("se esperaba exito, se obtuvo error: %v", err)
 	}
 
 	if res.ProductID != "product-1" || res.SupplyID != "supply-1" || res.QuantityUsed != 0.250 {
@@ -76,7 +76,7 @@ func TestCreateRecipe_Success(t *testing.T) {
 }
 
 func TestCreateRecipe_InvalidData(t *testing.T) {
-	service := NewService(&MockRepository{}, &MockTenantRepository{})
+	service := NewService(&mockRepository{}, &mockTenantRepository{})
 
 	_, err := service.CreateRecipe(context.Background(), "tenant-1", "", "supply-1", 1)
 	if !errors.Is(err, ErrInvalidRecipeData) {
@@ -85,7 +85,7 @@ func TestCreateRecipe_InvalidData(t *testing.T) {
 }
 
 func TestCreateRecipe_InvalidQuantity(t *testing.T) {
-	service := NewService(&MockRepository{}, &MockTenantRepository{})
+	service := NewService(&mockRepository{}, &mockTenantRepository{})
 
 	_, err := service.CreateRecipe(context.Background(), "tenant-1", "product-1", "supply-1", 0)
 	if !errors.Is(err, ErrInvalidRecipeQuantity) {
@@ -94,13 +94,13 @@ func TestCreateRecipe_InvalidQuantity(t *testing.T) {
 }
 
 func TestCreateRecipe_ProductNotFound(t *testing.T) {
-	repo := &MockRepository{
-		OnProductExistsForTenant: func(ctx context.Context, tenantID, productID string) (bool, error) {
+	repo := &mockRepository{
+		productExistsForTenantFunc: func(ctx context.Context, tenantID, productID string) (bool, error) {
 			return false, nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
+	service := NewService(repo, &mockTenantRepository{})
 	_, err := service.CreateRecipe(context.Background(), "tenant-1", "missing-product", "supply-1", 1)
 
 	if !errors.Is(err, ErrProductNotFoundForRecipe) {
@@ -109,19 +109,19 @@ func TestCreateRecipe_ProductNotFound(t *testing.T) {
 }
 
 func TestCreateRecipe_Duplicate(t *testing.T) {
-	repo := &MockRepository{
-		OnProductExistsForTenant: func(ctx context.Context, tenantID, productID string) (bool, error) {
+	repo := &mockRepository{
+		productExistsForTenantFunc: func(ctx context.Context, tenantID, productID string) (bool, error) {
 			return true, nil
 		},
-		OnSupplyExistsForTenant: func(ctx context.Context, tenantID, supplyID string) (bool, error) {
+		supplyExistsForTenantFunc: func(ctx context.Context, tenantID, supplyID string) (bool, error) {
 			return true, nil
 		},
-		OnGetByID: func(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
+		getByIDFunc: func(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
 			return &models.Recipe{ProductID: productID, SupplyID: supplyID, QuantityUsed: 1}, nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
+	service := NewService(repo, &mockTenantRepository{})
 	_, err := service.CreateRecipe(context.Background(), "tenant-1", "product-1", "supply-1", 1)
 
 	if !errors.Is(err, ErrDuplicateRecipe) {
@@ -130,9 +130,9 @@ func TestCreateRecipe_Duplicate(t *testing.T) {
 }
 
 func TestListRecipes_TenantNotFound(t *testing.T) {
-	repo := &MockRepository{}
-	tenantRepo := &MockTenantRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+	repo := &mockRepository{}
+	tenantRepo := &mockTenantRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
 			return nil, nil
 		},
 	}
@@ -146,34 +146,34 @@ func TestListRecipes_TenantNotFound(t *testing.T) {
 }
 
 func TestUpdateRecipe_Success(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByID: func(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
+	repo := &mockRepository{
+		getByIDFunc: func(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
 			return &models.Recipe{ProductID: productID, SupplyID: supplyID, QuantityUsed: 1}, nil
 		},
-		OnUpdate: func(ctx context.Context, recipe *models.Recipe) error {
+		updateFunc: func(ctx context.Context, recipe *models.Recipe) error {
 			return nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
+	service := NewService(repo, &mockTenantRepository{})
 	res, err := service.UpdateRecipe(context.Background(), "tenant-1", "product-1", "supply-1", 2.5)
 	if err != nil {
-		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
+		t.Fatalf("se esperaba exito, se obtuvo error: %v", err)
 	}
 
 	if res.QuantityUsed != 2.5 {
-		t.Errorf("la cantidad no se actualizó correctamente: %+v", res)
+		t.Errorf("la cantidad no se actualizo correctamente: %+v", res)
 	}
 }
 
 func TestDeleteRecipe_NotFound(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByID: func(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
+	repo := &mockRepository{
+		getByIDFunc: func(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
 			return nil, nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
+	service := NewService(repo, &mockTenantRepository{})
 	err := service.DeleteRecipe(context.Background(), "tenant-1", "product-1", "missing")
 
 	if !errors.Is(err, ErrRecipeNotFound) {

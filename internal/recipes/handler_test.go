@@ -11,33 +11,33 @@ import (
 	"leguiburger/internal/models"
 )
 
-type MockService struct {
-	OnCreateRecipe func(ctx context.Context, tenantID, productID, supplyID string, quantityUsed float64) (*models.Recipe, error)
+type mockService struct {
+	createRecipeFunc func(ctx context.Context, tenantID, productID, supplyID string, quantityUsed float64) (*models.Recipe, error)
 }
 
-func (m *MockService) CreateRecipe(ctx context.Context, tenantID, productID, supplyID string, quantityUsed float64) (*models.Recipe, error) {
-	return m.OnCreateRecipe(ctx, tenantID, productID, supplyID, quantityUsed)
+func (m *mockService) CreateRecipe(ctx context.Context, tenantID, productID, supplyID string, quantityUsed float64) (*models.Recipe, error) {
+	return m.createRecipeFunc(ctx, tenantID, productID, supplyID, quantityUsed)
 }
 
-func (m *MockService) GetRecipe(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
+func (m *mockService) GetRecipe(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
 	return nil, nil
 }
 
-func (m *MockService) ListRecipes(ctx context.Context, tenantID string) ([]models.Recipe, error) {
+func (m *mockService) ListRecipes(ctx context.Context, tenantID string) ([]models.Recipe, error) {
 	return nil, nil
 }
 
-func (m *MockService) UpdateRecipe(ctx context.Context, tenantID, productID, supplyID string, quantityUsed float64) (*models.Recipe, error) {
+func (m *mockService) UpdateRecipe(ctx context.Context, tenantID, productID, supplyID string, quantityUsed float64) (*models.Recipe, error) {
 	return nil, nil
 }
 
-func (m *MockService) DeleteRecipe(ctx context.Context, tenantID, productID, supplyID string) error {
+func (m *mockService) DeleteRecipe(ctx context.Context, tenantID, productID, supplyID string) error {
 	return nil
 }
 
 func TestHandler_CreateRecipe_Success(t *testing.T) {
-	mockService := &MockService{
-		OnCreateRecipe: func(ctx context.Context, tenantID, productID, supplyID string, quantityUsed float64) (*models.Recipe, error) {
+	mockService := &mockService{
+		createRecipeFunc: func(ctx context.Context, tenantID, productID, supplyID string, quantityUsed float64) (*models.Recipe, error) {
 			return &models.Recipe{
 				ProductID:    productID,
 				SupplyID:     supplyID,
@@ -71,12 +71,12 @@ func TestHandler_CreateRecipe_Success(t *testing.T) {
 	}
 
 	if response.ProductID != "product-1" || response.SupplyID != "supply-1" || response.QuantityUsed != 0.250 {
-		t.Errorf("se recibió una respuesta incorrecta: %+v", response)
+		t.Errorf("se recibio una respuesta incorrecta: %+v", response)
 	}
 }
 
 func TestHandler_CreateRecipe_MissingTenantHeader(t *testing.T) {
-	handler := NewHandler(&MockService{})
+	handler := NewHandler(&mockService{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/recipes", bytes.NewBuffer([]byte("{}")))
 	req.Header.Set("Content-Type", "application/json")

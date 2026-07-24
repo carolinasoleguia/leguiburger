@@ -8,55 +8,55 @@ import (
 	"leguiburger/internal/models"
 )
 
-type MockTenantRepository struct {
-	OnGetByID func(ctx context.Context, id string) (*models.Tenant, error)
-	OnGetAll  func(ctx context.Context) ([]models.Tenant, error)
+type mockTenantRepository struct {
+	getByIDFunc func(ctx context.Context, id string) (*models.Tenant, error)
+	getAllFunc  func(ctx context.Context) ([]models.Tenant, error)
 }
 
-func (m *MockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
-	return m.OnGetByID(ctx, id)
+func (m *mockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
+	return m.getByIDFunc(ctx, id)
 }
-func (m *MockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
-	if m.OnGetAll != nil {
-		return m.OnGetAll(ctx)
+func (m *mockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
+	if m.getAllFunc != nil {
+		return m.getAllFunc(ctx)
 	}
 	return nil, nil
 }
-func (m *MockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
+func (m *mockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
 	return nil
 }
-func (m *MockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
 	return nil, nil
 }
-func (m *MockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
 	return nil, nil
 }
-func (m *MockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
 	return nil, nil
 }
-func (m *MockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
+func (m *mockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
 	return nil
 }
-func (m *MockTenantRepository) Delete(ctx context.Context, id string) error {
+func (m *mockTenantRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
 func TestCreateCustomer_Success(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByEmail: func(ctx context.Context, tenantID, email string) (*models.Customer, error) {
+	repo := &mockRepository{
+		getByEmailFunc: func(ctx context.Context, tenantID, email string) (*models.Customer, error) {
 			if email != "juan@email.com" {
 				t.Errorf("se esperaba email normalizado, se obtuvo: %s", email)
 			}
 			return nil, nil
 		},
-		OnCreate: func(ctx context.Context, customer *models.Customer) error {
+		createFunc: func(ctx context.Context, customer *models.Customer) error {
 			customer.ID = "generated-id"
 			return nil
 		},
 	}
 
-	tenantRepo := &MockTenantRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+	tenantRepo := &mockTenantRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
 			return &models.Tenant{ID: id}, nil
 		},
 	}
@@ -64,7 +64,7 @@ func TestCreateCustomer_Success(t *testing.T) {
 	service := NewService(repo, tenantRepo)
 	res, err := service.CreateCustomer(context.Background(), "tenant-1", " Juan ", " Perez ", "  JUAN@EMAIL.COM ", " 2215555555 ")
 	if err != nil {
-		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
+		t.Fatalf("se esperaba exito, se obtuvo error: %v", err)
 	}
 
 	if res.FirstName != "Juan" || res.LastName != "Perez" || res.Email != "juan@email.com" || res.Phone != "2215555555" {
@@ -73,7 +73,7 @@ func TestCreateCustomer_Success(t *testing.T) {
 }
 
 func TestCreateCustomer_InvalidData(t *testing.T) {
-	service := NewService(&MockRepository{}, &MockTenantRepository{})
+	service := NewService(&mockRepository{}, &mockTenantRepository{})
 
 	_, err := service.CreateCustomer(context.Background(), "tenant-1", "", "Perez", "juan@email.com", "")
 	if !errors.Is(err, ErrInvalidCustomerData) {
@@ -82,13 +82,13 @@ func TestCreateCustomer_InvalidData(t *testing.T) {
 }
 
 func TestCreateCustomer_DuplicateEmail(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByEmail: func(ctx context.Context, tenantID, email string) (*models.Customer, error) {
+	repo := &mockRepository{
+		getByEmailFunc: func(ctx context.Context, tenantID, email string) (*models.Customer, error) {
 			return &models.Customer{ID: "existing-id", Email: email}, nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
+	service := NewService(repo, &mockTenantRepository{})
 	_, err := service.CreateCustomer(context.Background(), "tenant-1", "Juan", "Perez", "juan@email.com", "")
 
 	if !errors.Is(err, ErrDuplicateCustomerEmail) {
@@ -97,9 +97,9 @@ func TestCreateCustomer_DuplicateEmail(t *testing.T) {
 }
 
 func TestListCustomers_TenantNotFound(t *testing.T) {
-	repo := &MockRepository{}
-	tenantRepo := &MockTenantRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+	repo := &mockRepository{}
+	tenantRepo := &mockTenantRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
 			return nil, nil
 		},
 	}
@@ -113,22 +113,22 @@ func TestListCustomers_TenantNotFound(t *testing.T) {
 }
 
 func TestUpdateCustomer_Success(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByID: func(ctx context.Context, tenantID, id string) (*models.Customer, error) {
+	repo := &mockRepository{
+		getByIDFunc: func(ctx context.Context, tenantID, id string) (*models.Customer, error) {
 			return &models.Customer{ID: id, TenantID: tenantID, FirstName: "Juan", LastName: "Perez", Email: "juan@email.com"}, nil
 		},
-		OnGetByEmail: func(ctx context.Context, tenantID, email string) (*models.Customer, error) {
+		getByEmailFunc: func(ctx context.Context, tenantID, email string) (*models.Customer, error) {
 			return nil, nil
 		},
-		OnUpdate: func(ctx context.Context, customer *models.Customer) error {
+		updateFunc: func(ctx context.Context, customer *models.Customer) error {
 			return nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
+	service := NewService(repo, &mockTenantRepository{})
 	res, err := service.UpdateCustomer(context.Background(), "tenant-1", "customer-1", "Juana", "", "JUANA@EMAIL.COM", "")
 	if err != nil {
-		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
+		t.Fatalf("se esperaba exito, se obtuvo error: %v", err)
 	}
 
 	if res.FirstName != "Juana" || res.LastName != "Perez" || res.Email != "juana@email.com" {
@@ -137,13 +137,13 @@ func TestUpdateCustomer_Success(t *testing.T) {
 }
 
 func TestDeleteCustomer_NotFound(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByID: func(ctx context.Context, tenantID, id string) (*models.Customer, error) {
+	repo := &mockRepository{
+		getByIDFunc: func(ctx context.Context, tenantID, id string) (*models.Customer, error) {
 			return nil, nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
+	service := NewService(repo, &mockTenantRepository{})
 	err := service.DeleteCustomer(context.Background(), "tenant-1", "missing")
 
 	if !errors.Is(err, ErrCustomerNotFound) {

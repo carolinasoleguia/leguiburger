@@ -89,7 +89,10 @@ func main() {
 	//----------------------------------------------------------------//
 
 	authRepo := auth.NewRepository()
-	authSvc := auth.NewService(authRepo, tenantRepo)
+	authSvc, err := auth.NewService(authRepo, tenantRepo)
+	if err != nil {
+		log.Fatalf("Error al configurar autenticacion: %v", err)
+	}
 	authHandler := auth.NewHandler(authSvc)
 
 	http.HandleFunc("/api/auth/", authHandler.HandleAuthRoutes)

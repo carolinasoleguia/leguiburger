@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+
 	"leguiburger/internal/db"
 	"leguiburger/internal/models"
 
@@ -11,7 +12,7 @@ import (
 
 type Repository interface {
 	GetByEmailAndTenant(ctx context.Context, tenantID, email string) (*models.Employee, error)
-	GetByEmail(ctx context.Context, email string) (*models.Employee, error) // 👈 Agregado para búsquedas globales (ej. OWNERs)
+	GetByEmail(ctx context.Context, email string) (*models.Employee, error)
 }
 
 type repository struct{}
@@ -28,14 +29,14 @@ func (r *repository) GetByEmailAndTenant(ctx context.Context, tenantID, email st
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil // No encontrado de forma limpia
+			return nil, nil
 		}
 		return nil, err
 	}
 	return &emp, nil
 }
 
-// GetByEmail busca un usuario en toda la base sin filtrar por tenant_id
+// GetByEmail busca un usuario en toda la base sin filtrar por tenant_id.
 func (r *repository) GetByEmail(ctx context.Context, email string) (*models.Employee, error) {
 	var emp models.Employee
 	err := db.DB.WithContext(ctx).

@@ -11,33 +11,33 @@ import (
 	"leguiburger/internal/models"
 )
 
-type MockService struct {
-	OnCreateProduct func(ctx context.Context, tenantID, name, description string, currentPrice float64, currentStock int, trackStock *bool, imageURL string) (*models.Product, error)
+type mockService struct {
+	createProductFunc func(ctx context.Context, tenantID, name, description string, currentPrice float64, currentStock int, trackStock *bool, imageURL string) (*models.Product, error)
 }
 
-func (m *MockService) CreateProduct(ctx context.Context, tenantID, name, description string, currentPrice float64, currentStock int, trackStock *bool, imageURL string) (*models.Product, error) {
-	return m.OnCreateProduct(ctx, tenantID, name, description, currentPrice, currentStock, trackStock, imageURL)
+func (m *mockService) CreateProduct(ctx context.Context, tenantID, name, description string, currentPrice float64, currentStock int, trackStock *bool, imageURL string) (*models.Product, error) {
+	return m.createProductFunc(ctx, tenantID, name, description, currentPrice, currentStock, trackStock, imageURL)
 }
 
-func (m *MockService) GetProduct(ctx context.Context, tenantID, id string) (*models.Product, error) {
+func (m *mockService) GetProduct(ctx context.Context, tenantID, id string) (*models.Product, error) {
 	return nil, nil
 }
 
-func (m *MockService) ListProducts(ctx context.Context, tenantID string) ([]models.Product, error) {
+func (m *mockService) ListProducts(ctx context.Context, tenantID string) ([]models.Product, error) {
 	return nil, nil
 }
 
-func (m *MockService) UpdateProduct(ctx context.Context, tenantID, id, name, description string, currentPrice *float64, currentStock *int, trackStock *bool, imageURL string, isActive *bool) (*models.Product, error) {
+func (m *mockService) UpdateProduct(ctx context.Context, tenantID, id, name, description string, currentPrice *float64, currentStock *int, trackStock *bool, imageURL string, isActive *bool) (*models.Product, error) {
 	return nil, nil
 }
 
-func (m *MockService) DeleteProduct(ctx context.Context, tenantID, id string) error {
+func (m *mockService) DeleteProduct(ctx context.Context, tenantID, id string) error {
 	return nil
 }
 
 func TestHandler_CreateProduct_Success(t *testing.T) {
-	mockService := &MockService{
-		OnCreateProduct: func(ctx context.Context, tenantID, name, description string, currentPrice float64, currentStock int, trackStock *bool, imageURL string) (*models.Product, error) {
+	mockService := &mockService{
+		createProductFunc: func(ctx context.Context, tenantID, name, description string, currentPrice float64, currentStock int, trackStock *bool, imageURL string) (*models.Product, error) {
 			return &models.Product{
 				ID:           "new-id",
 				TenantID:     tenantID,
@@ -80,12 +80,12 @@ func TestHandler_CreateProduct_Success(t *testing.T) {
 	}
 
 	if response.TenantID != "tenant-ok" || response.Name != "Doble Cheddar" || response.CurrentPrice != 4500 {
-		t.Errorf("se recibió una respuesta incorrecta: %+v", response)
+		t.Errorf("se recibio una respuesta incorrecta: %+v", response)
 	}
 }
 
 func TestHandler_CreateProduct_MissingTenantHeader(t *testing.T) {
-	handler := NewHandler(&MockService{})
+	handler := NewHandler(&mockService{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/products", bytes.NewBuffer([]byte("{}")))
 	req.Header.Set("Content-Type", "application/json")

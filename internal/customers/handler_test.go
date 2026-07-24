@@ -11,33 +11,33 @@ import (
 	"leguiburger/internal/models"
 )
 
-type MockService struct {
-	OnCreateCustomer func(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error)
+type mockService struct {
+	createCustomerFunc func(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error)
 }
 
-func (m *MockService) CreateCustomer(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error) {
-	return m.OnCreateCustomer(ctx, tenantID, firstName, lastName, email, phone)
+func (m *mockService) CreateCustomer(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error) {
+	return m.createCustomerFunc(ctx, tenantID, firstName, lastName, email, phone)
 }
 
-func (m *MockService) GetCustomer(ctx context.Context, tenantID, id string) (*models.Customer, error) {
+func (m *mockService) GetCustomer(ctx context.Context, tenantID, id string) (*models.Customer, error) {
 	return nil, nil
 }
 
-func (m *MockService) ListCustomers(ctx context.Context, tenantID string) ([]models.Customer, error) {
+func (m *mockService) ListCustomers(ctx context.Context, tenantID string) ([]models.Customer, error) {
 	return nil, nil
 }
 
-func (m *MockService) UpdateCustomer(ctx context.Context, tenantID, id, firstName, lastName, email, phone string) (*models.Customer, error) {
+func (m *mockService) UpdateCustomer(ctx context.Context, tenantID, id, firstName, lastName, email, phone string) (*models.Customer, error) {
 	return nil, nil
 }
 
-func (m *MockService) DeleteCustomer(ctx context.Context, tenantID, id string) error {
+func (m *mockService) DeleteCustomer(ctx context.Context, tenantID, id string) error {
 	return nil
 }
 
 func TestHandler_CreateCustomer_Success(t *testing.T) {
-	mockService := &MockService{
-		OnCreateCustomer: func(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error) {
+	mockService := &mockService{
+		createCustomerFunc: func(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error) {
 			return &models.Customer{
 				ID:        "new-id",
 				TenantID:  tenantID,
@@ -75,12 +75,12 @@ func TestHandler_CreateCustomer_Success(t *testing.T) {
 	}
 
 	if response.TenantID != "tenant-ok" || response.Email != "juan@email.com" {
-		t.Errorf("se recibió una respuesta incorrecta: %+v", response)
+		t.Errorf("se recibio una respuesta incorrecta: %+v", response)
 	}
 }
 
 func TestHandler_CreateCustomer_MissingTenantHeader(t *testing.T) {
-	handler := NewHandler(&MockService{})
+	handler := NewHandler(&mockService{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/customers", bytes.NewBuffer([]byte("{}")))
 	req.Header.Set("Content-Type", "application/json")

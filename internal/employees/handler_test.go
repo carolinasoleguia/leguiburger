@@ -11,60 +11,60 @@ import (
 	"leguiburger/internal/models"
 )
 
-type MockService struct {
-	OnCreateEmployee  func(ctx context.Context, tenantID, firstName, lastName, email, passwordHash, phone, role string) (*models.Employee, error)
-	OnGetEmployee     func(ctx context.Context, tenantID, id string) (*models.Employee, error)
-	OnListEmployees   func(ctx context.Context, tenantID string) ([]models.Employee, error)
-	OnGetAllEmployees func(ctx context.Context) ([]models.Employee, error)
-	OnUpdateEmployee  func(ctx context.Context, tenantID, id, firstName, lastName, email, passwordHash, phone, role string, isActive *bool) (*models.Employee, error)
-	OnDeleteEmployee  func(ctx context.Context, tenantID, id string) error
+type mockService struct {
+	createEmployeeFunc  func(ctx context.Context, tenantID, firstName, lastName, email, passwordHash, phone, role string) (*models.Employee, error)
+	getEmployeeFunc     func(ctx context.Context, tenantID, id string) (*models.Employee, error)
+	listEmployeesFunc   func(ctx context.Context, tenantID string) ([]models.Employee, error)
+	getAllEmployeesFunc func(ctx context.Context) ([]models.Employee, error)
+	updateEmployeeFunc  func(ctx context.Context, tenantID, id, firstName, lastName, email, passwordHash, phone, role string, isActive *bool) (*models.Employee, error)
+	deleteEmployeeFunc  func(ctx context.Context, tenantID, id string) error
 }
 
-func (m *MockService) CreateEmployee(ctx context.Context, tenantID, firstName, lastName, email, passwordHash, phone, role string) (*models.Employee, error) {
-	if m.OnCreateEmployee != nil {
-		return m.OnCreateEmployee(ctx, tenantID, firstName, lastName, email, passwordHash, phone, role)
+func (m *mockService) CreateEmployee(ctx context.Context, tenantID, firstName, lastName, email, passwordHash, phone, role string) (*models.Employee, error) {
+	if m.createEmployeeFunc != nil {
+		return m.createEmployeeFunc(ctx, tenantID, firstName, lastName, email, passwordHash, phone, role)
 	}
 	return nil, nil
 }
 
-func (m *MockService) GetEmployee(ctx context.Context, tenantID, id string) (*models.Employee, error) {
-	if m.OnGetEmployee != nil {
-		return m.OnGetEmployee(ctx, tenantID, id)
+func (m *mockService) GetEmployee(ctx context.Context, tenantID, id string) (*models.Employee, error) {
+	if m.getEmployeeFunc != nil {
+		return m.getEmployeeFunc(ctx, tenantID, id)
 	}
 	return nil, nil
 }
 
-func (m *MockService) ListEmployees(ctx context.Context, tenantID string) ([]models.Employee, error) {
-	if m.OnListEmployees != nil {
-		return m.OnListEmployees(ctx, tenantID)
+func (m *mockService) ListEmployees(ctx context.Context, tenantID string) ([]models.Employee, error) {
+	if m.listEmployeesFunc != nil {
+		return m.listEmployeesFunc(ctx, tenantID)
 	}
 	return nil, nil
 }
 
-func (m *MockService) GetAllEmployees(ctx context.Context) ([]models.Employee, error) {
-	if m.OnGetAllEmployees != nil {
-		return m.OnGetAllEmployees(ctx)
+func (m *mockService) GetAllEmployees(ctx context.Context) ([]models.Employee, error) {
+	if m.getAllEmployeesFunc != nil {
+		return m.getAllEmployeesFunc(ctx)
 	}
 	return nil, nil
 }
 
-func (m *MockService) UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, passwordHash, phone, role string, isActive *bool) (*models.Employee, error) {
-	if m.OnUpdateEmployee != nil {
-		return m.OnUpdateEmployee(ctx, tenantID, id, firstName, lastName, email, passwordHash, phone, role, isActive)
+func (m *mockService) UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, passwordHash, phone, role string, isActive *bool) (*models.Employee, error) {
+	if m.updateEmployeeFunc != nil {
+		return m.updateEmployeeFunc(ctx, tenantID, id, firstName, lastName, email, passwordHash, phone, role, isActive)
 	}
 	return nil, nil
 }
 
-func (m *MockService) DeleteEmployee(ctx context.Context, tenantID, id string) error {
-	if m.OnDeleteEmployee != nil {
-		return m.OnDeleteEmployee(ctx, tenantID, id)
+func (m *mockService) DeleteEmployee(ctx context.Context, tenantID, id string) error {
+	if m.deleteEmployeeFunc != nil {
+		return m.deleteEmployeeFunc(ctx, tenantID, id)
 	}
 	return nil
 }
 
 func TestHandler_CreateEmployee_Success(t *testing.T) {
-	mockService := &MockService{
-		OnCreateEmployee: func(ctx context.Context, tenantID, firstName, lastName, email, passwordHash, phone, role string) (*models.Employee, error) {
+	mockService := &mockService{
+		createEmployeeFunc: func(ctx context.Context, tenantID, firstName, lastName, email, passwordHash, phone, role string) (*models.Employee, error) {
 			return &models.Employee{
 				ID:           "new-id",
 				TenantID:     &tenantID,
@@ -112,7 +112,7 @@ func TestHandler_CreateEmployee_Success(t *testing.T) {
 }
 
 func TestHandler_CreateEmployee_MissingTenantHeader(t *testing.T) {
-	handler := NewHandler(&MockService{})
+	handler := NewHandler(&mockService{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/employees", bytes.NewBuffer([]byte("{}")))
 	req.Header.Set("Content-Type", "application/json")

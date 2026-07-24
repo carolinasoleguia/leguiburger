@@ -7,11 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"leguiburger/internal/models"
 )
 
-// Mock del Servicio blindado contra llamadas no configuradas
 type mockAuthService struct {
 	loginFn func(ctx context.Context, tenantID, email, password string) (*LoginResponse, error)
 }
@@ -33,7 +30,7 @@ func TestHandler_Login(t *testing.T) {
 		expectedCode   string
 	}{
 		{
-			name:         "HTTP 200 OK - Login Exitoso con Tenant",
+			name:         "HTTP 200 OK - login exitoso con tenant",
 			tenantHeader: "tenant-uuid-1",
 			body: map[string]string{
 				"email":    "admin@test.com",
@@ -42,10 +39,12 @@ func TestHandler_Login(t *testing.T) {
 			mockService: func(ctx context.Context, tenantID, email, password string) (*LoginResponse, error) {
 				return &LoginResponse{
 					Token: "mock.jwt.token",
-					Employee: &models.Employee{
+					Employee: EmployeeDTO{
 						ID:       "emp-1",
 						TenantID: &tenantID,
 						Email:    email,
+						Role:     "admin",
+						IsActive: true,
 					},
 				}, nil
 			},
@@ -53,8 +52,8 @@ func TestHandler_Login(t *testing.T) {
 			expectedCode:   "",
 		},
 		{
-			name:         "HTTP 200 OK - Login Exitoso OWNER (Sin X-Tenant-ID)",
-			tenantHeader: "", // Header vacío permitido para Owner
+			name:         "HTTP 200 OK - login exitoso owner sin tenant",
+			tenantHeader: "",
 			body: map[string]string{
 				"email":    "owner@test.com",
 				"password": "Password123!",
@@ -62,10 +61,11 @@ func TestHandler_Login(t *testing.T) {
 			mockService: func(ctx context.Context, tenantID, email, password string) (*LoginResponse, error) {
 				return &LoginResponse{
 					Token: "mock.jwt.owner.token",
-					Employee: &models.Employee{
+					Employee: EmployeeDTO{
 						ID:       "owner-1",
-						TenantID: nil,
 						Email:    email,
+						Role:     RoleOwner,
+						IsActive: true,
 					},
 				}, nil
 			},
@@ -73,7 +73,7 @@ func TestHandler_Login(t *testing.T) {
 			expectedCode:   "",
 		},
 		{
-			name:         "HTTP 400 Bad Request - Campos requeridos faltantes",
+			name:         "HTTP 400 Bad Request - campos requeridos faltantes",
 			tenantHeader: "tenant-uuid-1",
 			body: map[string]string{
 				"email":    "",
@@ -84,7 +84,15 @@ func TestHandler_Login(t *testing.T) {
 			expectedCode:   "MISSING_FIELDS",
 		},
 		{
-			name:         "HTTP 401 Unauthorized - Credenciales inválidas",
+			name:           "HTTP 400 Bad Request - JSON invalido",
+			tenantHeader:   "tenant-uuid-1",
+			body:           "{",
+			mockService:    nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedCode:   "INVALID_INPUT",
+		},
+		{
+			name:         "HTTP 401 Unauthorized - credenciales invalidas",
 			tenantHeader: "tenant-uuid-1",
 			body: map[string]string{
 				"email":    "admin@test.com",
@@ -96,6 +104,45 @@ func TestHandler_Login(t *testing.T) {
 			expectedStatus: http.StatusUnauthorized,
 			expectedCode:   "UNAUTHORIZED",
 		},
+		{
+			name:         "HTTP 403 Forbidden - tenant requerido",
+			tenantHeader: "",
+			body: map[string]string{
+				"email":    "admin@test.com",
+				"password": "Password123!",
+			},
+			mockService: func(ctx context.Context, tenantID, email, password string) (*LoginResponse, error) {
+				return nil, ErrTenantRequired
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedCode:   "TENANT_REQUIRED",
+		},
+		{
+			name:         "HTTP 403 Forbidden - tenant no autorizado",
+			tenantHeader: "tenant-uuid-2",
+			body: map[string]string{
+				"email":    "admin@test.com",
+				"password": "Password123!",
+			},
+			mockService: func(ctx context.Context, tenantID, email, password string) (*LoginResponse, error) {
+				return nil, ErrForbiddenTenant
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedCode:   "FORBIDDEN",
+		},
+		{
+			name:         "HTTP 403 Forbidden - tenant invalido",
+			tenantHeader: "tenant-inactivo",
+			body: map[string]string{
+				"email":    "admin@test.com",
+				"password": "Password123!",
+			},
+			mockService: func(ctx context.Context, tenantID, email, password string) (*LoginResponse, error) {
+				return nil, ErrTenantNotFoundForAuth
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedCode:   "INVALID_TENANT",
+		},
 	}
 
 	for _, tt := range tests {
@@ -103,12 +150,17 @@ func TestHandler_Login(t *testing.T) {
 			svcMock := &mockAuthService{loginFn: tt.mockService}
 			handler := NewHandler(svcMock)
 
-			// Serializar el body
-			bodyBytes, _ := json.Marshal(tt.body)
+			var bodyBytes []byte
+			if raw, ok := tt.body.(string); ok {
+				bodyBytes = []byte(raw)
+			} else {
+				bodyBytes, _ = json.Marshal(tt.body)
+			}
+
 			req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBuffer(bodyBytes))
 			req.Header.Set("Content-Type", "application/json")
 			if tt.tenantHeader != "" {
-				req.Header.Set("X-Tenant-ID", tt.tenantHeader)
+				req.Header.Set(TenantHeaderName, tt.tenantHeader)
 			}
 
 			w := httptest.NewRecorder()
@@ -120,10 +172,21 @@ func TestHandler_Login(t *testing.T) {
 
 			if tt.expectedCode != "" {
 				var response map[string]string
-				json.Unmarshal(w.Body.Bytes(), &response)
-				if response["code"] != tt.expectedCode {
-					t.Errorf("se esperaba el código de error '%s', obtenido '%s'", tt.expectedCode, response["code"])
+				if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+					t.Fatalf("respuesta JSON invalida: %v", err)
 				}
+				if response["code"] != tt.expectedCode {
+					t.Errorf("se esperaba codigo de error %q, obtenido %q", tt.expectedCode, response["code"])
+				}
+				return
+			}
+
+			var response LoginResponse
+			if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+				t.Fatalf("respuesta JSON invalida: %v", err)
+			}
+			if response.Token == "" || response.Employee.ID == "" {
+				t.Fatal("se esperaba token y DTO publico de empleado")
 			}
 		})
 	}

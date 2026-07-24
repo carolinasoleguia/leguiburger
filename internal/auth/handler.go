@@ -16,6 +16,7 @@ func NewHandler(s Service) *Handler {
 }
 
 type LoginInput struct {
+	TenantID string `json:"tenant_id"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -28,57 +29,48 @@ func (h *Handler) HandleAuthRoutes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.respondWithError(w, http.StatusNotFound, "NOT_FOUND", "Recurso no encontrado")
+	RespondWithError(w, http.StatusNotFound, "NOT_FOUND", "Recurso no encontrado")
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	// 1. Decodificar el JSON primero
-	var input struct {
-		TenantID string `json:"tenant_id"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var input LoginInput
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
+		RespondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON invalido")
 		return
 	}
 
-	// 2. Determinar el tenantID: Prioridad al Header, sino se usa el del Body
-	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	tenantID := strings.TrimSpace(r.Header.Get(TenantHeaderName))
 	if tenantID == "" {
 		tenantID = strings.TrimSpace(input.TenantID)
 	}
 
-	// 3. Solo requerir Email y Password obligatorios
 	if strings.TrimSpace(input.Email) == "" || strings.TrimSpace(input.Password) == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_FIELDS", "Email y contraseña son requeridos")
+		RespondWithError(w, http.StatusBadRequest, "MISSING_FIELDS", "Email y contrasena son requeridos")
 		return
 	}
 
-	// 4. Ejecutar el login (tenantID puede ser "" para el OWNER global)
 	res, err := h.service.Login(r.Context(), tenantID, input.Email, input.Password)
 	if err != nil {
-		if errors.Is(err, ErrInvalidCredentials) {
-			h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Credenciales inválidas")
-		} else if errors.Is(err, ErrTenantNotFoundForAuth) {
-			h.respondWithError(w, http.StatusBadRequest, "INVALID_TENANT", "El comercio no existe")
-		} else {
-			h.respondWithError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error inesperado")
+		switch {
+		case errors.Is(err, ErrInvalidCredentials):
+			RespondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Credenciales invalidas")
+		case errors.Is(err, ErrTenantRequired):
+			RespondWithError(w, http.StatusForbidden, "TENANT_REQUIRED", "El comercio es requerido para este usuario")
+		case errors.Is(err, ErrForbiddenTenant):
+			RespondWithError(w, http.StatusForbidden, "FORBIDDEN", "No autorizado para este comercio")
+		case errors.Is(err, ErrTenantNotFoundForAuth):
+			RespondWithError(w, http.StatusForbidden, "INVALID_TENANT", "El comercio no existe o esta inactivo")
+		default:
+			RespondWithError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error inesperado")
 		}
 		return
 	}
 
-	h.respondWithJSON(w, http.StatusOK, res)
+	respondWithJSON(w, http.StatusOK, res)
 }
 
-func (h *Handler) respondWithError(w http.ResponseWriter, status int, code, msg string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"code": code, "message": msg})
-}
-
-func (h *Handler) respondWithJSON(w http.ResponseWriter, status int, data interface{}) {
+func respondWithJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)

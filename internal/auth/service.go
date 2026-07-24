@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"errors"
+	"os"
+	"strings"
 
 	"leguiburger/internal/models"
 	"leguiburger/internal/tenants"
@@ -10,17 +12,34 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	ErrInvalidCredentials    = errors.New("credenciales inválidas")
-	ErrTenantNotFoundForAuth = errors.New("el comercio especificado no existe")
+const (
+	TenantHeaderName = "X-Tenant-ID"
+	RoleOwner        = "owner"
+	RoleSuperAdmin   = "super_admin"
 )
 
-// Clave secreta para firmar tokens (debería venir de variable de entorno os.Getenv("JWT_SECRET"))
-var jwtSecret = []byte("tu_super_clave_secreta_jwt_leguiburger")
+var (
+	ErrInvalidCredentials    = errors.New("credenciales invalidas")
+	ErrTenantRequired        = errors.New("el tenant es requerido para este usuario")
+	ErrForbiddenTenant       = errors.New("no autorizado para este comercio")
+	ErrTenantNotFoundForAuth = errors.New("el comercio especificado no existe")
+	ErrJWTSecretRequired     = errors.New("JWT_SECRET no configurado")
+)
 
 type LoginResponse struct {
-	Token    string           `json:"token"`
-	Employee *models.Employee `json:"employee"`
+	Token    string      `json:"token"`
+	Employee EmployeeDTO `json:"employee"`
+}
+
+type EmployeeDTO struct {
+	ID        string  `json:"id"`
+	TenantID  *string `json:"tenant_id,omitempty"`
+	FirstName string  `json:"first_name"`
+	LastName  string  `json:"last_name"`
+	Email     string  `json:"email"`
+	Phone     string  `json:"phone"`
+	Role      string  `json:"role"`
+	IsActive  bool    `json:"is_active"`
 }
 
 type Service interface {
@@ -32,35 +51,36 @@ type service struct {
 	tenantRepo tenants.Repository
 }
 
-func NewService(repo Repository, tenantRepo tenants.Repository) Service {
-	return &service{repo: repo, tenantRepo: tenantRepo}
+func NewService(repo Repository, tenantRepo tenants.Repository) (Service, error) {
+	if err := ConfigureJWTSecret(os.Getenv("JWT_SECRET")); err != nil {
+		return nil, err
+	}
+
+	return &service{repo: repo, tenantRepo: tenantRepo}, nil
 }
 
 func (s *service) Login(ctx context.Context, tenantID, email, password string) (*LoginResponse, error) {
-	// 1. Búsqueda global del empleado
-	employee, err := s.repo.GetByEmail(ctx, email)
+	cleanTenantID := strings.TrimSpace(tenantID)
+	cleanEmail := strings.ToLower(strings.TrimSpace(email))
+	cleanPassword := strings.TrimSpace(password)
+
+	if cleanEmail == "" || cleanPassword == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	employee, err := s.findEmployeeForLogin(ctx, cleanTenantID, cleanEmail)
 	if err != nil {
 		return nil, err
 	}
 
-	if employee == nil {
+	if !isGlobalRole(employee.Role) && (employee.TenantID == nil || *employee.TenantID != cleanTenantID) {
+		return nil, ErrForbiddenTenant
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(employee.PasswordHash), []byte(cleanPassword)); err != nil {
 		return nil, ErrInvalidCredentials
 	}
 
-	// 2. Validar restricciones de tenant si no es el Owner global
-	if employee.Role != "owner" && tenantID != "" {
-		if employee.TenantID == nil || *employee.TenantID != tenantID {
-			return nil, errors.New("no autorizado para este comercio")
-		}
-	}
-
-	// 3. Validar contraseña
-	err = bcrypt.CompareHashAndPassword([]byte(employee.PasswordHash), []byte(password))
-	if err != nil {
-		return nil, ErrInvalidCredentials
-	}
-
-	// 4. Generar token
 	token, err := GenerateToken(
 		employee.ID,
 		employee.Email,
@@ -73,6 +93,80 @@ func (s *service) Login(ctx context.Context, tenantID, email, password string) (
 
 	return &LoginResponse{
 		Token:    token,
-		Employee: employee,
+		Employee: toEmployeeDTO(employee),
 	}, nil
+}
+
+func (s *service) findEmployeeForLogin(ctx context.Context, tenantID, email string) (*models.Employee, error) {
+	if tenantID == "" {
+		employee, err := s.repo.GetByEmail(ctx, email)
+		if err != nil {
+			return nil, err
+		}
+		if employee == nil {
+			return nil, ErrInvalidCredentials
+		}
+		if !isGlobalRole(employee.Role) {
+			return nil, ErrTenantRequired
+		}
+		return employee, nil
+	}
+
+	if err := s.validateTenant(ctx, tenantID); err != nil {
+		return nil, err
+	}
+
+	employee, err := s.repo.GetByEmailAndTenant(ctx, tenantID, email)
+	if err != nil {
+		return nil, err
+	}
+	if employee != nil {
+		return employee, nil
+	}
+
+	globalEmployee, err := s.repo.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	if globalEmployee == nil {
+		return nil, ErrInvalidCredentials
+	}
+	if !isGlobalRole(globalEmployee.Role) {
+		return nil, ErrForbiddenTenant
+	}
+
+	return globalEmployee, nil
+}
+
+func (s *service) validateTenant(ctx context.Context, tenantID string) error {
+	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	if tenant == nil || !tenant.Active {
+		return ErrTenantNotFoundForAuth
+	}
+	return nil
+}
+
+func isGlobalRole(role string) bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case RoleOwner, RoleSuperAdmin:
+		return true
+	default:
+		return false
+	}
+}
+
+func toEmployeeDTO(employee *models.Employee) EmployeeDTO {
+	return EmployeeDTO{
+		ID:        employee.ID,
+		TenantID:  employee.TenantID,
+		FirstName: employee.FirstName,
+		LastName:  employee.LastName,
+		Email:     employee.Email,
+		Phone:     employee.Phone,
+		Role:      employee.Role,
+		IsActive:  employee.IsActive,
+	}
 }
