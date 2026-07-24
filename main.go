@@ -21,6 +21,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
+func registerRoute(path string, handler http.HandlerFunc) {
+	http.HandleFunc(path, handler)
+	http.HandleFunc(path+"/", handler)
+}
+
 func main() {
 	_ = godotenv.Load()
 
@@ -53,8 +58,7 @@ func main() {
 	customerHandler := customers.NewHandler(customerService)
 	customerHandlerWithAuth := auth.AuthMiddleware(customerHandler.HandleCustomerRoutes)
 
-	http.HandleFunc("/api/customers/", customerHandlerWithAuth)
-	http.HandleFunc("/api/customers", customerHandlerWithAuth)
+	registerRoute("/api/customers", customerHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
@@ -63,8 +67,7 @@ func main() {
 	extraHandler := extras.NewHandler(extraService)
 	extraHandlerWithAuth := auth.AuthMiddleware(extraHandler.HandleExtraRoutes)
 
-	http.HandleFunc("/api/extras/", extraHandlerWithAuth)
-	http.HandleFunc("/api/extras", extraHandlerWithAuth)
+	registerRoute("/api/extras", extraHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
@@ -73,8 +76,7 @@ func main() {
 	supplyHandler := supplies.NewHandler(supplyService)
 	supplyHandlerWithAuth := auth.AuthMiddleware(supplyHandler.HandleSupplyRoutes)
 
-	http.HandleFunc("/api/supplies/", supplyHandlerWithAuth)
-	http.HandleFunc("/api/supplies", supplyHandlerWithAuth)
+	registerRoute("/api/supplies", supplyHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
@@ -83,8 +85,7 @@ func main() {
 	shippingHandler := shipping.NewHandler(shippingService)
 	shippingHandlerWithAuth := auth.AuthMiddleware(shippingHandler.HandleShippingRoutes)
 
-	http.HandleFunc("/api/shipping-methods/", shippingHandlerWithAuth)
-	http.HandleFunc("/api/shipping-methods", shippingHandlerWithAuth)
+	registerRoute("/api/shipping-methods", shippingHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
@@ -93,8 +94,7 @@ func main() {
 	productHandler := products.NewHandler(productService)
 	productHandlerWithAuth := auth.AuthMiddleware(productHandler.HandleProductRoutes)
 
-	http.HandleFunc("/api/products/", productHandlerWithAuth)
-	http.HandleFunc("/api/products", productHandlerWithAuth)
+	registerRoute("/api/products", productHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
@@ -103,8 +103,7 @@ func main() {
 	recipeHandler := recipes.NewHandler(recipeService)
 	recipeHandlerWithAuth := auth.AuthMiddleware(recipeHandler.HandleRecipeRoutes)
 
-	http.HandleFunc("/api/recipes/", recipeHandlerWithAuth)
-	http.HandleFunc("/api/recipes", recipeHandlerWithAuth)
+	registerRoute("/api/recipes", recipeHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
@@ -113,8 +112,7 @@ func main() {
 	employeeHandler := employees.NewHandler(employeeService)
 
 	employeeHandlerWithAuth := auth.AuthMiddleware(employeeHandler.HandleEmployeeRoutes)
-	http.HandleFunc("/api/employees/", employeeHandlerWithAuth)
-	http.HandleFunc("/api/employees", employeeHandlerWithAuth)
+	registerRoute("/api/employees", employeeHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
@@ -125,7 +123,7 @@ func main() {
 	}
 	authHandler := auth.NewHandler(authSvc)
 
-	http.HandleFunc("/api/auth/", authHandler.HandleAuthRoutes)
+	registerRoute("/api/auth", authHandler.HandleAuthRoutes)
 
 	//----------------------------------------------------------------//
 	// 📂 SERVIR EL FRONTEND ESTÁTICO EN LA RAIZ (/)
