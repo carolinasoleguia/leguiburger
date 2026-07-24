@@ -36,6 +36,7 @@
 
     <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
       <div class="modal-card">
+        <button type="button" class="modal-close" @click="closeCreateModal" aria-label="Cerrar modal">×</button>
         <h3>Nuevo administrador</h3>
         <p>Registra un administrador para un tenant existente.</p>
 
@@ -84,8 +85,6 @@
             </select>
           </div>
 
-          <div v-if="createError" class="status-text error">{{ createError }}</div>
-
           <div class="modal-actions">
             <button type="button" class="btn-secondary" @click="closeCreateModal" :disabled="createLoading">Cancelar</button>
             <button type="submit" class="btn-primary" :disabled="createLoading">
@@ -94,6 +93,16 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
+      <div class="alert-card">
+        <h3 class="alert-title">Aviso</h3>
+        <p class="alert-message">{{ alertText }}</p>
+        <div class="modal-actions">
+          <button type="button" class="btn-primary" @click="closeAlert">OK</button>
+        </div>
       </div>
     </div>
   </section>
@@ -108,6 +117,8 @@ const tenants = ref([]);
 const loading = ref(true);
 const error = ref('');
 const isCreateModalOpen = ref(false);
+const isAlertOpen = ref(false);
+const alertText = ref('');
 const createLoading = ref(false);
 const createError = ref('');
 const createForm = ref({
@@ -157,6 +168,16 @@ function closeCreateModal() {
   createError.value = '';
 }
 
+function showAlert(message) {
+  alertText.value = message;
+  isAlertOpen.value = true;
+}
+
+function closeAlert() {
+  isAlertOpen.value = false;
+  alertText.value = '';
+}
+
 async function submitCreate() {
   createLoading.value = true;
   createError.value = '';
@@ -166,7 +187,7 @@ async function submitCreate() {
     await loadAdmins();
     closeCreateModal();
   } catch (err) {
-    createError.value = err.message || 'Error al crear el administrador.';
+    showAlert(err.message || 'Error al crear el administrador.');
   } finally {
     createLoading.value = false;
   }

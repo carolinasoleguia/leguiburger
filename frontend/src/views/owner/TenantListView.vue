@@ -41,6 +41,7 @@
 
     <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
       <div class="modal-card">
+        <button type="button" class="modal-close" @click="closeCreateModal" aria-label="Cerrar modal">×</button>
         <h3>Nuevo tenant</h3>
         <p>Registra un nuevo tenant asociándolo a una marca existente.</p>
 
@@ -75,6 +76,7 @@
 
     <div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
       <div class="modal-card">
+        <button type="button" class="modal-close" @click="closeEditModal" aria-label="Cerrar modal">×</button>
         <h3>Editar Tenant</h3>
         <p>Actualiza el subdominio para el comercio <strong>{{ editingTenant.brand?.name || editingTenant.subdomain }}</strong>.</p>
 
@@ -109,6 +111,7 @@
 
     <div v-if="isDeleteModalOpen" class="modal-overlay" @click.self="closeDeleteModal">
       <div class="modal-card">
+        <button type="button" class="modal-close" @click="closeDeleteModal" aria-label="Cerrar modal">×</button>
         <h3>Confirmar eliminación</h3>
         <p>Esta acción desactivará el tenant <strong>{{ deletingTenant.brand?.name || deletingTenant.subdomain }}</strong> de forma lógica.</p>
 
@@ -120,6 +123,16 @@
             <span v-if="loadingDelete" class="spinner"></span>
             {{ loadingDelete ? 'Eliminando...' : 'Eliminar' }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
+      <div class="alert-card">
+        <h3 class="alert-title">Aviso</h3>
+        <p class="alert-message">{{ alertText }}</p>
+        <div class="modal-actions">
+          <button type="button" class="btn-primary" @click="closeAlert">OK</button>
         </div>
       </div>
     </div>
@@ -137,6 +150,8 @@ const error = ref('');
 const isCreateModalOpen = ref(false);
 const isEditModalOpen = ref(false);
 const isDeleteModalOpen = ref(false);
+const isAlertOpen = ref(false);
+const alertText = ref('');
 const editingTenant = ref({});
 const deletingTenant = ref({});
 const editForm = ref({ subdomain: '', brand_id: '' });
@@ -176,6 +191,16 @@ function closeCreateModal() {
   createError.value = '';
 }
 
+function showAlert(message) {
+  alertText.value = message;
+  isAlertOpen.value = true;
+}
+
+function closeAlert() {
+  isAlertOpen.value = false;
+  alertText.value = '';
+}
+
 async function submitCreate() {
   createLoading.value = true;
   createError.value = '';
@@ -185,7 +210,7 @@ async function submitCreate() {
     await loadTenants();
     closeCreateModal();
   } catch (err) {
-    createError.value = err.message || 'Error al crear el tenant.';
+    showAlert(err.message || 'Error al crear el tenant.');
   } finally {
     createLoading.value = false;
   }
@@ -221,7 +246,7 @@ async function submitEdit() {
     await loadTenants();
     closeEditModal();
   } catch (err) {
-    modalError.value = err.message || 'Error al guardar los cambios.';
+    showAlert(err.message || 'Error al guardar los cambios.');
   } finally {
     loadingEdit.value = false;
   }
@@ -249,7 +274,7 @@ async function confirmDelete() {
     await loadTenants();
     closeDeleteModal();
   } catch (err) {
-    modalError.value = err.message || 'Error al eliminar el tenant.';
+    showAlert(err.message || 'Error al eliminar el tenant.');
   } finally {
     loadingDelete.value = false;
   }

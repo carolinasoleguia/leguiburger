@@ -37,6 +37,7 @@
 
     <div v-if="isCreateModalOpen || isEditModalOpen" class="modal-overlay" @click.self="closeModal">
       <div class="modal-card">
+        <button type="button" class="modal-close" @click="closeModal" aria-label="Cerrar modal">×</button>
         <h3>{{ isEditModalOpen ? 'Editar marca' : 'Nueva marca' }}</h3>
         <p>{{ isEditModalOpen ? 'Actualiza los datos de la marca.' : 'Registra una marca para asociarla a tenants.' }}</p>
 
@@ -51,8 +52,6 @@
             <input type="text" v-model="activeForm.tax_id" required />
           </div>
 
-          <div v-if="modalError" class="status-text error">{{ modalError }}</div>
-
           <div class="modal-actions">
             <button type="button" class="btn-secondary" @click="closeModal" :disabled="modalLoading">Cancelar</button>
             <button type="submit" class="btn-primary" :disabled="modalLoading">
@@ -61,6 +60,16 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
+      <div class="alert-card">
+        <h3 class="alert-title">Aviso</h3>
+        <p class="alert-message">{{ alertText }}</p>
+        <div class="modal-actions">
+          <button type="button" class="btn-primary" @click="closeAlert">OK</button>
+        </div>
       </div>
     </div>
   </section>
@@ -75,13 +84,15 @@ const loading = ref(true);
 const error = ref('');
 const isCreateModalOpen = ref(false);
 const isEditModalOpen = ref(false);
+const isAlertOpen = ref(false);
+const alertText = ref('');
 const editingBrand = ref(null);
 const modalLoading = ref(false);
-const modalError = ref('');
 const createForm = ref({ name: '', tax_id: '' });
 const editForm = ref({ name: '', tax_id: '' });
 
 const activeForm = computed(() => (isEditModalOpen.value ? editForm.value : createForm.value));
+const modalError = ref('');
 
 async function loadBrands() {
   try {
@@ -104,7 +115,6 @@ function openEditModal(brand) {
   isEditModalOpen.value = true;
   isCreateModalOpen.value = false;
   editingBrand.value = brand;
-  modalError.value = '';
   editForm.value = { name: brand.name, tax_id: brand.tax_id };
 }
 
@@ -112,7 +122,16 @@ function closeModal() {
   isCreateModalOpen.value = false;
   isEditModalOpen.value = false;
   editingBrand.value = null;
-  modalError.value = '';
+}
+
+function showAlert(message) {
+  alertText.value = message;
+  isAlertOpen.value = true;
+}
+
+function closeAlert() {
+  isAlertOpen.value = false;
+  alertText.value = '';
 }
 
 async function submitCreate() {
@@ -124,7 +143,7 @@ async function submitCreate() {
     await loadBrands();
     closeModal();
   } catch (err) {
-    modalError.value = err.message || 'Error al crear la marca.';
+    showAlert(err.message || 'Error al crear la marca.');
   } finally {
     modalLoading.value = false;
   }
@@ -140,7 +159,7 @@ async function submitEdit() {
     await loadBrands();
     closeModal();
   } catch (err) {
-    modalError.value = err.message || 'Error al editar la marca.';
+    showAlert(err.message || 'Error al editar la marca.');
   } finally {
     modalLoading.value = false;
   }
@@ -153,7 +172,7 @@ async function deleteBrand(id) {
     await deleteJSON(`/brands/${id}`);
     await loadBrands();
   } catch (err) {
-    error.value = err.message || 'No se pudo eliminar la brand.';
+    showAlert(err.message || 'No se pudo eliminar la brand.');
   }
 }
 

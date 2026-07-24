@@ -121,8 +121,20 @@ img {
 .btn-logout {
   margin-top: auto;
   width: 100%;
-  background: rgba(239, 68, 68, 0.18);
-  color: var(--danger);
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.35));
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-logout:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 16px 32px rgba(239, 68, 68, 0.18);
 }
 
 .content-pane {
@@ -182,8 +194,9 @@ img {
 
 .data-table th,
 .data-table td {
-  padding: 16px 18px;
+  padding: 18px 20px;
   background: rgba(15, 23, 42, 0.95);
+  vertical-align: middle;
 }
 
 .data-table th {
@@ -192,6 +205,7 @@ img {
   font-size: 0.78rem;
   color: var(--text-muted);
   border-bottom: none;
+  text-align: center;
 }
 
 .data-table tbody tr {
@@ -206,6 +220,7 @@ img {
 .data-table td {
   color: var(--text);
   border-bottom: none;
+  text-align: center;
 }
 
 .input-group {
@@ -280,7 +295,8 @@ img {
   cursor: not-allowed;
 }
 
-.modal-overlay {
+.modal-overlay,
+.alert-overlay {
   position: fixed;
   inset: 0;
   background: rgba(5, 10, 24, 0.86);
@@ -291,11 +307,54 @@ img {
   z-index: 1000;
 }
 
-.modal-card {
+.modal-card,
+.alert-card {
   position: relative;
   width: min(100%, 560px);
   max-width: 560px;
   padding: 34px;
+  background: var(--surface-soft);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  box-shadow: 0 28px 68px rgba(0, 0, 0, 0.32);
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.alert-card {
+  text-align: center;
+}
+
+.alert-title {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+
+.alert-message {
+  margin: 0 0 20px;
+  color: var(--text);
+  line-height: 1.75;
 }
 
 .modal-card h3 {
