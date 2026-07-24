@@ -1,12 +1,17 @@
 <template>
   <section>
-    <div class="section-title">
-      <h2>Tenants</h2>
-      <p>Gestiona los negocios que contratan el sistema.</p>
+    <div class="section-header">
+      <div class="section-title">
+        <h2>Tenants</h2>
+        <p>Gestiona los negocios que contratan el sistema.</p>
+      </div>
+      <button class="btn-primary" @click="openCreateModal">Nuevo tenant</button>
     </div>
 
     <div class="card">
-      <div v-if="loading" class="status-text">Cargando tenants...</div>
+      <div v-if="loading" class="centered-loading">
+        <span class="spinner-large"></span>
+      </div>
       <div v-else-if="error" class="status-text error">{{ error }}</div>
       <div v-else-if="tenants.length === 0" class="status-text">No hay tenants registrados.</div>
       <table v-else class="data-table">
@@ -34,7 +39,41 @@
       </table>
     </div>
 
-    <div v-if="isEditModalOpen" class="modal-overlay">
+    <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
+      <div class="modal-card">
+        <h3>Nuevo tenant</h3>
+        <p>Registra un nuevo tenant asociándolo a una marca existente.</p>
+
+        <form @submit.prevent="submitCreate">
+          <div class="input-group">
+            <label>Marca</label>
+            <select v-model="createForm.brand_id" required>
+              <option value="" disabled>Seleccionar marca</option>
+              <option v-for="brand in brands" :key="brand.id" :value="brand.id">
+                {{ brand.name }} - {{ brand.tax_id }}
+              </option>
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label>Subdominio</label>
+            <input type="text" v-model="createForm.subdomain" required />
+          </div>
+
+          <div v-if="createError" class="status-text error">{{ createError }}</div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" @click="closeCreateModal" :disabled="createLoading">Cancelar</button>
+            <button type="submit" class="btn-primary" :disabled="createLoading || !createForm.brand_id">
+              <span v-if="createLoading" class="spinner"></span>
+              {{ createLoading ? 'Guardando...' : 'Crear tenant' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
       <div class="modal-card">
         <h3>Editar Tenant</h3>
         <p>Actualiza el subdominio para el comercio <strong>{{ editingTenant.brand?.name || editingTenant.subdomain }}</strong>.</p>
@@ -68,7 +107,7 @@
       </div>
     </div>
 
-    <div v-if="isDeleteModalOpen" class="modal-overlay">
+    <div v-if="isDeleteModalOpen" class="modal-overlay" @click.self="closeDeleteModal">
       <div class="modal-card">
         <h3>Confirmar eliminación</h3>
         <p>Esta acción desactivará el tenant <strong>{{ deletingTenant.brand?.name || deletingTenant.subdomain }}</strong> de forma lógica.</p>
@@ -89,20 +128,24 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getJSON, putJSON, deleteJSON } from '../../services/api.js';
+import { getJSON, postJSON, putJSON, deleteJSON } from '../../services/api.js';
 
 const tenants = ref([]);
 const brands = ref([]);
 const loading = ref(true);
 const error = ref('');
+const isCreateModalOpen = ref(false);
 const isEditModalOpen = ref(false);
 const isDeleteModalOpen = ref(false);
 const editingTenant = ref({});
 const deletingTenant = ref({});
 const editForm = ref({ subdomain: '', brand_id: '' });
+const createForm = ref({ subdomain: '', brand_id: '' });
 const loadingEdit = ref(false);
+const createLoading = ref(false);
 const loadingDelete = ref(false);
 const modalError = ref('');
+const createError = ref('');
 
 async function loadBrands() {
   try {
@@ -119,6 +162,32 @@ async function loadTenants() {
     error.value = err.message || 'No se pudieron cargar los tenants.';
   } finally {
     loading.value = false;
+  }
+}
+
+function openCreateModal() {
+  isCreateModalOpen.value = true;
+  createError.value = '';
+  createForm.value = { subdomain: '', brand_id: '' };
+}
+
+function closeCreateModal() {
+  isCreateModalOpen.value = false;
+  createError.value = '';
+}
+
+async function submitCreate() {
+  createLoading.value = true;
+  createError.value = '';
+
+  try {
+    await postJSON('/tenants', createForm.value);
+    await loadTenants();
+    closeCreateModal();
+  } catch (err) {
+    createError.value = err.message || 'Error al crear el tenant.';
+  } finally {
+    createLoading.value = false;
   }
 }
 
@@ -187,7 +256,6 @@ async function confirmDelete() {
 }
 
 onMounted(async () => {
-  await loadBrands();
-  await loadTenants();
+  await Promise.all([loadBrands(), loadTenants()]);
 });
 </script>
