@@ -32,8 +32,9 @@ func main() {
 	brandService := brands.NewService(brandRepo)
 	brandHandler := brands.NewHandler(brandService)
 
-	http.HandleFunc("/api/brands/", brandHandler.HandleBrandRoutes)
-	http.HandleFunc("/api/brands", brandHandler.HandleBrandRoutes)
+	brandHandlerWithOwner := auth.AuthMiddleware(auth.RequireOwnerMiddleware(brandHandler.HandleBrandRoutes))
+	http.HandleFunc("/api/brands", brandHandlerWithOwner)
+	http.HandleFunc("/api/brands/", brandHandlerWithOwner)
 
 	//----------------------------------------------------------------//
 
@@ -41,53 +42,69 @@ func main() {
 	tenantService := tenants.NewService(tenantRepo, brandRepo)
 	tenantHandler := tenants.NewHandler(tenantService)
 
-	http.HandleFunc("/api/tenants/", tenantHandler.HandleTenantRoutes)
-	http.HandleFunc("/api/tenants", tenantHandler.HandleTenantRoutes)
-
-	//----------------------------------------------------------------//
-
-	shippingRepo := shipping.NewRepository()
-	shippingService := shipping.NewService(shippingRepo, tenantRepo)
-	shippingHandler := shipping.NewHandler(shippingService)
-
-	http.HandleFunc("/api/shipping-methods/", shippingHandler.HandleShippingRoutes)
-	http.HandleFunc("/api/shipping-methods", shippingHandler.HandleShippingRoutes)
+	tenantHandlerWithOwner := auth.AuthMiddleware(auth.RequireOwnerMiddleware(tenantHandler.HandleTenantRoutes))
+	http.HandleFunc("/api/tenants", tenantHandlerWithOwner)
+	http.HandleFunc("/api/tenants/", tenantHandlerWithOwner)
 
 	//----------------------------------------------------------------//
 
 	customerRepo := customers.NewRepository()
 	customerService := customers.NewService(customerRepo, tenantRepo)
 	customerHandler := customers.NewHandler(customerService)
+	customerHandlerWithAuth := auth.AuthMiddleware(customerHandler.HandleCustomerRoutes)
 
-	http.HandleFunc("/api/customers/", customerHandler.HandleCustomerRoutes)
-	http.HandleFunc("/api/customers", customerHandler.HandleCustomerRoutes)
+	http.HandleFunc("/api/customers/", customerHandlerWithAuth)
+	http.HandleFunc("/api/customers", customerHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
 	extraRepo := extras.NewRepository()
 	extraService := extras.NewService(extraRepo, tenantRepo)
 	extraHandler := extras.NewHandler(extraService)
+	extraHandlerWithAuth := auth.AuthMiddleware(extraHandler.HandleExtraRoutes)
 
-	http.HandleFunc("/api/extras/", extraHandler.HandleExtraRoutes)
-	http.HandleFunc("/api/extras", extraHandler.HandleExtraRoutes)
-
-	//----------------------------------------------------------------//
-
-	productRepo := products.NewRepository()
-	productService := products.NewService(productRepo, tenantRepo)
-	productHandler := products.NewHandler(productService)
-
-	http.HandleFunc("/api/products/", productHandler.HandleProductRoutes)
-	http.HandleFunc("/api/products", productHandler.HandleProductRoutes)
+	http.HandleFunc("/api/extras/", extraHandlerWithAuth)
+	http.HandleFunc("/api/extras", extraHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
 	supplyRepo := supplies.NewRepository()
 	supplyService := supplies.NewService(supplyRepo, tenantRepo)
 	supplyHandler := supplies.NewHandler(supplyService)
+	supplyHandlerWithAuth := auth.AuthMiddleware(supplyHandler.HandleSupplyRoutes)
 
-	http.HandleFunc("/api/supplies/", supplyHandler.HandleSupplyRoutes)
-	http.HandleFunc("/api/supplies", supplyHandler.HandleSupplyRoutes)
+	http.HandleFunc("/api/supplies/", supplyHandlerWithAuth)
+	http.HandleFunc("/api/supplies", supplyHandlerWithAuth)
+
+	//----------------------------------------------------------------//
+
+	shippingRepo := shipping.NewRepository()
+	shippingService := shipping.NewService(shippingRepo, tenantRepo)
+	shippingHandler := shipping.NewHandler(shippingService)
+	shippingHandlerWithAuth := auth.AuthMiddleware(shippingHandler.HandleShippingRoutes)
+
+	http.HandleFunc("/api/shipping-methods/", shippingHandlerWithAuth)
+	http.HandleFunc("/api/shipping-methods", shippingHandlerWithAuth)
+
+	//----------------------------------------------------------------//
+
+	productRepo := products.NewRepository()
+	productService := products.NewService(productRepo, tenantRepo)
+	productHandler := products.NewHandler(productService)
+	productHandlerWithAuth := auth.AuthMiddleware(productHandler.HandleProductRoutes)
+
+	http.HandleFunc("/api/products/", productHandlerWithAuth)
+	http.HandleFunc("/api/products", productHandlerWithAuth)
+
+	//----------------------------------------------------------------//
+
+	recipeRepo := recipes.NewRepository()
+	recipeService := recipes.NewService(recipeRepo, tenantRepo)
+	recipeHandler := recipes.NewHandler(recipeService)
+	recipeHandlerWithAuth := auth.AuthMiddleware(recipeHandler.HandleRecipeRoutes)
+
+	http.HandleFunc("/api/recipes/", recipeHandlerWithAuth)
+	http.HandleFunc("/api/recipes", recipeHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
@@ -95,17 +112,9 @@ func main() {
 	employeeService := employees.NewService(employeeRepo, tenantRepo)
 	employeeHandler := employees.NewHandler(employeeService)
 
-	http.HandleFunc("/api/employees/", employeeHandler.HandleEmployeeRoutes)
-	http.HandleFunc("/api/employees", employeeHandler.HandleEmployeeRoutes)
-
-	//----------------------------------------------------------------//
-
-	recipeRepo := recipes.NewRepository()
-	recipeService := recipes.NewService(recipeRepo, tenantRepo)
-	recipeHandler := recipes.NewHandler(recipeService)
-
-	http.HandleFunc("/api/recipes/", recipeHandler.HandleRecipeRoutes)
-	http.HandleFunc("/api/recipes", recipeHandler.HandleRecipeRoutes)
+	employeeHandlerWithAuth := auth.AuthMiddleware(employeeHandler.HandleEmployeeRoutes)
+	http.HandleFunc("/api/employees/", employeeHandlerWithAuth)
+	http.HandleFunc("/api/employees", employeeHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 

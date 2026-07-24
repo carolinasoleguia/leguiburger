@@ -93,6 +93,12 @@ func (h *Handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		return
+	}
+
 	tenantID := strings.TrimSpace(input.TenantID)
 	if tenantID == "" {
 		tenantID = strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
@@ -101,8 +107,17 @@ func (h *Handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 	normalizedRole := strings.ToLower(strings.TrimSpace(input.Role))
 	isGlobalUser := normalizedRole == "owner" || normalizedRole == "super_admin"
 
+	if tenantID == "" && claims.Role != "owner" {
+		tenantID = strings.TrimSpace(claims.TenantID)
+	}
+
 	if tenantID == "" && !isGlobalUser {
 		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+		return
+	}
+
+	if claims.Role != "owner" && tenantID != strings.TrimSpace(claims.TenantID) {
+		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes crear empleados fuera de tu comercio")
 		return
 	}
 
@@ -125,16 +140,23 @@ func (h *Handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListEmployees(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.Header.Get("X-Tenant-ID")
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		return
+	}
+
+	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(claims.TenantID)
+	}
 
 	var employees interface{}
 	var err error
 
-	if tenantID == "" {
-		// Si no hay tenant_id (es el Owner global), llamamos a un método que liste todo
+	if claims.Role == "owner" && tenantID == "" {
 		employees, err = h.service.GetAllEmployees(r.Context())
 	} else {
-		// Si viene el header, filtramos por ese tenant específico
 		employees, err = h.service.ListEmployees(r.Context(), tenantID)
 	}
 
@@ -147,19 +169,22 @@ func (h *Handler) ListEmployees(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetEmployee(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-
-	if tenantID == "" {
-		// Verificamos si el usuario es owner a través de los claims del token
-		claims, ok := auth.GetClaimsFromContext(r.Context())
-		if !ok || claims.Role != "owner" {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		return
 	}
 
-	// Si es owner y tenantID está vacío, tu service deberá manejarlo
-	// (o podés pasarle tenantID vacío según cómo tengas armado el service)
+	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(claims.TenantID)
+	}
+
+	if claims.Role != "owner" && tenantID != strings.TrimSpace(claims.TenantID) {
+		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes ver empleados de otro comercio")
+		return
+	}
+
 	employee, err := h.service.GetEmployee(r.Context(), tenantID, id)
 	if err != nil {
 		h.handleError(w, err)
@@ -170,9 +195,19 @@ func (h *Handler) GetEmployee(w http.ResponseWriter, r *http.Request, id string)
 }
 
 func (h *Handler) UpdateEmployee(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		return
+	}
+
+	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
 	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+		tenantID = strings.TrimSpace(claims.TenantID)
+	}
+
+	if claims.Role != "owner" && tenantID != strings.TrimSpace(claims.TenantID) {
+		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes editar empleados de otro comercio")
 		return
 	}
 
@@ -192,9 +227,19 @@ func (h *Handler) UpdateEmployee(w http.ResponseWriter, r *http.Request, id stri
 }
 
 func (h *Handler) DeleteEmployee(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		return
+	}
+
+	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
 	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+		tenantID = strings.TrimSpace(claims.TenantID)
+	}
+
+	if claims.Role != "owner" && tenantID != strings.TrimSpace(claims.TenantID) {
+		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes borrar empleados de otro comercio")
 		return
 	}
 

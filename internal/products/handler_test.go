@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"leguiburger/internal/auth"
 	"leguiburger/internal/models"
 )
 
@@ -66,6 +67,8 @@ func TestHandler_CreateProduct_Success(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/products", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Tenant-ID", "tenant-ok")
+	claims := &auth.Claims{Role: auth.RoleSuperAdmin, TenantID: "tenant-ok"}
+	req = req.WithContext(context.WithValue(req.Context(), auth.ClaimsKey, claims))
 
 	rr := httptest.NewRecorder()
 	handler.HandleProductRoutes(rr, req)
@@ -93,7 +96,7 @@ func TestHandler_CreateProduct_MissingTenantHeader(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.HandleProductRoutes(rr, req)
 
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("se esperaba status 400 Bad Request por falta de Tenant, se obtuvo: %d", rr.Code)
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("se esperaba status 401 Unauthorized por falta de auth, se obtuvo: %d", rr.Code)
 	}
 }

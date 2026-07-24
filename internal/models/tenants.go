@@ -5,9 +5,8 @@ import (
 )
 
 type Tenant struct {
-	ID string `gorm:"primaryKey;type:uuid" json:"id"`
-
-	BrandID   string    `gorm:"type:uuid;not null" json:"brand_id"`
+	ID        string    `gorm:"primaryKey;type:uuid" json:"id"`
+	BrandID   string    `gorm:"type:uuid;not null;column:brand_id" json:"-"`
 	Brand     Brand     `gorm:"foreignKey:BrandID" json:"brand"`
 	Subdomain string    `gorm:"type:varchar(100);uniqueIndex:idx_domain_subdomain" json:"subdomain"`
 	Active    bool      `gorm:"default:true" json:"active"`

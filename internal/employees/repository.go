@@ -31,7 +31,11 @@ func (r *repository) Create(ctx context.Context, employee *models.Employee) erro
 
 func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.Employee, error) {
 	var employee models.Employee
-	err := db.DB.WithContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).First(&employee).Error
+	query := db.DB.WithContext(ctx).Where("id = ?", id)
+	if tenantID != "" {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	err := query.First(&employee).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

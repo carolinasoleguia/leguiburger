@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"leguiburger/internal/auth"
 	"leguiburger/internal/models"
 	"leguiburger/internal/tenants"
 
@@ -57,10 +58,29 @@ func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastN
 		return nil, ErrInvalidEmployeeRole
 	}
 
-	isGlobalUser := cleanRole == "owner" || cleanRole == "super_admin"
+	claims, ok := auth.GetClaimsFromContext(ctx)
+	if ok {
+		actorRole := strings.ToLower(strings.TrimSpace(claims.Role))
+		actorTenantID := strings.TrimSpace(claims.TenantID)
 
-	if !isGlobalUser && cleanTenantID == "" {
-		return nil, ErrTenantNotFoundForEmployee
+		if actorRole != auth.RoleOwner {
+			if cleanTenantID == "" {
+				cleanTenantID = actorTenantID
+			}
+			if cleanTenantID == "" {
+				return nil, ErrTenantNotFoundForEmployee
+			}
+			if cleanTenantID != actorTenantID {
+				return nil, ErrUnauthorizedAction
+			}
+			if getRoleWeight(actorRole) <= getRoleWeight(cleanRole) {
+				return nil, ErrUnauthorizedAction
+			}
+		}
+	} else {
+		if cleanTenantID == "" && cleanRole != auth.RoleOwner && cleanRole != auth.RoleSuperAdmin {
+			return nil, ErrTenantNotFoundForEmployee
+		}
 	}
 
 	var tenantPtr *string
@@ -134,7 +154,25 @@ func (s *service) GetAllEmployees(ctx context.Context) ([]models.Employee, error
 }
 
 func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, password, phone, role string, isActive *bool) (*models.Employee, error) {
-	actorRole, _ := ctx.Value("role").(string)
+	actorRole := ""
+	actorTenantID := ""
+	claims, ok := auth.GetClaimsFromContext(ctx)
+	if ok {
+		actorRole = strings.ToLower(strings.TrimSpace(claims.Role))
+		actorTenantID = strings.TrimSpace(claims.TenantID)
+
+		if actorRole != auth.RoleOwner {
+			if tenantID == "" {
+				tenantID = actorTenantID
+			}
+			if tenantID == "" {
+				return nil, ErrUnauthorizedAction
+			}
+			if tenantID != actorTenantID {
+				return nil, ErrUnauthorizedAction
+			}
+		}
+	}
 
 	employee, err := s.repo.GetByID(ctx, tenantID, id)
 	if err != nil {
@@ -144,7 +182,7 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 		return nil, ErrEmployeeNotFound
 	}
 
-	if getRoleWeight(actorRole) <= getRoleWeight(employee.Role) && actorRole != "owner" {
+	if actorRole != auth.RoleOwner && getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
 		if actorRole != employee.Role {
 			return nil, ErrUnauthorizedAction
 		}
@@ -204,7 +242,25 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 }
 
 func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error {
-	actorRole, _ := ctx.Value("role").(string)
+	actorRole := ""
+	actorTenantID := ""
+	claims, ok := auth.GetClaimsFromContext(ctx)
+	if ok {
+		actorRole = strings.ToLower(strings.TrimSpace(claims.Role))
+		actorTenantID = strings.TrimSpace(claims.TenantID)
+
+		if actorRole != auth.RoleOwner {
+			if tenantID == "" {
+				tenantID = actorTenantID
+			}
+			if tenantID == "" {
+				return ErrUnauthorizedAction
+			}
+			if tenantID != actorTenantID {
+				return ErrUnauthorizedAction
+			}
+		}
+	}
 
 	employee, err := s.repo.GetByID(ctx, tenantID, id)
 	if err != nil {
@@ -214,7 +270,7 @@ func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error
 		return ErrEmployeeNotFound
 	}
 
-	if getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
+	if actorRole != auth.RoleOwner && getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
 		return ErrUnauthorizedAction
 	}
 

@@ -54,11 +54,10 @@ func (r *repository) Create(
 	ctx context.Context,
 	tenant *models.Tenant,
 ) error {
-
-	return db.DB.
-		WithContext(ctx).
-		Create(tenant).
-		Error
+	if err := db.DB.WithContext(ctx).Create(tenant).Error; err != nil {
+		return err
+	}
+	return db.DB.WithContext(ctx).Preload("Brand").First(tenant, "id = ?", tenant.ID).Error
 }
 
 // LIST

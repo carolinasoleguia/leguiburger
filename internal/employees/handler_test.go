@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"leguiburger/internal/auth"
 	"leguiburger/internal/models"
 )
 
@@ -93,6 +94,8 @@ func TestHandler_CreateEmployee_Success(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/employees", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Tenant-ID", "tenant-ok")
+	claims := &auth.Claims{Role: "admin", TenantID: "tenant-ok"}
+	req = req.WithContext(context.WithValue(req.Context(), auth.ClaimsKey, claims))
 
 	rr := httptest.NewRecorder()
 	handler.HandleEmployeeRoutes(rr, req)
@@ -116,6 +119,8 @@ func TestHandler_CreateEmployee_MissingTenantHeader(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/api/employees", bytes.NewBuffer([]byte("{}")))
 	req.Header.Set("Content-Type", "application/json")
+	claims := &auth.Claims{Role: "admin", TenantID: ""}
+	req = req.WithContext(context.WithValue(req.Context(), auth.ClaimsKey, claims))
 
 	rr := httptest.NewRecorder()
 	handler.HandleEmployeeRoutes(rr, req)

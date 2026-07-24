@@ -5,6 +5,8 @@ import (
 	"errors"
 	"leguiburger/internal/models"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -45,6 +47,7 @@ func (s *service) Create(ctx context.Context, name, taxID string) (*models.Brand
 	}
 
 	brand := &models.Brand{
+		ID:    uuid.New().String(),
 		Name:  name,
 		TaxID: strings.TrimSpace(taxID),
 	}
