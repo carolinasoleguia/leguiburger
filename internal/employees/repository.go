@@ -87,5 +87,9 @@ func (r *repository) Update(ctx context.Context, employee *models.Employee) erro
 }
 
 func (r *repository) Delete(ctx context.Context, tenantID, id string) error {
-	return db.DB.WithContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).Delete(&models.Employee{}).Error
+	query := db.DB.WithContext(ctx).Model(&models.Employee{}).Where("id = ?", id)
+	if tenantID != "" {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	return query.Update("is_active", false).Error
 }

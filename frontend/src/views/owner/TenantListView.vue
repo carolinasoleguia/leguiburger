@@ -17,6 +17,7 @@
       <table v-else class="data-table">
         <thead>
           <tr>
+            <th>#</th>
             <th>Marca / Comercio</th>
             <th>Subdominio</th>
             <th>CUIT / Tax ID</th>
@@ -25,14 +26,17 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="tenant in tenants" :key="tenant.id">
+          <tr v-for="(tenant, index) in tenants" :key="tenant.id">
+            <td>{{ index + 1 }}</td>
             <td>{{ tenant.brand?.name || tenant.name || '—' }}</td>
             <td>{{ tenant.subdomain }}</td>
             <td>{{ tenant.brand?.tax_id || tenant.tax_id || '—' }}</td>
             <td>{{ tenant.active ? 'Activo' : 'Inactivo' }}</td>
             <td class="table-actions">
               <button class="btn-secondary" @click="openEditModal(tenant)">Editar</button>
-              <button class="btn-danger" @click="openDeleteModal(tenant)">Eliminar</button>
+              <button :class="[tenant.active ? 'btn-danger' : 'btn-success']" @click="openDeleteModal(tenant)">
+                {{ tenant.active ? 'Eliminar' : 'Reactivar' }}
+              </button>
             </td>
           </tr>
         </tbody>
@@ -112,16 +116,24 @@
     <div v-if="isDeleteModalOpen" class="modal-overlay" @click.self="closeDeleteModal">
       <div class="modal-card">
         <button type="button" class="modal-close" @click="closeDeleteModal" aria-label="Cerrar modal">×</button>
-        <h3>Confirmar eliminación</h3>
-        <p>Esta acción desactivará el tenant <strong>{{ deletingTenant.brand?.name || deletingTenant.subdomain }}</strong> de forma lógica.</p>
+        <h3>{{ deletingTenant.active ? 'Confirmar eliminación' : 'Confirmar reactivación' }}</h3>
+        <p>
+          {{ deletingTenant.active ? 'Esta acción desactivará' : 'Esta acción reactivará' }}
+          el tenant <strong>{{ deletingTenant.brand?.name || deletingTenant.subdomain }}</strong>.
+        </p>
 
         <div v-if="modalError" class="status-text error">{{ modalError }}</div>
 
         <div class="modal-actions">
           <button type="button" class="btn-secondary" @click="closeDeleteModal" :disabled="loadingDelete">Cancelar</button>
-          <button type="button" class="btn-danger" @click="confirmDelete" :disabled="loadingDelete">
+          <button
+            type="button"
+            :class="[deletingTenant.active ? 'btn-danger' : 'btn-success']"
+            @click="confirmDelete"
+            :disabled="loadingDelete"
+          >
             <span v-if="loadingDelete" class="spinner"></span>
-            {{ loadingDelete ? 'Eliminando...' : 'Eliminar' }}
+            {{ loadingDelete ? (deletingTenant.active ? 'Eliminando...' : 'Reactivando...') : (deletingTenant.active ? 'Eliminar' : 'Reactivar') }}
           </button>
         </div>
       </div>
@@ -270,11 +282,22 @@ async function confirmDelete() {
   modalError.value = '';
 
   try {
-    await deleteJSON(`/tenants/${deletingTenant.value.id}`);
+    if (deletingTenant.value.active) {
+      await deleteJSON(`/tenants/${deletingTenant.value.id}`);
+    } else {
+      await putJSON(`/tenants/${deletingTenant.value.id}`, {
+        active: true,
+      });
+    }
     await loadTenants();
     closeDeleteModal();
   } catch (err) {
-    showAlert(err.message || 'Error al eliminar el tenant.');
+    showAlert(
+      err.message ||
+        (deletingTenant.value.active
+          ? 'Error al eliminar el tenant.'
+          : 'Error al reactivar el tenant.')
+    );
   } finally {
     loadingDelete.value = false;
   }

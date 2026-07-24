@@ -17,13 +17,15 @@
       <table v-else class="data-table">
         <thead>
           <tr>
+            <th>#</th>
             <th>Nombre</th>
             <th>Tax ID</th>
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="brand in brands" :key="brand.id">
+          <tr v-for="(brand, index) in brands" :key="brand.id">
+            <td>{{ index + 1 }}</td>
             <td>{{ brand.name }}</td>
             <td>{{ brand.tax_id }}</td>
             <td class="table-actions">

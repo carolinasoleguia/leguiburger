@@ -51,5 +51,9 @@ export async function deleteJSON(path) {
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.message || 'Error en la petición DELETE');
   }
-  return response.json();
+  if (response.status === 204) {
+    return null;
+  }
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }

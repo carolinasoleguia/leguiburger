@@ -248,7 +248,7 @@ func (h *Handler) DeleteEmployee(w http.ResponseWriter, r *http.Request, id stri
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	h.respondWithJSON(w, http.StatusOK, map[string]string{"message": "Empleado desactivado con éxito"})
 }
 
 func (h *Handler) handleError(w http.ResponseWriter, err error) {

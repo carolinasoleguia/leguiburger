@@ -81,6 +81,26 @@ img {
   padding: 34px;
 }
 
+.login-card .brand-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.login-card .logo-icon {
+  font-size: 4.25rem;
+  line-height: 1;
+  margin: 0 auto 16px;
+}
+
+.login-card form {
+  display: grid;
+  gap: 18px;
+}
+
+.login-card .btn-submit {
+  width: 100%;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -256,7 +276,8 @@ img {
 .btn-primary,
 .btn-submit,
 .btn-secondary,
-.btn-danger {
+.btn-danger,
+.btn-success {
   border: none;
   border-radius: 999px;
   padding: 12px 20px;
@@ -278,6 +299,11 @@ img {
 .btn-danger {
   background: linear-gradient(135deg, rgba(248, 113, 113, 0.16), rgba(239, 68, 68, 0.22));
   color: var(--danger);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(34, 197, 94, 0.22));
+  color: #10b981;
 }
 
 .btn-primary:hover,
