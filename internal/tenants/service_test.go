@@ -3,203 +3,406 @@ package tenants
 import (
 	"context"
 	"errors"
-	"leguiburger/internal/models"
 	"testing"
+
+	"leguiburger/internal/models"
 )
 
-// 1. Creamos un Mock del repositorio para simular la base de datos
+// ---------------- MOCK TENANT REPOSITORY ----------------
+
 type mockRepository struct {
-	OnCreate                func(ctx context.Context, tenant *models.Tenant) error
-	OnGetByID               func(ctx context.Context, id string) (*models.Tenant, error)
-	OnGetBySubdomain        func(ctx context.Context, subdomain string) (*models.Tenant, error)
-	OnGetByNameAndSubdomain func(ctx context.Context, name, subdomain string) (*models.Tenant, error)
-	OnGetByTaxID            func(ctx context.Context, taxID string) (*models.Tenant, error)
-	OnUpdate                func(ctx context.Context, tenant *models.Tenant) error
-	OnDelete                func(ctx context.Context, id string) error
+	createFunc                 func(ctx context.Context, tenant *models.Tenant) error
+	getByIDFunc                func(ctx context.Context, id string) (*models.Tenant, error)
+	getByBrandAndSubdomainFunc func(ctx context.Context, brandID, subdomain string) (*models.Tenant, error)
+	updateFunc                 func(ctx context.Context, tenant *models.Tenant) error
+	deleteFunc                 func(ctx context.Context, id string) error
+	getAllFunc                 func(ctx context.Context) ([]models.Tenant, error)
 }
 
-func (m *mockRepository) Create(ctx context.Context, tenant *models.Tenant) error {
-	return m.OnCreate(ctx, tenant)
-}
+func (m *mockRepository) Create(
+	ctx context.Context,
+	tenant *models.Tenant,
+) error {
 
-func (m *mockRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
-	if m.OnGetByID != nil {
-		return m.OnGetByID(ctx, id)
+	if m.createFunc != nil {
+		return m.createFunc(ctx, tenant)
 	}
-	return nil, nil
-}
 
-func (m *mockRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
-	return m.OnGetBySubdomain(ctx, subdomain)
-}
-
-func (m *mockRepository) GetByTaxID(ctx context.Context, taxID string) (*models.Tenant, error) {
-	if m.OnGetByTaxID != nil {
-		return m.OnGetByTaxID(ctx, taxID)
-	}
-	return nil, nil
-}
-
-func (m *mockRepository) GetByNameAndSubdomain(ctx context.Context, name, subdomain string) (*models.Tenant, error) {
-	if m.OnGetByNameAndSubdomain != nil {
-		return m.OnGetByNameAndSubdomain(ctx, name, subdomain)
-	}
-	return nil, nil
-}
-
-func (m *mockRepository) Update(ctx context.Context, tenant *models.Tenant) error {
-	if m.OnUpdate != nil {
-		return m.OnUpdate(ctx, tenant)
-	}
 	return nil
 }
 
-func (m *mockRepository) Delete(ctx context.Context, id string) error {
-	if m.OnDelete != nil {
-		return m.OnDelete(ctx, id)
+func (m *mockRepository) GetByID(
+	ctx context.Context,
+	id string,
+) (*models.Tenant, error) {
+
+	if m.getByIDFunc != nil {
+		return m.getByIDFunc(ctx, id)
 	}
+
+	return nil, nil
+}
+
+func (m *mockRepository) GetByBrandAndSubdomain(
+	ctx context.Context,
+	brandID string,
+	subdomain string,
+) (*models.Tenant, error) {
+
+	if m.getByBrandAndSubdomainFunc != nil {
+		return m.getByBrandAndSubdomainFunc(
+			ctx,
+			brandID,
+			subdomain,
+		)
+	}
+
+	return nil, nil
+}
+
+func (m *mockRepository) Update(
+	ctx context.Context,
+	tenant *models.Tenant,
+) error {
+
+	if m.updateFunc != nil {
+		return m.updateFunc(ctx, tenant)
+	}
+
 	return nil
 }
+
+func (m *mockRepository) Delete(
+	ctx context.Context,
+	id string,
+) error {
+
+	if m.deleteFunc != nil {
+		return m.deleteFunc(ctx, id)
+	}
+
+	return nil
+}
+
+func (m *mockRepository) GetAll(
+	ctx context.Context,
+) ([]models.Tenant, error) {
+
+	if m.getAllFunc != nil {
+		return m.getAllFunc(ctx)
+	}
+
+	return nil, nil
+}
+
+// ---------------- MOCK BRAND REPOSITORY ----------------
+
+type mockBrandRepository struct {
+	getByIDFunc func(
+		ctx context.Context,
+		id string,
+	) (*models.Brand, error)
+}
+
+func (m *mockBrandRepository) GetByID(
+	ctx context.Context,
+	id string,
+) (*models.Brand, error) {
+
+	if m.getByIDFunc != nil {
+		return m.getByIDFunc(ctx, id)
+	}
+
+	return &models.Brand{
+		ID: id,
+	}, nil
+}
+
+func (m *mockBrandRepository) Create(
+	ctx context.Context,
+	brand *models.Brand,
+) error {
+	return nil
+}
+
+func (m *mockBrandRepository) GetByName(
+	ctx context.Context,
+	name string,
+) (*models.Brand, error) {
+	return nil, nil
+}
+
+func (m *mockBrandRepository) Update(
+	ctx context.Context,
+	brand *models.Brand,
+) error {
+	return nil
+}
+
+func (m *mockBrandRepository) Delete(
+	ctx context.Context,
+	id string,
+) error {
+	return nil
+}
+
+func (m *mockBrandRepository) GetAll(
+	ctx context.Context,
+) ([]models.Brand, error) {
+	return nil, nil
+}
+
+// ---------------- TESTS ----------------
 
 func TestRegisterTenant_RepoError(t *testing.T) {
-	// Simula que la base de datos explota al intentar guardar
+
 	mockRepo := &mockRepository{
-		OnGetBySubdomain: func(ctx context.Context, subdomain string) (*models.Tenant, error) {
-			return nil, nil
-		},
-		OnCreate: func(ctx context.Context, tenant *models.Tenant) error {
-			return errors.New("error de conexion de base de datos")
+		createFunc: func(
+			ctx context.Context,
+			tenant *models.Tenant,
+		) error {
+
+			return errors.New("error conexion DB")
 		},
 	}
 
-	service := NewService(mockRepo)
-	// Ajustado a la firma con taxID 👈
-	_, err := service.RegisterTenant(context.Background(), "Legui", "legui", "20359486163")
+	service := NewService(
+		mockRepo,
+		&mockBrandRepository{},
+	)
+
+	_, err := service.RegisterTenant(
+		context.Background(),
+		"brand-id",
+		"laplata",
+	)
 
 	if err == nil {
-		t.Error("Se esperaba un error del repositorio, pero la creación fue exitosa")
+		t.Error("se esperaba error del repositorio")
 	}
 }
 
-func TestRegisterTenant_DuplicateSubdomain(t *testing.T) {
+func TestRegisterTenant_DuplicateBranch(t *testing.T) {
+
 	mockRepo := &mockRepository{
-		// 1. 💡 Configuramos el mock con el nuevo método combinado:
-		OnGetByNameAndSubdomain: func(ctx context.Context, name, subdomain string) (*models.Tenant, error) {
-			// Simulamos que ya existe un comercio "Leguiburger" con el subdominio "laplata"
+
+		getByBrandAndSubdomainFunc: func(
+			ctx context.Context,
+			brandID string,
+			subdomain string,
+		) (*models.Tenant, error) {
+
 			return &models.Tenant{
-				ID:        "un-id-existente",
-				Name:      "Leguiburger",
+				ID:        "tenant-existente",
 				Subdomain: "laplata",
 			}, nil
 		},
 	}
 
-	service := NewService(mockRepo)
+	service := NewService(
+		mockRepo,
+		&mockBrandRepository{},
+	)
 
-	// 2. Intentamos registrar exactamente el mismo comercio y subdominio
-	_, err := service.RegisterTenant(context.Background(), "Leguiburger", "laplata", "20359486163")
-
-	// 3. 💡 Validamos que devuelva nuestro nuevo error específico
-	if err == nil {
-		t.Error("Se esperaba un error por registro duplicado, pero la operación fue exitosa")
-	}
+	_, err := service.RegisterTenant(
+		context.Background(),
+		"brand-id",
+		"laplata",
+	)
 
 	if !errors.Is(err, ErrDuplicateBranch) {
-		t.Errorf("Se esperaba el error %v, pero se obtuvo %v", ErrDuplicateBranch, err)
+
+		t.Errorf(
+			"se esperaba ErrDuplicateBranch, se obtuvo %v",
+			err,
+		)
 	}
 }
 
 func TestRegisterTenant_NormalizesSubdomain(t *testing.T) {
+
 	var savedSubdomain string
 
 	mockRepo := &mockRepository{
-		OnGetBySubdomain: func(ctx context.Context, subdomain string) (*models.Tenant, error) {
-			return nil, nil // Simula que está disponible
-		},
-		OnCreate: func(ctx context.Context, tenant *models.Tenant) error {
-			savedSubdomain = tenant.Subdomain // Capturamos lo que se va a guardar en la DB
+
+		createFunc: func(
+			ctx context.Context,
+			tenant *models.Tenant,
+		) error {
+
+			savedSubdomain = tenant.Subdomain
+
 			return nil
 		},
 	}
 
-	service := NewService(mockRepo)
+	service := NewService(
+		mockRepo,
+		&mockBrandRepository{},
+	)
 
-	// Mandamos un subdominio con mayúsculas, espacios y taxID 👈
-	_, err := service.RegisterTenant(context.Background(), "Burger", "  LeGui-CeNtRo  ", "20359486163")
+	_, err := service.RegisterTenant(
+		context.Background(),
+		"brand-id",
+		"  LeGui-CeNtRo ",
+	)
+
 	if err != nil {
-		t.Fatalf("No se esperaba un error, pero ocurrió: %v", err)
+
+		t.Fatalf(
+			"no se esperaba error: %v",
+			err,
+		)
 	}
 
-	// Verificamos si se normalizó correctamente antes de ir a la DB
-	expectedNormalized := "legui-centro"
-	if savedSubdomain != expectedNormalized {
-		t.Errorf("Se esperaba el subdominio normalizado '%s', pero se guardó '%s'", expectedNormalized, savedSubdomain)
+	if savedSubdomain != "legui-centro" {
+
+		t.Errorf(
+			"se esperaba legui-centro pero fue %s",
+			savedSubdomain,
+		)
 	}
 }
 
 func TestUpdateTenant_Success(t *testing.T) {
+
 	mockRepo := &mockRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
-			return &models.Tenant{ID: "test-id", Name: "Viejo Nombre", Subdomain: "viejo-sub", TaxID: "11111111"}, nil
+
+		getByIDFunc: func(
+			ctx context.Context,
+			id string,
+		) (*models.Tenant, error) {
+
+			return &models.Tenant{
+				ID:        "tenant-id",
+				Subdomain: "viejo",
+				Active:    true,
+			}, nil
 		},
-		OnGetBySubdomain: func(ctx context.Context, subdomain string) (*models.Tenant, error) {
-			return nil, nil // El nuevo subdominio está libre
-		},
-		OnUpdate: func(ctx context.Context, tenant *models.Tenant) error {
+
+		updateFunc: func(
+			ctx context.Context,
+			tenant *models.Tenant,
+		) error {
+
 			return nil
 		},
 	}
 
-	service := NewService(mockRepo)
-	nuevoActive := false
+	service := NewService(
+		mockRepo,
+		&mockBrandRepository{},
+	)
 
-	// Actualizado para usar los 6 parámetros de la firma, incluyendo taxID 👈
-	updated, err := service.UpdateTenant(context.Background(), "test-id", "Nuevo Nombre", "nuevo-sub", "22222222", &nuevoActive)
+	active := false
+
+	tenant, err := service.UpdateTenant(
+		context.Background(),
+		"tenant-id",
+		"nuevo",
+		&active,
+	)
+
 	if err != nil {
-		t.Fatalf("No se esperaba error, pero se obtuvo: %v", err)
+
+		t.Fatalf(
+			"no se esperaba error: %v",
+			err,
+		)
 	}
 
-	if updated.Name != "Nuevo Nombre" || updated.Subdomain != "nuevo-sub" || updated.TaxID != "22222222" || updated.Active != false {
-		t.Errorf("Los campos no se actualizaron correctamente: %+v", updated)
+	if tenant.Subdomain != "nuevo" ||
+		tenant.Active != false {
+
+		t.Errorf(
+			"tenant incorrecto %+v",
+			tenant,
+		)
 	}
 }
 
 func TestUpdateTenant_NotFound(t *testing.T) {
+
 	mockRepo := &mockRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
-			return nil, ErrTenantNotFound // Simula que no existe
+
+		getByIDFunc: func(
+			ctx context.Context,
+			id string,
+		) (*models.Tenant, error) {
+
+			return nil, nil
 		},
 	}
 
-	service := NewService(mockRepo)
-	// Ajustado a la firma con taxID como string vacío "" 👈
-	_, err := service.UpdateTenant(context.Background(), "inexistente", "Nombre", "sub", "", nil)
+	service := NewService(
+		mockRepo,
+		&mockBrandRepository{},
+	)
 
-	if err != ErrTenantNotFound {
-		t.Errorf("Se esperaba error ErrTenantNotFound, se obtuvo: %v", err)
+	_, err := service.UpdateTenant(
+		context.Background(),
+		"fake",
+		"sub",
+		nil,
+	)
+
+	if !errors.Is(err, ErrTenantNotFound) {
+
+		t.Errorf(
+			"se esperaba ErrTenantNotFound: %v",
+			err,
+		)
 	}
 }
 
 func TestDeleteTenant_Success(t *testing.T) {
-	deleteLlamado := false
+
+	deleted := false
+
 	mockRepo := &mockRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
-			return &models.Tenant{ID: "test-id"}, nil
+
+		getByIDFunc: func(
+			ctx context.Context,
+			id string,
+		) (*models.Tenant, error) {
+
+			return &models.Tenant{
+				ID: id,
+			}, nil
 		},
-		OnDelete: func(ctx context.Context, id string) error {
-			deleteLlamado = true
+
+		deleteFunc: func(
+			ctx context.Context,
+			id string,
+		) error {
+
+			deleted = true
+
 			return nil
 		},
 	}
 
-	service := NewService(mockRepo)
-	err := service.DeleteTenant(context.Background(), "test-id")
+	service := NewService(
+		mockRepo,
+		&mockBrandRepository{},
+	)
+
+	err := service.DeleteTenant(
+		context.Background(),
+		"tenant-id",
+	)
 
 	if err != nil {
-		t.Fatalf("No se esperaba error al eliminar, se obtuvo: %v", err)
+
+		t.Fatalf(
+			"no se esperaba error: %v",
+			err,
+		)
 	}
 
-	if !deleteLlamado {
-		t.Error("Se esperaba que se llamara al método Delete del repositorio")
+	if !deleted {
+		t.Error(
+			"no se llamo Delete",
+		)
 	}
 }

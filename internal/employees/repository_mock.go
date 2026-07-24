@@ -2,56 +2,65 @@ package employees
 
 import (
 	"context"
+
 	"leguiburger/internal/models"
 )
 
-type MockRepository struct {
-	OnCreate     func(ctx context.Context, employee *models.Employee) error
-	OnGetByID    func(ctx context.Context, tenantID, id string) (*models.Employee, error)
-	OnGetByEmail func(ctx context.Context, email string) (*models.Employee, error)
-	OnFetchAll   func(ctx context.Context, tenantID string) ([]models.Employee, error)
-	OnUpdate     func(ctx context.Context, employee *models.Employee) error
-	OnDelete     func(ctx context.Context, tenantID, id string) error
+type mockRepository struct {
+	createFunc     func(ctx context.Context, employee *models.Employee) error
+	getByIDFunc    func(ctx context.Context, tenantID, id string) (*models.Employee, error)
+	getByEmailFunc func(ctx context.Context, tenantID, email string) (*models.Employee, error)
+	fetchAllFunc   func(ctx context.Context, tenantID string) ([]models.Employee, error)
+	getAllFunc     func(ctx context.Context) ([]models.Employee, error)
+	updateFunc     func(ctx context.Context, employee *models.Employee) error
+	deleteFunc     func(ctx context.Context, tenantID, id string) error
 }
 
-func (m *MockRepository) Create(ctx context.Context, employee *models.Employee) error {
-	if m.OnCreate == nil {
+func (m *mockRepository) Create(ctx context.Context, employee *models.Employee) error {
+	if m.createFunc == nil {
 		return nil
 	}
-	return m.OnCreate(ctx, employee)
+	return m.createFunc(ctx, employee)
 }
 
-func (m *MockRepository) GetByID(ctx context.Context, tenantID, id string) (*models.Employee, error) {
-	if m.OnGetByID == nil {
+func (m *mockRepository) GetByID(ctx context.Context, tenantID, id string) (*models.Employee, error) {
+	if m.getByIDFunc == nil {
 		return nil, nil
 	}
-	return m.OnGetByID(ctx, tenantID, id)
+	return m.getByIDFunc(ctx, tenantID, id)
 }
 
-func (m *MockRepository) GetByEmail(ctx context.Context, email string) (*models.Employee, error) {
-	if m.OnGetByEmail == nil {
+func (m *mockRepository) GetByEmail(ctx context.Context, tenantID, email string) (*models.Employee, error) {
+	if m.getByEmailFunc == nil {
 		return nil, nil
 	}
-	return m.OnGetByEmail(ctx, email)
+	return m.getByEmailFunc(ctx, tenantID, email)
 }
 
-func (m *MockRepository) FetchAll(ctx context.Context, tenantID string) ([]models.Employee, error) {
-	if m.OnFetchAll == nil {
+func (m *mockRepository) GetAll(ctx context.Context) ([]models.Employee, error) {
+	if m.getAllFunc != nil {
+		return m.getAllFunc(ctx)
+	}
+	return nil, nil
+}
+
+func (m *mockRepository) FetchAll(ctx context.Context, tenantID string) ([]models.Employee, error) {
+	if m.fetchAllFunc == nil {
 		return nil, nil
 	}
-	return m.OnFetchAll(ctx, tenantID)
+	return m.fetchAllFunc(ctx, tenantID)
 }
 
-func (m *MockRepository) Update(ctx context.Context, employee *models.Employee) error {
-	if m.OnUpdate == nil {
+func (m *mockRepository) Update(ctx context.Context, employee *models.Employee) error {
+	if m.updateFunc == nil {
 		return nil
 	}
-	return m.OnUpdate(ctx, employee)
+	return m.updateFunc(ctx, employee)
 }
 
-func (m *MockRepository) Delete(ctx context.Context, tenantID, id string) error {
-	if m.OnDelete == nil {
+func (m *mockRepository) Delete(ctx context.Context, tenantID, id string) error {
+	if m.deleteFunc == nil {
 		return nil
 	}
-	return m.OnDelete(ctx, tenantID, id)
+	return m.deleteFunc(ctx, tenantID, id)
 }

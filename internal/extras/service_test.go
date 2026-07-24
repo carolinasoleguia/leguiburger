@@ -8,48 +8,68 @@ import (
 	"leguiburger/internal/models"
 )
 
-type MockTenantRepository struct {
-	OnGetByID func(ctx context.Context, id string) (*models.Tenant, error)
+type mockTenantRepository struct {
+	getByIDFunc                func(ctx context.Context, id string) (*models.Tenant, error)
+	getAllFunc                 func(ctx context.Context) ([]models.Tenant, error)
+	getByBrandAndSubdomainFunc func(ctx context.Context, brandID, subdomain string) (*models.Tenant, error)
 }
 
-func (m *MockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
-	return m.OnGetByID(ctx, id)
+func (m *mockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
+	return m.getByIDFunc(ctx, id)
 }
-func (m *MockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
+func (m *mockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
 	return nil
 }
-func (m *MockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
+	if m.getAllFunc != nil {
+		return m.getAllFunc(ctx)
+	}
 	return nil, nil
 }
-func (m *MockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
 	return nil, nil
 }
-func (m *MockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
 	return nil, nil
 }
-func (m *MockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
+func (m *mockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
+	return nil, nil
+}
+func (m *mockTenantRepository) GetByBrandAndSubdomain(
+	ctx context.Context,
+	brandID string,
+	subdomain string,
+) (*models.Tenant, error) {
+
+	if m.getByBrandAndSubdomainFunc != nil {
+		return m.getByBrandAndSubdomainFunc(ctx, brandID, subdomain)
+	}
+
+	return nil, nil
+}
+func (m *mockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
 	return nil
 }
-func (m *MockTenantRepository) Delete(ctx context.Context, id string) error {
+func (m *mockTenantRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
 func TestCreateExtra_Success(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByName: func(ctx context.Context, tenantID, name string) (*models.Extra, error) {
+	repo := &mockRepository{
+		getByNameFunc: func(ctx context.Context, tenantID, name string) (*models.Extra, error) {
 			if name != "Cheddar" {
 				t.Errorf("se esperaba nombre normalizado, se obtuvo: %s", name)
 			}
 			return nil, nil
 		},
-		OnCreate: func(ctx context.Context, extra *models.Extra) error {
+		createFunc: func(ctx context.Context, extra *models.Extra) error {
 			extra.ID = "generated-id"
 			return nil
 		},
 	}
 
-	tenantRepo := &MockTenantRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+	tenantRepo := &mockTenantRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
 			return &models.Tenant{ID: id}, nil
 		},
 	}
@@ -59,7 +79,7 @@ func TestCreateExtra_Success(t *testing.T) {
 
 	res, err := service.CreateExtra(context.Background(), "tenant-1", " Cheddar ", 250.5, 10, &trackStock)
 	if err != nil {
-		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
+		t.Fatalf("se esperaba exito, se obtuvo error: %v", err)
 	}
 
 	if res.Name != "Cheddar" || res.CurrentPrice != 250.5 || res.CurrentStock != 10 || res.TrackStock != false || res.IsActive != true {
@@ -68,7 +88,7 @@ func TestCreateExtra_Success(t *testing.T) {
 }
 
 func TestCreateExtra_InvalidName(t *testing.T) {
-	service := NewService(&MockRepository{}, &MockTenantRepository{})
+	service := NewService(&mockRepository{}, &mockTenantRepository{})
 
 	_, err := service.CreateExtra(context.Background(), "tenant-1", "", 100, 1, nil)
 	if !errors.Is(err, ErrInvalidExtraData) {
@@ -77,7 +97,7 @@ func TestCreateExtra_InvalidName(t *testing.T) {
 }
 
 func TestCreateExtra_InvalidPrice(t *testing.T) {
-	service := NewService(&MockRepository{}, &MockTenantRepository{})
+	service := NewService(&mockRepository{}, &mockTenantRepository{})
 
 	_, err := service.CreateExtra(context.Background(), "tenant-1", "Cheddar", -1, 1, nil)
 	if !errors.Is(err, ErrInvalidExtraPrice) {
@@ -86,13 +106,13 @@ func TestCreateExtra_InvalidPrice(t *testing.T) {
 }
 
 func TestCreateExtra_DuplicateName(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByName: func(ctx context.Context, tenantID, name string) (*models.Extra, error) {
+	repo := &mockRepository{
+		getByNameFunc: func(ctx context.Context, tenantID, name string) (*models.Extra, error) {
 			return &models.Extra{ID: "existing-id", Name: name}, nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
+	service := NewService(repo, &mockTenantRepository{})
 	_, err := service.CreateExtra(context.Background(), "tenant-1", "Cheddar", 100, 1, nil)
 
 	if !errors.Is(err, ErrDuplicateExtraName) {
@@ -101,9 +121,9 @@ func TestCreateExtra_DuplicateName(t *testing.T) {
 }
 
 func TestListExtras_TenantNotFound(t *testing.T) {
-	repo := &MockRepository{}
-	tenantRepo := &MockTenantRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+	repo := &mockRepository{}
+	tenantRepo := &mockTenantRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
 			return nil, nil
 		},
 	}
@@ -117,26 +137,26 @@ func TestListExtras_TenantNotFound(t *testing.T) {
 }
 
 func TestUpdateExtra_Success(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByID: func(ctx context.Context, tenantID, id string) (*models.Extra, error) {
+	repo := &mockRepository{
+		getByIDFunc: func(ctx context.Context, tenantID, id string) (*models.Extra, error) {
 			return &models.Extra{ID: id, TenantID: tenantID, Name: "Cheddar", CurrentPrice: 100, CurrentStock: 5, TrackStock: true, IsActive: true}, nil
 		},
-		OnGetByName: func(ctx context.Context, tenantID, name string) (*models.Extra, error) {
+		getByNameFunc: func(ctx context.Context, tenantID, name string) (*models.Extra, error) {
 			return nil, nil
 		},
-		OnUpdate: func(ctx context.Context, extra *models.Extra) error {
+		updateFunc: func(ctx context.Context, extra *models.Extra) error {
 			return nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
+	service := NewService(repo, &mockTenantRepository{})
 	newPrice := 150.0
 	newStock := 8
 	newActive := false
 
 	res, err := service.UpdateExtra(context.Background(), "tenant-1", "extra-1", "Panceta", &newPrice, &newStock, nil, &newActive)
 	if err != nil {
-		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
+		t.Fatalf("se esperaba exito, se obtuvo error: %v", err)
 	}
 
 	if res.Name != "Panceta" || res.CurrentPrice != 150 || res.CurrentStock != 8 || res.IsActive != false {
@@ -145,13 +165,13 @@ func TestUpdateExtra_Success(t *testing.T) {
 }
 
 func TestDeleteExtra_NotFound(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByID: func(ctx context.Context, tenantID, id string) (*models.Extra, error) {
+	repo := &mockRepository{
+		getByIDFunc: func(ctx context.Context, tenantID, id string) (*models.Extra, error) {
 			return nil, nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
+	service := NewService(repo, &mockTenantRepository{})
 	err := service.DeleteExtra(context.Background(), "tenant-1", "missing")
 
 	if !errors.Is(err, ErrExtraNotFound) {

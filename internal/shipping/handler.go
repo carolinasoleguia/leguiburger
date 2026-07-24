@@ -163,7 +163,7 @@ func (h *Handler) UpdateShippingMethod(w http.ResponseWriter, r *http.Request, i
 		return
 	}
 
-	method, err := h.service.UpdateMethod(r.Context(), tenantID, id, input.Name, input.Description, input.Typification, input.Cost, input.EstimatedTime, input.IsActive)
+	method, err := h.service.UpdateMethod(r.Context(), tenantID, id, input.Name, input.Typification, input.Description, input.Cost, input.EstimatedTime, input.IsActive)
 	if err != nil {
 		h.handleError(w, err)
 		return

@@ -11,58 +11,116 @@ import (
 	"leguiburger/internal/models"
 )
 
-// Helper para crear punteros a string de forma sencilla en los tests
 func ptr(s string) *string {
 	return &s
 }
 
-// 1. Creamos un Mock del Servicio
+// ---------------- MOCK SERVICE ----------------
+
 type mockService struct {
-	OnRegisterTenant func(ctx context.Context, name, subdomain, taxID string) (*models.Tenant, error)
-	OnUpdateTenant   func(ctx context.Context, id string, name, subdomain, taxID string, active *bool) (*models.Tenant, error)
-	OnGetByID        func(ctx context.Context, id string) (*models.Tenant, error)
-	OnDeleteTenant   func(ctx context.Context, id string) error
+	registerTenantFunc func(
+		ctx context.Context,
+		brandID string,
+		subdomain string,
+	) (*models.Tenant, error)
+
+	updateTenantFunc func(
+		ctx context.Context,
+		id string,
+		subdomain string,
+		active *bool,
+	) (*models.Tenant, error)
+
+	deleteTenantFunc func(
+		ctx context.Context,
+		id string,
+	) error
+
+	getAllTenantsFunc func(
+		ctx context.Context,
+	) ([]models.Tenant, error)
 }
 
-func (m *mockService) RegisterTenant(ctx context.Context, name, subdomain, taxID string) (*models.Tenant, error) {
-	if m.OnRegisterTenant != nil {
-		return m.OnRegisterTenant(ctx, name, subdomain, taxID)
+func (m *mockService) RegisterTenant(
+	ctx context.Context,
+	brandID string,
+	subdomain string,
+) (*models.Tenant, error) {
+
+	if m.registerTenantFunc != nil {
+		return m.registerTenantFunc(
+			ctx,
+			brandID,
+			subdomain,
+		)
 	}
+
 	return nil, nil
 }
 
-func (m *mockService) UpdateTenant(ctx context.Context, id string, name, subdomain, taxID string, active *bool) (*models.Tenant, error) {
-	if m.OnUpdateTenant != nil {
-		return m.OnUpdateTenant(ctx, id, name, subdomain, taxID, active)
+func (m *mockService) UpdateTenant(
+	ctx context.Context,
+	id string,
+	subdomain string,
+	active *bool,
+) (*models.Tenant, error) {
+
+	if m.updateTenantFunc != nil {
+		return m.updateTenantFunc(
+			ctx,
+			id,
+			subdomain,
+			active,
+		)
 	}
+
 	return nil, nil
 }
 
-func (m *mockService) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
-	if m.OnGetByID != nil {
-		return m.OnGetByID(ctx, id)
-	}
-	return nil, nil
-}
+func (m *mockService) DeleteTenant(
+	ctx context.Context,
+	id string,
+) error {
 
-func (m *mockService) DeleteTenant(ctx context.Context, id string) error {
-	if m.OnDeleteTenant != nil {
-		return m.OnDeleteTenant(ctx, id)
+	if m.deleteTenantFunc != nil {
+		return m.deleteTenantFunc(ctx, id)
 	}
+
 	return nil
 }
 
-// 2. Tests para el Handler
+func (m *mockService) GetAllTenants(
+	ctx context.Context,
+) ([]models.Tenant, error) {
+
+	if m.getAllTenantsFunc != nil {
+		return m.getAllTenantsFunc(ctx)
+	}
+
+	return nil, nil
+}
+
+// ---------------- TESTS ----------------
 
 func TestHandler_RegisterTenant_Success(t *testing.T) {
+
 	mockSvc := &mockService{
-		OnRegisterTenant: func(ctx context.Context, name, subdomain, taxID string) (*models.Tenant, error) {
+
+		registerTenantFunc: func(
+			ctx context.Context,
+			brandID string,
+			subdomain string,
+		) (*models.Tenant, error) {
+
 			return &models.Tenant{
-				ID:        "algun-uuid",
-				Name:      name,
+
+				ID: "tenant-id",
+
+				BrandID: brandID,
+
 				Subdomain: subdomain,
-				TaxID:     taxID,
-				Active:    true,
+
+				Active: true,
 			}, nil
 		},
 	}
@@ -70,99 +128,187 @@ func TestHandler_RegisterTenant_Success(t *testing.T) {
 	handler := NewHandler(mockSvc)
 
 	payload := map[string]string{
-		"name":      "Leguiburger",
+
+		"brand_id": "brand-id",
+
 		"subdomain": "legui-centro",
-		"tax_id":    "20359486163",
 	}
+
 	body, _ := json.Marshal(payload)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/tenants", bytes.NewBuffer(body))
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/tenants",
+		bytes.NewBuffer(body),
+	)
+
 	rec := httptest.NewRecorder()
 
-	handler.CreateTenant(rec, req)
+	handler.CreateTenant(
+		rec,
+		req,
+	)
 
 	if rec.Code != http.StatusCreated {
-		t.Errorf("Se esperaba código %d, se obtuvo %d", http.StatusCreated, rec.Code)
+
+		t.Errorf(
+			"se esperaba codigo %d, se obtuvo %d",
+			http.StatusCreated,
+			rec.Code,
+		)
 	}
+
 }
 
 func TestHandler_UpdateTenant_Success(t *testing.T) {
+
 	mockSvc := &mockService{
-		OnUpdateTenant: func(ctx context.Context, id, name, subdomain, taxID string, active *bool) (*models.Tenant, error) {
+
+		updateTenantFunc: func(
+			ctx context.Context,
+			id string,
+			subdomain string,
+			active *bool,
+		) (*models.Tenant, error) {
+
 			return &models.Tenant{
-				ID:        id,
-				Name:      name,
+
+				ID: id,
+
+				BrandID: "brand-id",
+
 				Subdomain: subdomain,
-				TaxID:     taxID,
-				Active:    *active,
+
+				Active: *active,
 			}, nil
 		},
 	}
 
 	handler := NewHandler(mockSvc)
-	nuevoActive := false
 
-	// Usamos el helper ptr() para crear los punteros requeridos por el Request Struct
+	active := false
+
 	reqStruct := UpdateTenantRequest{
-		Name:      ptr("Nuevo Nombre"),
+
 		Subdomain: ptr("nuevo-sub"),
-		TaxID:     ptr("20359486163"),
-		Active:    &nuevoActive,
+
+		Active: &active,
 	}
+
 	body, _ := json.Marshal(reqStruct)
 
-	req := httptest.NewRequest(http.MethodPut, "/api/tenants/test-id", bytes.NewBuffer(body))
+	req := httptest.NewRequest(
+		http.MethodPut,
+		"/api/tenants/test-id",
+		bytes.NewBuffer(body),
+	)
+
 	rec := httptest.NewRecorder()
 
-	handler.UpdateTenant(rec, req, "test-id")
+	handler.UpdateTenant(
+		rec,
+		req,
+		"test-id",
+	)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("Se esperaba código %d, se obtuvo %d", http.StatusOK, rec.Code)
+
+		t.Errorf(
+			"se esperaba codigo %d, se obtuvo %d",
+			http.StatusOK,
+			rec.Code,
+		)
 	}
+
 }
 
 func TestHandler_UpdateTenant_ValidationError(t *testing.T) {
+
 	mockSvc := &mockService{}
+
 	handler := NewHandler(mockSvc)
 
-	// Mandamos campos vacíos explícitos para forzar el fallo de validación
+	empty := ptr("")
+
 	reqStruct := UpdateTenantRequest{
-		Name:      ptr(""),
-		Subdomain: ptr("nuevo-sub"),
+
+		Subdomain: empty,
 	}
+
 	body, _ := json.Marshal(reqStruct)
 
-	req := httptest.NewRequest(http.MethodPut, "/api/tenants/test-id", bytes.NewBuffer(body))
+	req := httptest.NewRequest(
+		http.MethodPut,
+		"/api/tenants/test-id",
+		bytes.NewBuffer(body),
+	)
+
 	rec := httptest.NewRecorder()
 
-	handler.UpdateTenant(rec, req, "test-id")
+	handler.UpdateTenant(
+		rec,
+		req,
+		"test-id",
+	)
 
 	if rec.Code != http.StatusBadRequest {
-		t.Errorf("Se esperaba código de validación %d, se obtuvo %d", http.StatusBadRequest, rec.Code)
+
+		t.Errorf(
+			"se esperaba codigo %d, se obtuvo %d",
+			http.StatusBadRequest,
+			rec.Code,
+		)
 	}
+
 }
 
 func TestHandler_DeleteTenant_Success(t *testing.T) {
+
 	deleteCalled := false
+
 	mockSvc := &mockService{
-		OnDeleteTenant: func(ctx context.Context, id string) error {
-			deleteCalled = true // 1. Se escribe acá
+
+		deleteTenantFunc: func(
+			ctx context.Context,
+			id string,
+		) error {
+
+			deleteCalled = true
+
 			return nil
 		},
 	}
 
 	handler := NewHandler(mockSvc)
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/tenants/test-id", nil)
+	req := httptest.NewRequest(
+		http.MethodDelete,
+		"/api/tenants/test-id",
+		nil,
+	)
+
 	rec := httptest.NewRecorder()
 
-	handler.DeleteTenant(rec, req, "test-id")
+	handler.DeleteTenant(
+		rec,
+		req,
+		"test-id",
+	)
 
-	if rec.Code != http.StatusNoContent && rec.Code != http.StatusOK {
-		t.Errorf("Se esperaba código de éxito, se obtuvo %d", rec.Code)
+	if rec.Code != http.StatusOK {
+
+		t.Errorf(
+			"se esperaba codigo %d, se obtuvo %d",
+			http.StatusOK,
+			rec.Code,
+		)
 	}
 
 	if !deleteCalled {
-		t.Error("Se esperaba que se llamara al método DeleteTenant del servicio")
+
+		t.Error(
+			"se esperaba llamar DeleteTenant",
+		)
 	}
+
 }

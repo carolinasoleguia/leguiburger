@@ -97,6 +97,7 @@ Ejecutar todos los tests del proyecto:
 
 ```text
 go test -v -cover ./...
+gotestsum --format short-verbose -- -cover ./...
 ```
 
 Backend: Configurado y optimizado para ejecutarse en Render. Al hacer un git push a la rama principal, el pipeline compila el archivo cmd/api/main.go automáticamente.

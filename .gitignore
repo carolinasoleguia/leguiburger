@@ -11,6 +11,7 @@ frontend/.output/
 frontend/dist
 
 # Go / Backend
+.cache/
 main
 *.exe
 *.exe~

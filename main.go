@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	"leguiburger/internal/auth"
+	"leguiburger/internal/brands"
 	"leguiburger/internal/customers"
 	"leguiburger/internal/db"
 	"leguiburger/internal/employees"
@@ -13,6 +15,7 @@ import (
 	"leguiburger/internal/products"
 	"leguiburger/internal/recipes"
 	"leguiburger/internal/shipping"
+	"leguiburger/internal/supplies"
 	"leguiburger/internal/tenants"
 
 	"github.com/joho/godotenv"
@@ -24,8 +27,18 @@ func main() {
 	db.Connect()
 
 	//----------------------------------------------------------------//
+
+	brandRepo := brands.NewRepository()
+	brandService := brands.NewService(brandRepo)
+	brandHandler := brands.NewHandler(brandService)
+
+	http.HandleFunc("/api/brands/", brandHandler.HandleBrandRoutes)
+	http.HandleFunc("/api/brands", brandHandler.HandleBrandRoutes)
+
+	//----------------------------------------------------------------//
+
 	tenantRepo := tenants.NewRepository()
-	tenantService := tenants.NewService(tenantRepo)
+	tenantService := tenants.NewService(tenantRepo, brandRepo)
 	tenantHandler := tenants.NewHandler(tenantService)
 
 	http.HandleFunc("/api/tenants/", tenantHandler.HandleTenantRoutes)
@@ -69,6 +82,15 @@ func main() {
 
 	//----------------------------------------------------------------//
 
+	supplyRepo := supplies.NewRepository()
+	supplyService := supplies.NewService(supplyRepo, tenantRepo)
+	supplyHandler := supplies.NewHandler(supplyService)
+
+	http.HandleFunc("/api/supplies/", supplyHandler.HandleSupplyRoutes)
+	http.HandleFunc("/api/supplies", supplyHandler.HandleSupplyRoutes)
+
+	//----------------------------------------------------------------//
+
 	employeeRepo := employees.NewRepository()
 	employeeService := employees.NewService(employeeRepo, tenantRepo)
 	employeeHandler := employees.NewHandler(employeeService)
@@ -86,6 +108,21 @@ func main() {
 	http.HandleFunc("/api/recipes", recipeHandler.HandleRecipeRoutes)
 
 	//----------------------------------------------------------------//
+
+	authRepo := auth.NewRepository()
+	authSvc, err := auth.NewService(authRepo, tenantRepo)
+	if err != nil {
+		log.Fatalf("Error al configurar autenticacion: %v", err)
+	}
+	authHandler := auth.NewHandler(authSvc)
+
+	http.HandleFunc("/api/auth/", authHandler.HandleAuthRoutes)
+
+	//----------------------------------------------------------------//
+	// 📂 SERVIR EL FRONTEND ESTÁTICO EN LA RAIZ (/)
+	//----------------------------------------------------------------//
+	fs := http.FileServer(http.Dir("./frontend/dist"))
+	http.Handle("/", fs)
 
 	port := os.Getenv("PORT")
 	if port == "" {

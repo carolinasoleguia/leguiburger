@@ -3,36 +3,89 @@ package tenants
 import (
 	"context"
 	"errors"
+	"leguiburger/internal/brands"
 	"leguiburger/internal/models"
 	"strings"
 
 	"github.com/google/uuid"
 )
 
-var ErrTenantNotFound = errors.New("el comercio especificado no existe")
-var ErrDuplicateBranch = errors.New("ya existe un registro idéntico (mismo comercio y subdominio) en la base de datos")
+var (
+	ErrTenantNotFound  = errors.New("el comercio especificado no existe")
+	ErrDuplicateBranch = errors.New("ya existe un local registrado con esa marca y subdominio")
+)
 
 type Service interface {
-	RegisterTenant(ctx context.Context, name, subdomain string, taxId string) (*models.Tenant, error)
-	UpdateTenant(ctx context.Context, id string, name string, subdomain string, tax_id string, active *bool) (*models.Tenant, error)
-	DeleteTenant(ctx context.Context, id string) error
+	RegisterTenant(
+		ctx context.Context,
+		brandID string,
+		subdomain string,
+	) (*models.Tenant, error)
+
+	UpdateTenant(
+		ctx context.Context,
+		id string,
+		subdomain string,
+		active *bool,
+	) (*models.Tenant, error)
+
+	DeleteTenant(
+		ctx context.Context,
+		id string,
+	) error
+
+	GetAllTenants(
+		ctx context.Context,
+	) ([]models.Tenant, error)
 }
 
 type service struct {
-	repo Repository
+	repo      Repository
+	brandRepo brands.Repository
 }
 
-func NewService(r Repository) Service {
-	return &service{repo: r}
+func NewService(
+	r Repository,
+	brandRepo brands.Repository,
+) Service {
+
+	return &service{
+		repo:      r,
+		brandRepo: brandRepo,
+	}
 }
 
-func (s *service) RegisterTenant(ctx context.Context, name, subdomain, taxID string) (*models.Tenant, error) {
-	// 1. Normalizamos datos de entrada
-	cleanSubdomain := strings.ToLower(strings.TrimSpace(subdomain))
-	cleanName := strings.TrimSpace(name)
+// CREATE
 
-	// 2. Validamos que no exista la combinación de NAME + SUBDOMAIN
-	existing, err := s.repo.GetByNameAndSubdomain(ctx, cleanName, cleanSubdomain)
+func (s *service) RegisterTenant(
+	ctx context.Context,
+	brandID string,
+	subdomain string,
+) (*models.Tenant, error) {
+
+	cleanSubdomain := strings.ToLower(
+		strings.TrimSpace(subdomain),
+	)
+
+	brand, err := s.brandRepo.GetByID(
+		ctx,
+		brandID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if brand == nil {
+		return nil, errors.New("marca inexistente")
+	}
+
+	existing, err := s.repo.GetByBrandAndSubdomain(
+		ctx,
+		brandID,
+		cleanSubdomain,
+	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -41,12 +94,10 @@ func (s *service) RegisterTenant(ctx context.Context, name, subdomain, taxID str
 		return nil, ErrDuplicateBranch
 	}
 
-	// 3. Si está libre, creamos el nuevo Tenant
 	tenant := &models.Tenant{
 		ID:        uuid.New().String(),
-		Name:      cleanName,
+		BrandID:   brandID,
 		Subdomain: cleanSubdomain,
-		TaxID:     strings.TrimSpace(taxID),
 		Active:    true,
 	}
 
@@ -57,44 +108,58 @@ func (s *service) RegisterTenant(ctx context.Context, name, subdomain, taxID str
 	return tenant, nil
 }
 
-func (s *service) UpdateTenant(ctx context.Context, id string, name string, subdomain string, taxID string, active *bool) (*models.Tenant, error) {
+// LIST
+
+func (s *service) GetAllTenants(
+	ctx context.Context,
+) ([]models.Tenant, error) {
+
+	return s.repo.GetAll(ctx)
+}
+
+// UPDATE
+
+func (s *service) UpdateTenant(
+	ctx context.Context,
+	id string,
+	subdomain string,
+	active *bool,
+) (*models.Tenant, error) {
+
 	tenant, err := s.repo.GetByID(ctx, id)
+
 	if err != nil {
 		return nil, ErrTenantNotFound
 	}
 
-	// 1. Preparamos el nombre temporalmente para la validación cruzada
-	tempName := tenant.Name
-	if name != "" {
-		tempName = strings.TrimSpace(name) // Normalizamos de paso
+	if tenant == nil {
+		return nil, ErrTenantNotFound
 	}
 
-	// 2. Validamos la unicidad del subdominio dentro del mismo comercio ("name")
 	if subdomain != "" {
-		cleanSubdomain := strings.ToLower(strings.TrimSpace(subdomain))
+
+		cleanSubdomain := strings.ToLower(
+			strings.TrimSpace(subdomain),
+		)
 
 		if cleanSubdomain != tenant.Subdomain {
-			// 💡 Ahora SÍ manejamos el error de forma segura en vez de usar "_"
-			existing, err := s.repo.GetByNameAndSubdomain(ctx, tempName, cleanSubdomain)
+
+			existing, err := s.repo.GetByBrandAndSubdomain(
+				ctx,
+				tenant.BrandID,
+				cleanSubdomain,
+			)
+
 			if err != nil {
 				return nil, err
 			}
 
-			// 💡 Devolvemos ErrDuplicateBranch para que el Handler responda 409 Conflict
 			if existing != nil && existing.ID != tenant.ID {
 				return nil, ErrDuplicateBranch
 			}
+
 			tenant.Subdomain = cleanSubdomain
 		}
-	}
-
-	// 3. Aplicamos los cambios restantes una vez superadas las validaciones
-	if name != "" {
-		tenant.Name = strings.TrimSpace(name)
-	}
-
-	if taxID != "" {
-		tenant.TaxID = strings.ToLower(strings.TrimSpace(taxID))
 	}
 
 	if active != nil {
@@ -108,10 +173,24 @@ func (s *service) UpdateTenant(ctx context.Context, id string, name string, subd
 	return tenant, nil
 }
 
-func (s *service) DeleteTenant(ctx context.Context, id string) error {
-	_, err := s.repo.GetByID(ctx, id)
-	if err != nil {
+// DELETE
+
+func (s *service) DeleteTenant(
+	ctx context.Context,
+	id string,
+) error {
+
+	tenant, err := s.repo.GetByID(
+		ctx,
+		id,
+	)
+
+	if err != nil || tenant == nil {
 		return ErrTenantNotFound
 	}
-	return s.repo.Delete(ctx, id)
+
+	return s.repo.Delete(
+		ctx,
+		id,
+	)
 }

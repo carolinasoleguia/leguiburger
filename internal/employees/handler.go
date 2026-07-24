@@ -3,6 +3,7 @@ package employees
 import (
 	"encoding/json"
 	"errors"
+	"leguiburger/internal/auth"
 	"net/http"
 	"strings"
 )
@@ -16,22 +17,23 @@ func NewHandler(s Service) *Handler {
 }
 
 type CreateInput struct {
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
-	Phone        string `json:"phone"`
-	Role         string `json:"role"`
+	TenantID  string `json:"tenant_id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	Phone     string `json:"phone"`
+	Role      string `json:"role"`
 }
 
 type UpdateInput struct {
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
-	Phone        string `json:"phone"`
-	Role         string `json:"role"`
-	IsActive     *bool  `json:"is_active"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	Phone     string `json:"phone"`
+	Role      string `json:"role"`
+	IsActive  *bool  `json:"is_active"`
 }
 
 type ErrorResponse struct {
@@ -85,19 +87,35 @@ func (h *Handler) HandleEmployeeRoutes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-		return
-	}
-
 	var input CreateInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
 
-	employee, err := h.service.CreateEmployee(r.Context(), tenantID, input.FirstName, input.LastName, input.Email, input.PasswordHash, input.Phone, input.Role)
+	tenantID := strings.TrimSpace(input.TenantID)
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	}
+
+	normalizedRole := strings.ToLower(strings.TrimSpace(input.Role))
+	isGlobalUser := normalizedRole == "owner" || normalizedRole == "super_admin"
+
+	if tenantID == "" && !isGlobalUser {
+		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+		return
+	}
+
+	employee, err := h.service.CreateEmployee(
+		r.Context(),
+		tenantID,
+		input.FirstName,
+		input.LastName,
+		input.Email,
+		input.Password,
+		input.Phone,
+		input.Role,
+	)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -108,12 +126,18 @@ func (h *Handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ListEmployees(w http.ResponseWriter, r *http.Request) {
 	tenantID := r.Header.Get("X-Tenant-ID")
+
+	var employees interface{}
+	var err error
+
 	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-		return
+		// Si no hay tenant_id (es el Owner global), llamamos a un método que liste todo
+		employees, err = h.service.GetAllEmployees(r.Context())
+	} else {
+		// Si viene el header, filtramos por ese tenant específico
+		employees, err = h.service.ListEmployees(r.Context(), tenantID)
 	}
 
-	employees, err := h.service.ListEmployees(r.Context(), tenantID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -124,11 +148,18 @@ func (h *Handler) ListEmployees(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetEmployee(w http.ResponseWriter, r *http.Request, id string) {
 	tenantID := r.Header.Get("X-Tenant-ID")
+
 	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-		return
+		// Verificamos si el usuario es owner a través de los claims del token
+		claims, ok := auth.GetClaimsFromContext(r.Context())
+		if !ok || claims.Role != "owner" {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
 	}
 
+	// Si es owner y tenantID está vacío, tu service deberá manejarlo
+	// (o podés pasarle tenantID vacío según cómo tengas armado el service)
 	employee, err := h.service.GetEmployee(r.Context(), tenantID, id)
 	if err != nil {
 		h.handleError(w, err)
@@ -151,7 +182,7 @@ func (h *Handler) UpdateEmployee(w http.ResponseWriter, r *http.Request, id stri
 		return
 	}
 
-	employee, err := h.service.UpdateEmployee(r.Context(), tenantID, id, input.FirstName, input.LastName, input.Email, input.PasswordHash, input.Phone, input.Role, input.IsActive)
+	employee, err := h.service.UpdateEmployee(r.Context(), tenantID, id, input.FirstName, input.LastName, input.Email, input.Password, input.Phone, input.Role, input.IsActive)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -186,6 +217,8 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_EMPLOYEE_ROLE", err.Error())
 	} else if errors.Is(err, ErrTenantNotFoundForEmployee) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_TENANT", err.Error())
+	} else if errors.Is(err, ErrUnauthorizedAction) {
+		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", err.Error())
 	} else {
 		h.respondWithError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error inesperado")
 	}

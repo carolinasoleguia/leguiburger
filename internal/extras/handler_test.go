@@ -11,33 +11,33 @@ import (
 	"leguiburger/internal/models"
 )
 
-type MockService struct {
-	OnCreateExtra func(ctx context.Context, tenantID, name string, currentPrice float64, currentStock int, trackStock *bool) (*models.Extra, error)
+type mockService struct {
+	createExtraFunc func(ctx context.Context, tenantID, name string, currentPrice float64, currentStock int, trackStock *bool) (*models.Extra, error)
 }
 
-func (m *MockService) CreateExtra(ctx context.Context, tenantID, name string, currentPrice float64, currentStock int, trackStock *bool) (*models.Extra, error) {
-	return m.OnCreateExtra(ctx, tenantID, name, currentPrice, currentStock, trackStock)
+func (m *mockService) CreateExtra(ctx context.Context, tenantID, name string, currentPrice float64, currentStock int, trackStock *bool) (*models.Extra, error) {
+	return m.createExtraFunc(ctx, tenantID, name, currentPrice, currentStock, trackStock)
 }
 
-func (m *MockService) GetExtra(ctx context.Context, tenantID, id string) (*models.Extra, error) {
+func (m *mockService) GetExtra(ctx context.Context, tenantID, id string) (*models.Extra, error) {
 	return nil, nil
 }
 
-func (m *MockService) ListExtras(ctx context.Context, tenantID string) ([]models.Extra, error) {
+func (m *mockService) ListExtras(ctx context.Context, tenantID string) ([]models.Extra, error) {
 	return nil, nil
 }
 
-func (m *MockService) UpdateExtra(ctx context.Context, tenantID, id, name string, currentPrice *float64, currentStock *int, trackStock, isActive *bool) (*models.Extra, error) {
+func (m *mockService) UpdateExtra(ctx context.Context, tenantID, id, name string, currentPrice *float64, currentStock *int, trackStock, isActive *bool) (*models.Extra, error) {
 	return nil, nil
 }
 
-func (m *MockService) DeleteExtra(ctx context.Context, tenantID, id string) error {
+func (m *mockService) DeleteExtra(ctx context.Context, tenantID, id string) error {
 	return nil
 }
 
 func TestHandler_CreateExtra_Success(t *testing.T) {
-	mockService := &MockService{
-		OnCreateExtra: func(ctx context.Context, tenantID, name string, currentPrice float64, currentStock int, trackStock *bool) (*models.Extra, error) {
+	mockService := &mockService{
+		createExtraFunc: func(ctx context.Context, tenantID, name string, currentPrice float64, currentStock int, trackStock *bool) (*models.Extra, error) {
 			return &models.Extra{
 				ID:           "new-id",
 				TenantID:     tenantID,
@@ -76,12 +76,12 @@ func TestHandler_CreateExtra_Success(t *testing.T) {
 	}
 
 	if response.TenantID != "tenant-ok" || response.Name != "Cheddar" || response.CurrentPrice != 250 {
-		t.Errorf("se recibió una respuesta incorrecta: %+v", response)
+		t.Errorf("se recibio una respuesta incorrecta: %+v", response)
 	}
 }
 
 func TestHandler_CreateExtra_MissingTenantHeader(t *testing.T) {
-	handler := NewHandler(&MockService{})
+	handler := NewHandler(&mockService{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/extras", bytes.NewBuffer([]byte("{}")))
 	req.Header.Set("Content-Type", "application/json")

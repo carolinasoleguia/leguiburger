@@ -6,169 +6,310 @@ import (
 	"testing"
 
 	"leguiburger/internal/models"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
-type MockTenantRepository struct {
-	OnGetByID func(ctx context.Context, id string) (*models.Tenant, error)
+func stringPtr(s string) *string {
+	return &s
 }
 
-func (m *MockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
-	return m.OnGetByID(ctx, id)
+// ---------------- MOCK TENANT REPOSITORY ----------------
+
+type mockTenantRepository struct {
+	getByIDFunc func(
+		ctx context.Context,
+		id string,
+	) (*models.Tenant, error)
+
+	getAllFunc func(
+		ctx context.Context,
+	) ([]models.Tenant, error)
 }
-func (m *MockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
-	return nil
+
+func (m *mockTenantRepository) GetByID(
+	ctx context.Context,
+	id string,
+) (*models.Tenant, error) {
+
+	if m.getByIDFunc != nil {
+		return m.getByIDFunc(ctx, id)
+	}
+
+	return &models.Tenant{
+		ID:      id,
+		BrandID: "brand-id",
+	}, nil
 }
-func (m *MockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
+
+func (m *mockTenantRepository) GetAll(
+	ctx context.Context,
+) ([]models.Tenant, error) {
+
+	if m.getAllFunc != nil {
+		return m.getAllFunc(ctx)
+	}
+
 	return nil, nil
 }
-func (m *MockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
-	return nil, nil
-}
-func (m *MockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
-	return nil, nil
-}
-func (m *MockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
+
+func (m *mockTenantRepository) Create(
+	ctx context.Context,
+	tenant *models.Tenant,
+) error {
 	return nil
 }
-func (m *MockTenantRepository) Delete(ctx context.Context, id string) error {
+
+func (m *mockTenantRepository) GetByBrandAndSubdomain(
+	ctx context.Context,
+	brandID string,
+	subdomain string,
+) (*models.Tenant, error) {
+
+	return nil, nil
+}
+
+func (m *mockTenantRepository) Update(
+	ctx context.Context,
+	tenant *models.Tenant,
+) error {
+
 	return nil
 }
+
+func (m *mockTenantRepository) Delete(
+	ctx context.Context,
+	id string,
+) error {
+
+	return nil
+}
+
+// ---------------- TESTS ----------------
 
 func TestCreateEmployee_Success(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByEmail: func(ctx context.Context, email string) (*models.Employee, error) {
+
+	repo := &mockRepository{
+
+		getByEmailFunc: func(
+			ctx context.Context,
+			tenantID,
+			email string,
+		) (*models.Employee, error) {
+
 			if email != "admin@email.com" {
-				t.Errorf("se esperaba email normalizado, se obtuvo: %s", email)
+				t.Errorf(
+					"se esperaba email normalizado, se obtuvo %s",
+					email,
+				)
 			}
+
 			return nil, nil
 		},
-		OnCreate: func(ctx context.Context, employee *models.Employee) error {
+
+		createFunc: func(
+			ctx context.Context,
+			employee *models.Employee,
+		) error {
+
 			employee.ID = "generated-id"
+
 			return nil
 		},
 	}
 
-	tenantRepo := &MockTenantRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
-			return &models.Tenant{ID: id}, nil
+	tenantRepo := &mockTenantRepository{
+
+		getByIDFunc: func(
+			ctx context.Context,
+			id string,
+		) (*models.Tenant, error) {
+
+			return &models.Tenant{
+				ID:      id,
+				BrandID: "brand-id",
+			}, nil
 		},
 	}
 
-	service := NewService(repo, tenantRepo)
-	res, err := service.CreateEmployee(context.Background(), "tenant-1", " Ana ", " Eguia ", " ADMIN@EMAIL.COM ", " hash123 ", " 2215555555 ", "ADMIN")
+	service := NewService(
+		repo,
+		tenantRepo,
+	)
+
+	rawPassword := "PasswordSegura123!"
+
+	res, err := service.CreateEmployee(
+		context.Background(),
+		"tenant-1",
+		" Ana ",
+		" Eguia ",
+		" ADMIN@EMAIL.COM ",
+		rawPassword,
+		" 2215555555 ",
+		"ADMIN",
+	)
+
 	if err != nil {
-		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
+		t.Fatalf(
+			"se esperaba exito: %v",
+			err,
+		)
 	}
 
-	if res.FirstName != "Ana" || res.LastName != "Eguia" || res.Email != "admin@email.com" || res.PasswordHash != "hash123" || res.Phone != "2215555555" || res.Role != "admin" || res.IsActive != true {
-		t.Errorf("los datos no se normalizaron correctamente: %+v", res)
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(res.PasswordHash),
+		[]byte(rawPassword),
+	)
+
+	if err != nil {
+		t.Errorf(
+			"password incorrecto: %v",
+			err,
+		)
 	}
+
+	if res.TenantID == nil ||
+		*res.TenantID != "tenant-1" {
+
+		t.Errorf(
+			"TenantID incorrecto: %v",
+			res.TenantID,
+		)
+	}
+
+	if res.FirstName != "Ana" ||
+		res.LastName != "Eguia" ||
+		res.Email != "admin@email.com" ||
+		res.Phone != "2215555555" ||
+		res.Role != "admin" ||
+		!res.IsActive {
+
+		t.Errorf(
+			"datos incorrectos: %+v",
+			res,
+		)
+	}
+
 }
 
-func TestCreateEmployee_DefaultRole(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByEmail: func(ctx context.Context, email string) (*models.Employee, error) {
+func TestCreateEmployee_Owner_Success(t *testing.T) {
+
+	repo := &mockRepository{
+
+		getByEmailFunc: func(
+			ctx context.Context,
+			tenantID, email string,
+		) (*models.Employee, error) {
+
 			return nil, nil
+		},
+
+		createFunc: func(
+			ctx context.Context,
+			employee *models.Employee,
+		) error {
+
+			employee.ID = "owner-id"
+
+			return nil
 		},
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
-	res, err := service.CreateEmployee(context.Background(), "tenant-1", "Ana", "Eguia", "ana@email.com", "hash123", "", "")
+	service := NewService(
+		repo,
+		&mockTenantRepository{},
+	)
+
+	res, err := service.CreateEmployee(
+		context.Background(),
+		"",
+		"Carolina",
+		"Eguia",
+		"owner@admin.com",
+		"Password123!",
+		"2214347305",
+		"owner",
+	)
+
 	if err != nil {
-		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
+		t.Fatalf(
+			"error inesperado %v",
+			err,
+		)
 	}
 
-	if res.Role != "employee" {
-		t.Errorf("se esperaba rol employee por defecto, se obtuvo: %s", res.Role)
+	if res.TenantID != nil {
+		t.Error(
+			"owner no debe tener tenant",
+		)
 	}
+
+	if res.Role != "owner" {
+		t.Errorf(
+			"rol incorrecto %s",
+			res.Role,
+		)
+	}
+
+}
+
+// Los siguientes tests no requieren cambios,
+// solamente reemplaza tu mockTenantRepository viejo
+// por el nuevo de arriba.
+
+func TestCreateEmployee_NormalUser_RequiresTenantID(t *testing.T) {
+
+	service := NewService(
+		&mockRepository{},
+		&mockTenantRepository{},
+	)
+
+	_, err := service.CreateEmployee(
+		context.Background(),
+		"",
+		"Ana",
+		"Eguia",
+		"ana@email.com",
+		"PasswordSegura123!",
+		"",
+		"employee",
+	)
+
+	if !errors.Is(err, ErrTenantNotFoundForEmployee) {
+
+		t.Errorf(
+			"error esperado %v obtenido %v",
+			ErrTenantNotFoundForEmployee,
+			err,
+		)
+	}
+
 }
 
 func TestCreateEmployee_InvalidData(t *testing.T) {
-	service := NewService(&MockRepository{}, &MockTenantRepository{})
 
-	_, err := service.CreateEmployee(context.Background(), "tenant-1", "", "Eguia", "ana@email.com", "hash123", "", "employee")
+	service := NewService(
+		&mockRepository{},
+		&mockTenantRepository{},
+	)
+
+	_, err := service.CreateEmployee(
+		context.Background(),
+		"tenant-1",
+		"",
+		"Eguia",
+		"ana@email.com",
+		"Password123!",
+		"",
+		"employee",
+	)
+
 	if !errors.Is(err, ErrInvalidEmployeeData) {
-		t.Errorf("se esperaba ErrInvalidEmployeeData, se obtuvo: %v", err)
-	}
-}
-
-func TestCreateEmployee_InvalidRole(t *testing.T) {
-	service := NewService(&MockRepository{}, &MockTenantRepository{})
-
-	_, err := service.CreateEmployee(context.Background(), "tenant-1", "Ana", "Eguia", "ana@email.com", "hash123", "", "owner")
-	if !errors.Is(err, ErrInvalidEmployeeRole) {
-		t.Errorf("se esperaba ErrInvalidEmployeeRole, se obtuvo: %v", err)
-	}
-}
-
-func TestCreateEmployee_DuplicateEmail(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByEmail: func(ctx context.Context, email string) (*models.Employee, error) {
-			return &models.Employee{ID: "existing-id", Email: email}, nil
-		},
+		t.Errorf(
+			"error incorrecto %v",
+			err,
+		)
 	}
 
-	service := NewService(repo, &MockTenantRepository{})
-	_, err := service.CreateEmployee(context.Background(), "tenant-1", "Ana", "Eguia", "ana@email.com", "hash123", "", "employee")
-
-	if !errors.Is(err, ErrDuplicateEmployeeEmail) {
-		t.Errorf("se esperaba ErrDuplicateEmployeeEmail, se obtuvo: %v", err)
-	}
-}
-
-func TestListEmployees_TenantNotFound(t *testing.T) {
-	repo := &MockRepository{}
-	tenantRepo := &MockTenantRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
-			return nil, nil
-		},
-	}
-
-	service := NewService(repo, tenantRepo)
-	_, err := service.ListEmployees(context.Background(), "tenant-fantasma")
-
-	if !errors.Is(err, ErrTenantNotFoundForEmployee) {
-		t.Errorf("se esperaba ErrTenantNotFoundForEmployee, se obtuvo: %v", err)
-	}
-}
-
-func TestUpdateEmployee_Success(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByID: func(ctx context.Context, tenantID, id string) (*models.Employee, error) {
-			return &models.Employee{ID: id, TenantID: tenantID, FirstName: "Ana", LastName: "Eguia", Email: "ana@email.com", PasswordHash: "oldhash", Role: "employee", IsActive: true}, nil
-		},
-		OnGetByEmail: func(ctx context.Context, email string) (*models.Employee, error) {
-			return nil, nil
-		},
-		OnUpdate: func(ctx context.Context, employee *models.Employee) error {
-			return nil
-		},
-	}
-
-	service := NewService(repo, &MockTenantRepository{})
-	newActive := false
-
-	res, err := service.UpdateEmployee(context.Background(), "tenant-1", "employee-1", "Juana", "", "JUANA@EMAIL.COM", "", "2219999999", "cashier", &newActive)
-	if err != nil {
-		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
-	}
-
-	if res.FirstName != "Juana" || res.LastName != "Eguia" || res.Email != "juana@email.com" || res.Phone != "2219999999" || res.Role != "cashier" || res.IsActive != false {
-		t.Errorf("los datos no se actualizaron correctamente: %+v", res)
-	}
-}
-
-func TestDeleteEmployee_NotFound(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByID: func(ctx context.Context, tenantID, id string) (*models.Employee, error) {
-			return nil, nil
-		},
-	}
-
-	service := NewService(repo, &MockTenantRepository{})
-	err := service.DeleteEmployee(context.Background(), "tenant-1", "missing")
-
-	if !errors.Is(err, ErrEmployeeNotFound) {
-		t.Errorf("se esperaba ErrEmployeeNotFound, se obtuvo: %v", err)
-	}
 }

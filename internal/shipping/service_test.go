@@ -8,70 +8,87 @@ import (
 	"leguiburger/internal/models"
 )
 
-// Mock manual para el repositorio de Tenants para aislar las pruebas de integración
-type MockTenantRepository struct {
-	OnGetByID               func(ctx context.Context, id string) (*models.Tenant, error)
-	OnCreate                func(ctx context.Context, tenant *models.Tenant) error
-	OnGetByTaxID            func(ctx context.Context, taxId string) (*models.Tenant, error)
-	OnGetBySubdomain        func(ctx context.Context, subdomain string) (*models.Tenant, error)
-	OnGetByNameAndSubdomain func(ctx context.Context, name string, subdomain string) (*models.Tenant, error)
-	OnUpdate                func(ctx context.Context, tenant *models.Tenant) error
-	OnDelete                func(ctx context.Context, id string) error
+type mockTenantRepository struct {
+	getByIDFunc                func(ctx context.Context, id string) (*models.Tenant, error)
+	createFunc                 func(ctx context.Context, tenant *models.Tenant) error
+	getByTaxIDFunc             func(ctx context.Context, taxId string) (*models.Tenant, error)
+	getBySubdomainFunc         func(ctx context.Context, subdomain string) (*models.Tenant, error)
+	getByNameAndSubdomainFunc  func(ctx context.Context, name string, subdomain string) (*models.Tenant, error)
+	getByBrandAndSubdomainFunc func(ctx context.Context, brandID string, subdomain string) (*models.Tenant, error)
+	updateFunc                 func(ctx context.Context, tenant *models.Tenant) error
+	deleteFunc                 func(ctx context.Context, id string) error
+	getAllFunc                 func(ctx context.Context) ([]models.Tenant, error)
 }
 
-func (m *MockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
-	return m.OnGetByID(ctx, id)
+func (m *mockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
+	return m.getByIDFunc(ctx, id)
 }
-func (m *MockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error { return nil }
-func (m *MockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
+func (m *mockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error { return nil }
+func (m *mockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
 	return nil, nil
 }
-func (m *MockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
+	if m.getAllFunc != nil {
+		return m.getAllFunc(ctx)
+	}
 	return nil, nil
 }
-func (m *MockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
 	return nil, nil
 }
-func (m *MockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error { return nil }
-func (m *MockTenantRepository) Delete(ctx context.Context, id string) error             { return nil }
+func (m *mockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
+	return nil, nil
+}
+func (m *mockTenantRepository) GetByBrandAndSubdomain(
+	ctx context.Context,
+	brandID string,
+	subdomain string,
+) (*models.Tenant, error) {
+
+	if m.getByBrandAndSubdomainFunc != nil {
+		return m.getByBrandAndSubdomainFunc(ctx, brandID, subdomain)
+	}
+
+	return nil, nil
+}
+func (m *mockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error { return nil }
+func (m *mockTenantRepository) Delete(ctx context.Context, id string) error             { return nil }
 
 func TestCreateMethod_Success(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByNameAndTypification: func(ctx context.Context, tenantID, name, typification string) (*models.ShippingMethod, error) {
-			return nil, nil // No existe duplicado
+	repo := &mockRepository{
+		getByNameAndTypificationFunc: func(ctx context.Context, tenantID, name, typification string) (*models.ShippingMethod, error) {
+			return nil, nil
 		},
-		OnCreate: func(ctx context.Context, sm *models.ShippingMethod) error {
+		createFunc: func(ctx context.Context, sm *models.ShippingMethod) error {
 			sm.ID = "generated-uuid-123"
 			return nil
 		},
 	}
-
-	// Mock del tenant que devuelve que sí existe
-	tenantRepo := &MockTenantRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+	tenantRepo := &mockTenantRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
 			return &models.Tenant{ID: id}, nil
 		},
 	}
 
-	service := NewService(repo, tenantRepo) // 👈 Pasamos ambos mocks
+	service := NewService(repo, tenantRepo)
 	ctx := context.Background()
 
-	res, err := service.CreateMethod(ctx, "tenant-1", "Moto Express", "delivery", "Envío rápido", 150.0, "30m")
+	res, err := service.CreateMethod(ctx, "tenant-1", "Moto Express", "delivery", "Envio rapido", 150.0, "30m")
 	if err != nil {
-		t.Fatalf("se esperaba éxito, se obtuvo error: %v", err)
+		t.Fatalf("se esperaba exito, se obtuvo error: %v", err)
 	}
 
 	if res.Name != "Moto Express" {
 		t.Errorf("se esperaba Name 'Moto Express', se obtuvo: %s", res.Name)
 	}
-	if res.Typification != "DELIVERY" { // Debe estar normalizado a mayúsculas
+	if res.Typification != "DELIVERY" {
 		t.Errorf("se esperaba Typification 'DELIVERY', se obtuvo: %s", res.Typification)
 	}
 }
 
 func TestCreateMethod_InvalidCost(t *testing.T) {
-	repo := &MockRepository{}
-	tenantRepo := &MockTenantRepository{}
+	repo := &mockRepository{}
+	tenantRepo := &mockTenantRepository{}
 	service := NewService(repo, tenantRepo)
 
 	_, err := service.CreateMethod(context.Background(), "tenant-1", "Test", "DELIVERY", "Desc", -50.0, "10m")
@@ -81,13 +98,12 @@ func TestCreateMethod_InvalidCost(t *testing.T) {
 }
 
 func TestCreateMethod_Duplicate(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByNameAndTypification: func(ctx context.Context, tenantID, name, typification string) (*models.ShippingMethod, error) {
-			// Simulamos que ya existe un método con el mismo Name + Typification
+	repo := &mockRepository{
+		getByNameAndTypificationFunc: func(ctx context.Context, tenantID, name, typification string) (*models.ShippingMethod, error) {
 			return &models.ShippingMethod{ID: "existente", Name: name, Typification: typification}, nil
 		},
 	}
-	tenantRepo := &MockTenantRepository{}
+	tenantRepo := &mockTenantRepository{}
 
 	service := NewService(repo, tenantRepo)
 	_, err := service.CreateMethod(context.Background(), "tenant-1", "Moto Express", "DELIVERY", "Desc", 150.0, "30m")
@@ -98,16 +114,15 @@ func TestCreateMethod_Duplicate(t *testing.T) {
 }
 
 func TestCreateMethod_TenantNotFound(t *testing.T) {
-	repo := &MockRepository{
-		OnGetByNameAndTypification: func(ctx context.Context, tenantID, name, typification string) (*models.ShippingMethod, error) {
+	repo := &mockRepository{
+		getByNameAndTypificationFunc: func(ctx context.Context, tenantID, name, typification string) (*models.ShippingMethod, error) {
 			return nil, nil
 		},
-		OnCreate: func(ctx context.Context, sm *models.ShippingMethod) error {
-			// Simulamos violación de clave foránea de PostgreSQL (error 23503)
+		createFunc: func(ctx context.Context, sm *models.ShippingMethod) error {
 			return errors.New("ERROR: insert violates foreign key constraint \"shipping_methods_tenant_id_fkey\" (SQLSTATE 23503)")
 		},
 	}
-	tenantRepo := &MockTenantRepository{}
+	tenantRepo := &mockTenantRepository{}
 
 	service := NewService(repo, tenantRepo)
 	_, err := service.CreateMethod(context.Background(), "fake-tenant", "Moto Express", "DELIVERY", "Desc", 150.0, "30m")
@@ -116,14 +131,10 @@ func TestCreateMethod_TenantNotFound(t *testing.T) {
 		t.Errorf("se esperaba ErrTenantNotFoundForShipping, se obtuvo: %v", err)
 	}
 }
-
-// 🧪 NUEVO TEST: Validamos la lógica de buscar un tenant inexistente al listar
 func TestListMethods_TenantNotFound(t *testing.T) {
-	repo := &MockRepository{}
-
-	// El mock de tenant devuelve nil (No existe el tenant en la DB)
-	tenantRepo := &MockTenantRepository{
-		OnGetByID: func(ctx context.Context, id string) (*models.Tenant, error) {
+	repo := &mockRepository{}
+	tenantRepo := &mockTenantRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
 			return nil, nil
 		},
 	}

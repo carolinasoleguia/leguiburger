@@ -3,24 +3,30 @@ package employees
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
+
 	"leguiburger/internal/models"
 	"leguiburger/internal/tenants"
-	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
 	ErrEmployeeNotFound          = errors.New("empleado no encontrado")
 	ErrDuplicateEmployeeEmail    = errors.New("ya existe un empleado con ese email")
-	ErrInvalidEmployeeData       = errors.New("nombre, apellido, email y password_hash son obligatorios")
+	ErrInvalidEmployeeData       = errors.New("nombre, apellido, email y password son obligatorios")
 	ErrInvalidEmployeeRole       = errors.New("el rol del empleado no es válido")
 	ErrTenantNotFoundForEmployee = errors.New("el comercio (tenant) especificado no existe")
+	ErrUnauthorizedAction        = errors.New("no tienes permisos para realizar esta acción sobre este usuario")
 )
 
 type Service interface {
-	CreateEmployee(ctx context.Context, tenantID, firstName, lastName, email, passwordHash, phone, role string) (*models.Employee, error)
+	CreateEmployee(ctx context.Context, tenantID, firstName, lastName, email, password, phone, role string) (*models.Employee, error)
 	GetEmployee(ctx context.Context, tenantID, id string) (*models.Employee, error)
 	ListEmployees(ctx context.Context, tenantID string) ([]models.Employee, error)
-	UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, passwordHash, phone, role string, isActive *bool) (*models.Employee, error)
+	GetAllEmployees(ctx context.Context) ([]models.Employee, error) // <--- Agregado a la interfaz
+	UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, password, phone, role string, isActive *bool) (*models.Employee, error)
 	DeleteEmployee(ctx context.Context, tenantID, id string) error
 }
 
@@ -36,21 +42,33 @@ func NewService(repo Repository, tenantRepo tenants.Repository) Service {
 	}
 }
 
-func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastName, email, passwordHash, phone, role string) (*models.Employee, error) {
+func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastName, email, password, phone, role string) (*models.Employee, error) {
 	cleanFirstName := strings.TrimSpace(firstName)
 	cleanLastName := strings.TrimSpace(lastName)
 	cleanEmail := strings.ToLower(strings.TrimSpace(email))
-	cleanPasswordHash := strings.TrimSpace(passwordHash)
+	cleanPassword := strings.TrimSpace(password)
 	cleanRole := normalizeRole(role)
+	cleanTenantID := strings.TrimSpace(tenantID)
 
-	if cleanFirstName == "" || cleanLastName == "" || cleanEmail == "" || cleanPasswordHash == "" {
+	if cleanFirstName == "" || cleanLastName == "" || cleanEmail == "" || cleanPassword == "" {
 		return nil, ErrInvalidEmployeeData
 	}
 	if !isValidRole(cleanRole) {
 		return nil, ErrInvalidEmployeeRole
 	}
 
-	existing, err := s.repo.GetByEmail(ctx, cleanEmail)
+	isGlobalUser := cleanRole == "owner" || cleanRole == "super_admin"
+
+	if !isGlobalUser && cleanTenantID == "" {
+		return nil, ErrTenantNotFoundForEmployee
+	}
+
+	var tenantPtr *string
+	if cleanTenantID != "" {
+		tenantPtr = &cleanTenantID
+	}
+
+	existing, err := s.repo.GetByEmail(ctx, cleanTenantID, cleanEmail)
 	if err != nil {
 		return nil, err
 	}
@@ -58,12 +76,17 @@ func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastN
 		return nil, ErrDuplicateEmployeeEmail
 	}
 
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(cleanPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("error al hashear la contraseña: %w", err)
+	}
+
 	employee := &models.Employee{
-		TenantID:     tenantID,
+		TenantID:     tenantPtr,
 		FirstName:    cleanFirstName,
 		LastName:     cleanLastName,
 		Email:        cleanEmail,
-		PasswordHash: cleanPasswordHash,
+		PasswordHash: string(hashedBytes),
 		Phone:        strings.TrimSpace(phone),
 		Role:         cleanRole,
 		IsActive:     true,
@@ -102,7 +125,17 @@ func (s *service) ListEmployees(ctx context.Context, tenantID string) ([]models.
 	return s.repo.FetchAll(ctx, tenantID)
 }
 
-func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, passwordHash, phone, role string, isActive *bool) (*models.Employee, error) {
+func (s *service) GetAllEmployees(ctx context.Context) ([]models.Employee, error) {
+	employees, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return employees, nil
+}
+
+func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, password, phone, role string, isActive *bool) (*models.Employee, error) {
+	actorRole, _ := ctx.Value("role").(string)
+
 	employee, err := s.repo.GetByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -111,15 +144,28 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 		return nil, ErrEmployeeNotFound
 	}
 
+	if getRoleWeight(actorRole) <= getRoleWeight(employee.Role) && actorRole != "owner" {
+		if actorRole != employee.Role {
+			return nil, ErrUnauthorizedAction
+		}
+	}
+
 	if firstName != "" {
 		employee.FirstName = strings.TrimSpace(firstName)
 	}
 	if lastName != "" {
 		employee.LastName = strings.TrimSpace(lastName)
 	}
-	if passwordHash != "" {
-		employee.PasswordHash = strings.TrimSpace(passwordHash)
+
+	cleanPassword := strings.TrimSpace(password)
+	if cleanPassword != "" {
+		hashedBytes, err := bcrypt.GenerateFromPassword([]byte(cleanPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, fmt.Errorf("error al hashear la contraseña: %w", err)
+		}
+		employee.PasswordHash = string(hashedBytes)
 	}
+
 	if phone != "" {
 		employee.Phone = strings.TrimSpace(phone)
 	}
@@ -136,7 +182,7 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 			return nil, ErrInvalidEmployeeData
 		}
 		if cleanEmail != employee.Email {
-			existing, err := s.repo.GetByEmail(ctx, cleanEmail)
+			existing, err := s.repo.GetByEmail(ctx, tenantID, cleanEmail)
 			if err != nil {
 				return nil, err
 			}
@@ -158,6 +204,8 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 }
 
 func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error {
+	actorRole, _ := ctx.Value("role").(string)
+
 	employee, err := s.repo.GetByID(ctx, tenantID, id)
 	if err != nil {
 		return err
@@ -166,22 +214,37 @@ func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error
 		return ErrEmployeeNotFound
 	}
 
+	if getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
+		return ErrUnauthorizedAction
+	}
+
 	return s.repo.Delete(ctx, tenantID, id)
 }
 
 func normalizeRole(role string) string {
-	cleanRole := strings.ToLower(strings.TrimSpace(role))
-	if cleanRole == "" {
+	r := strings.ToLower(strings.TrimSpace(role))
+	if r == "" {
 		return "employee"
 	}
-	return cleanRole
+	return r
 }
 
 func isValidRole(role string) bool {
 	switch role {
-	case "admin", "cashier", "kitchen", "employee":
+	case "employee", "cashier", "kitchen", "admin", "owner", "super_admin":
 		return true
 	default:
 		return false
+	}
+}
+
+func getRoleWeight(role string) int {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "owner", "super_admin":
+		return 3
+	case "admin":
+		return 2
+	default:
+		return 1
 	}
 }
