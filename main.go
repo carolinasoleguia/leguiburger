@@ -17,6 +17,7 @@ import (
 	"leguiburger/internal/shipping"
 	"leguiburger/internal/supplies"
 	"leguiburger/internal/tenants"
+	"leguiburger/internal/users"
 
 	"github.com/joho/godotenv"
 )
@@ -113,6 +114,14 @@ func main() {
 
 	employeeHandlerWithAuth := auth.AuthMiddleware(employeeHandler.HandleEmployeeRoutes)
 	registerRoute("/api/employees", employeeHandlerWithAuth)
+
+	//----------------------------------------------------------------//
+
+	userRepo := users.NewRepository()
+	userService := users.NewService(userRepo, brandRepo)
+	userHandler := users.NewHandler(userService)
+	userHandlerWithAuth := auth.AuthMiddleware(userHandler.HandleUserRoutes)
+	registerRoute("/api/users", userHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 

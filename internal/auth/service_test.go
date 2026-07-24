@@ -11,28 +11,44 @@ import (
 )
 
 type mockAuthRepository struct {
-	getByEmailAndTenantFn func(ctx context.Context, tenantID, email string) (*models.Employee, error)
-	getByEmailFn          func(ctx context.Context, email string) (*models.Employee, error)
-	getAllByEmailFn       func(ctx context.Context, email string) ([]models.Employee, error)
+	getEmployeeByEmailAndTenantFn func(ctx context.Context, tenantID, email string) (*models.Employee, error)
+	getEmployeeByEmailFn          func(ctx context.Context, email string) (*models.Employee, error)
+	getAllEmployeesByEmailFn      func(ctx context.Context, email string) ([]models.Employee, error)
+	getUserByEmailFn              func(ctx context.Context, email string) (*models.User, error)
+	getAllUsersByEmailFn          func(ctx context.Context, email string) ([]models.User, error)
 }
 
-func (m *mockAuthRepository) GetByEmailAndTenant(ctx context.Context, tenantID, email string) (*models.Employee, error) {
-	if m.getByEmailAndTenantFn != nil {
-		return m.getByEmailAndTenantFn(ctx, tenantID, email)
+func (m *mockAuthRepository) GetEmployeeByEmailAndTenant(ctx context.Context, tenantID, email string) (*models.Employee, error) {
+	if m.getEmployeeByEmailAndTenantFn != nil {
+		return m.getEmployeeByEmailAndTenantFn(ctx, tenantID, email)
 	}
 	return nil, nil
 }
 
-func (m *mockAuthRepository) GetByEmail(ctx context.Context, email string) (*models.Employee, error) {
-	if m.getByEmailFn != nil {
-		return m.getByEmailFn(ctx, email)
+func (m *mockAuthRepository) GetEmployeeByEmail(ctx context.Context, email string) (*models.Employee, error) {
+	if m.getEmployeeByEmailFn != nil {
+		return m.getEmployeeByEmailFn(ctx, email)
 	}
 	return nil, nil
 }
 
-func (m *mockAuthRepository) GetAllByEmail(ctx context.Context, email string) ([]models.Employee, error) {
-	if m.getAllByEmailFn != nil {
-		return m.getAllByEmailFn(ctx, email)
+func (m *mockAuthRepository) GetAllEmployeesByEmail(ctx context.Context, email string) ([]models.Employee, error) {
+	if m.getAllEmployeesByEmailFn != nil {
+		return m.getAllEmployeesByEmailFn(ctx, email)
+	}
+	return nil, nil
+}
+
+func (m *mockAuthRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	if m.getUserByEmailFn != nil {
+		return m.getUserByEmailFn(ctx, email)
+	}
+	return nil, nil
+}
+
+func (m *mockAuthRepository) GetAllUsersByEmail(ctx context.Context, email string) ([]models.User, error) {
+	if m.getAllUsersByEmailFn != nil {
+		return m.getAllUsersByEmailFn(ctx, email)
 	}
 	return nil, nil
 }
@@ -150,6 +166,45 @@ func TestNewService_RequiresJWTSecret(t *testing.T) {
 	_, err := NewService(&mockAuthRepository{}, &mockTenantRepository{})
 	if !errors.Is(err, ErrJWTSecretRequired) {
 		t.Fatalf("se esperaba ErrJWTSecretRequired, se obtuvo %v", err)
+	}
+}
+
+func TestService_LoginWithUsersTable(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret")
+
+	password := "Secret123!"
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("no se pudo hashear password: %v", err)
+	}
+
+	repoMock := &mockAuthRepository{
+		getUserByEmailFn: func(ctx context.Context, email string) (*models.User, error) {
+			return &models.User{
+				ID:           "user-1",
+				Email:        email,
+				PasswordHash: string(hashedPassword),
+				Role:         RoleOwner,
+				IsActive:     true,
+			}, nil
+		},
+	}
+
+	svc, err := NewService(repoMock, &mockTenantRepository{})
+	if err != nil {
+		t.Fatalf("no se esperaba error al crear servicio: %v", err)
+	}
+
+	res, err := svc.Login(context.Background(), "", "owner@test.com", password)
+	if err != nil {
+		t.Fatalf("no se esperaba error, se obtuvo %v", err)
+	}
+
+	if res.Employee.Role != RoleOwner {
+		t.Fatalf("se esperaba rol owner, se obtuvo %q", res.Employee.Role)
+	}
+	if res.User == nil || res.User.Email != "owner@test.com" || res.User.Role != RoleOwner {
+		t.Fatalf("se esperaba payload de usuario para el owner, se obtuvo %+v", res.User)
 	}
 }
 
@@ -320,8 +375,8 @@ func TestService_Login(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repoMock := &mockAuthRepository{
-				getByEmailAndTenantFn: tt.mockRepo,
-				getByEmailFn:          tt.mockRepoGlobal,
+				getEmployeeByEmailAndTenantFn: tt.mockRepo,
+				getEmployeeByEmailFn:          tt.mockRepoGlobal,
 			}
 			tenantMock := &mockTenantRepository{getByIDFn: tt.mockTenant}
 

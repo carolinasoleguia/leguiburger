@@ -63,10 +63,15 @@ async function handleLogin() {
     lookupLoading.value = true;
     try {
       const result = await lookupTenantOptions({ email: email.value, password: password.value });
-      if (result?.choices?.length > 0) {
-        tenantOptions.value = result.choices;
-        tenantSelectionActive.value = true;
-        return;
+      const choices = result?.choices || [];
+
+      if (choices.length > 0) {
+        const shouldSelectTenant = choices.some((choice) => choice?.tenant_id);
+        if (shouldSelectTenant) {
+          tenantOptions.value = choices;
+          tenantSelectionActive.value = true;
+          return;
+        }
       }
 
       await auth.login({ email: email.value, password: password.value });

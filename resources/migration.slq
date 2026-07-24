@@ -17,10 +17,12 @@ DROP TABLE IF EXISTS extras CASCADE;
 DROP TABLE IF EXISTS price_history CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS customers CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS employees CASCADE;
+DROP TABLE IF EXISTS tenants CASCADE;
+DROP TABLE IF EXISTS brands CASCADE;
 DROP TABLE IF EXISTS order_statuses_lookup CASCADE;
 DROP TABLE IF EXISTS payment_statuses_lookup CASCADE;
-DROP TABLE IF EXISTS tenants CASCADE;
 
 -- Usar pgcrypto para máxima compatibilidad con gen_random_uuid() en Postgres
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -40,7 +42,16 @@ CREATE TABLE payment_statuses_lookup (
     description VARCHAR(255)
 );
 
--- 3. MASTER TENANT TABLE (SaaS Root)
+-- 3. BRANDS TABLE
+CREATE TABLE brands (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    tax_id VARCHAR(20),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- 4. MASTER TENANT TABLE (SaaS Root)
 CREATE TABLE tenants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
@@ -51,7 +62,21 @@ CREATE TABLE tenants (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
--- 4. STAFF & ADMINISTRATIVE USERS
+-- 5. SYSTEM USERS (owners/admins) AND STAFF
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    brand_id UUID REFERENCES brands(id) ON DELETE CASCADE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_user_role CHECK (role IN ('owner', 'admin'))
+);
+
 CREATE TABLE employees (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,

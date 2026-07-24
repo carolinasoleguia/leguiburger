@@ -3,7 +3,7 @@
     <div class="section-header">
       <div class="section-title">
         <h2>Administradores</h2>
-        <p>Revisa los administradores de los tenants registrados.</p>
+        <p>Gestiona los administradores de marca para este sistema.</p>
       </div>
       <button class="btn-primary" @click="openCreateModal">Nuevo administrador</button>
     </div>
@@ -20,7 +20,7 @@
             <th>#</th>
             <th>Nombre</th>
             <th>Email</th>
-            <th>Tenant</th>
+            <th>Marca</th>
             <th>Rol</th>
             <th>Acciones</th>
           </tr>
@@ -30,7 +30,7 @@
             <td>{{ index + 1 }}</td>
             <td>{{ admin.first_name }} {{ admin.last_name }}</td>
             <td>{{ admin.email }}</td>
-            <td>{{ getTenantLabel(admin.tenant_id) }}</td>
+            <td>{{ getBrandLabel(admin.brand_id) }}</td>
             <td>{{ admin.role }}</td>
             <td class="table-actions">
               <button class="btn-secondary" @click="openEditModal(admin)">Editar</button>
@@ -50,15 +50,15 @@
       <div class="modal-card">
         <button type="button" class="modal-close" @click="closeCreateModal" aria-label="Cerrar modal">×</button>
         <h3>Nuevo administrador</h3>
-        <p>Registra un administrador para un tenant existente.</p>
+        <p>Registra un administrador asociado a una marca.</p>
 
         <form @submit.prevent="submitCreate">
           <div class="input-group">
-            <label>Tenant</label>
-            <select v-model="createForm.tenant_id">
-              <option value="">Seleccionar tenant</option>
-              <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
-                {{ tenant.brand?.name || tenant.subdomain }} — {{ tenant.subdomain }}
+            <label>Marca</label>
+            <select v-model="createForm.brand_id">
+              <option value="">Seleccionar marca</option>
+              <option v-for="brand in brands" :key="brand.id" :value="brand.id">
+                {{ brand.name }}
               </option>
             </select>
           </div>
@@ -86,15 +86,6 @@
           <div class="input-group">
             <label>Teléfono</label>
             <input type="text" v-model="createForm.phone" />
-          </div>
-
-          <div class="input-group">
-            <label>Rol</label>
-            <select v-model="createForm.role" required>
-              <option value="employee">Empleado</option>
-              <option value="admin">Administrador</option>
-              <option value="owner">Owner</option>
-            </select>
           </div>
 
           <div class="modal-actions">
@@ -138,15 +129,6 @@
           <div class="input-group">
             <label>Teléfono</label>
             <input type="text" v-model="editForm.phone" />
-          </div>
-
-          <div class="input-group">
-            <label>Rol</label>
-            <select v-model="editForm.role" required>
-              <option value="employee">Empleado</option>
-              <option value="admin">Administrador</option>
-              <option value="owner">Owner</option>
-            </select>
           </div>
 
           <div class="modal-actions">
@@ -201,7 +183,7 @@ import { ref, onMounted } from 'vue';
 import { getJSON, postJSON, putJSON, deleteJSON } from '../../services/api.js';
 
 const admins = ref([]);
-const tenants = ref([]);
+const brands = ref([]);
 const loading = ref(true);
 const error = ref('');
 const isCreateModalOpen = ref(false);
@@ -216,27 +198,25 @@ const createError = ref('');
 const editingAdmin = ref(null);
 const deletingAdmin = ref({});
 const createForm = ref({
-  tenant_id: '',
+  brand_id: '',
   first_name: '',
   last_name: '',
   email: '',
   password: '',
-  phone: '',
-  role: 'employee'
+  phone: ''
 });
 const editForm = ref({
   first_name: '',
   last_name: '',
   email: '',
   password: '',
-  phone: '',
-  role: 'employee'
+  phone: ''
 });
 const editError = ref('');
 
 async function loadAdmins() {
   try {
-    admins.value = await getJSON('/employees');
+    admins.value = await getJSON('/users');
   } catch (err) {
     error.value = err.message || 'No se pudieron cargar los administradores.';
   } finally {
@@ -244,11 +224,11 @@ async function loadAdmins() {
   }
 }
 
-async function loadTenants() {
+async function loadBrands() {
   try {
-    tenants.value = await getJSON('/tenants');
+    brands.value = await getJSON('/brands');
   } catch (err) {
-    console.error('No se pudieron cargar los tenants:', err);
+    console.error('No se pudieron cargar las marcas:', err);
   }
 }
 
@@ -256,13 +236,12 @@ function openCreateModal() {
   isCreateModalOpen.value = true;
   createError.value = '';
   createForm.value = {
-    tenant_id: '',
+    brand_id: '',
     first_name: '',
     last_name: '',
     email: '',
     password: '',
-    phone: '',
-    role: 'employee'
+    phone: ''
   };
 }
 
@@ -280,8 +259,7 @@ function openEditModal(admin) {
     last_name: admin.last_name || '',
     email: admin.email || '',
     password: '',
-    phone: admin.phone || '',
-    role: admin.role || 'employee'
+    phone: admin.phone || ''
   };
 }
 
@@ -311,18 +289,18 @@ function closeAlert() {
   alertText.value = '';
 }
 
-function getTenantLabel(tenantId) {
-  if (!tenantId) {
-    return 'Global';
+function getBrandLabel(brandId) {
+  if (!brandId) {
+    return 'Sin marca';
   }
 
-  const tenant = tenants.value.find((item) => item.id === tenantId);
+  const brand = brands.value.find((item) => item.id === brandId);
 
-  if (!tenant) {
-    return tenantId;
+  if (!brand) {
+    return brandId;
   }
 
-  return tenant.brand?.name || tenant.name || tenant.subdomain || tenant.id;
+  return brand.name || brandId;
 }
 
 async function submitCreate() {
@@ -330,7 +308,7 @@ async function submitCreate() {
   createError.value = '';
 
   try {
-    await postJSON('/employees', createForm.value);
+    await postJSON('/users', createForm.value);
     await loadAdmins();
     closeCreateModal();
   } catch (err) {
@@ -346,13 +324,13 @@ async function submitEdit() {
   editError.value = '';
 
   try {
-    await putJSON(`/employees/${editingAdmin.value.id}`, {
+    await putJSON(`/users/${editingAdmin.value.id}`, {
       first_name: editForm.value.first_name,
       last_name: editForm.value.last_name,
       email: editForm.value.email,
       password: editForm.value.password || undefined,
       phone: editForm.value.phone,
-      role: editForm.value.role
+      role: 'admin'
     });
     await loadAdmins();
     closeEditModal();
@@ -369,9 +347,9 @@ async function confirmDelete() {
 
   try {
     if (deletingAdmin.value.is_active) {
-      await deleteJSON(`/employees/${deletingAdmin.value.id}`);
+      await deleteJSON(`/users/${deletingAdmin.value.id}`);
     } else {
-      await putJSON(`/employees/${deletingAdmin.value.id}`, { is_active: true });
+      await putJSON(`/users/${deletingAdmin.value.id}`, { is_active: true });
     }
     await loadAdmins();
     closeDeleteModal();
@@ -387,6 +365,6 @@ async function confirmDelete() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadTenants(), loadAdmins()]);
+  await Promise.all([loadBrands(), loadAdmins()]);
 });
 </script>

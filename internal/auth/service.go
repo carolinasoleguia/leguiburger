@@ -29,6 +29,15 @@ var (
 type LoginResponse struct {
 	Token    string      `json:"token"`
 	Employee EmployeeDTO `json:"employee"`
+	User     *UserDTO    `json:"user,omitempty"`
+}
+
+type UserDTO struct {
+	ID        string  `json:"id"`
+	Email     string  `json:"email"`
+	Role      string  `json:"role"`
+	BrandID   *string `json:"brand_id,omitempty"`
+	IsActive  bool    `json:"is_active"`
 }
 
 type EmployeeDTO struct {
@@ -74,24 +83,53 @@ func (s *service) Login(ctx context.Context, tenantID, email, password string) (
 		return nil, ErrInvalidCredentials
 	}
 
-	employee, err := s.findEmployeeForLogin(ctx, cleanTenantID, cleanEmail)
+	loginUser, err := s.findLoginPrincipal(ctx, cleanTenantID, cleanEmail)
 	if err != nil {
 		return nil, err
 	}
 
-	if !isGlobalRole(employee.Role) && !isBrandOwnerRole(employee.Role) && (employee.TenantID == nil || *employee.TenantID != cleanTenantID) {
-		return nil, ErrForbiddenTenant
+	if loginUser.employee != nil {
+		if !isGlobalRole(loginUser.employee.Role) && !isBrandOwnerRole(loginUser.employee.Role) && (loginUser.employee.TenantID == nil || *loginUser.employee.TenantID != cleanTenantID) {
+			return nil, ErrForbiddenTenant
+		}
+	
+		if err := bcrypt.CompareHashAndPassword([]byte(loginUser.employee.PasswordHash), []byte(cleanPassword)); err != nil {
+			return nil, ErrInvalidCredentials
+		}
+
+		if cleanTenantID == "" && !isGlobalRole(loginUser.employee.Role) && !isBrandOwnerRole(loginUser.employee.Role) {
+			return nil, ErrTenantRequired
+		}
+
+		token, err := GenerateToken(
+			loginUser.employee.ID,
+			loginUser.employee.Email,
+			loginUser.employee.Role,
+			loginUser.employee.TenantID,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return &LoginResponse{
+			Token:    token,
+			Employee: toEmployeeDTO(loginUser.employee),
+		}, nil
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(employee.PasswordHash), []byte(cleanPassword)); err != nil {
+	if loginUser.user == nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(loginUser.user.PasswordHash), []byte(cleanPassword)); err != nil {
 		return nil, ErrInvalidCredentials
 	}
 
 	token, err := GenerateToken(
-		employee.ID,
-		employee.Email,
-		employee.Role,
-		employee.TenantID,
+		loginUser.user.ID,
+		loginUser.user.Email,
+		loginUser.user.Role,
+		nil,
 	)
 	if err != nil {
 		return nil, err
@@ -99,7 +137,8 @@ func (s *service) Login(ctx context.Context, tenantID, email, password string) (
 
 	return &LoginResponse{
 		Token:    token,
-		Employee: toEmployeeDTO(employee),
+		Employee: EmployeeDTO{ID: loginUser.user.ID, Email: loginUser.user.Email, Role: loginUser.user.Role, IsActive: loginUser.user.IsActive},
+		User: &UserDTO{ID: loginUser.user.ID, Email: loginUser.user.Email, Role: loginUser.user.Role, BrandID: loginUser.user.BrandID, IsActive: loginUser.user.IsActive},
 	}, nil
 }
 
@@ -111,11 +150,15 @@ func (s *service) LookupTenantsForEmail(ctx context.Context, email, password str
 		return nil, ErrInvalidCredentials
 	}
 
-	employees, err := s.repo.GetAllByEmail(ctx, cleanEmail)
+	employees, err := s.repo.GetAllEmployeesByEmail(ctx, cleanEmail)
 	if err != nil {
 		return nil, err
 	}
-	if len(employees) == 0 {
+	users, err := s.repo.GetAllUsersByEmail(ctx, cleanEmail)
+	if err != nil {
+		return nil, err
+	}
+	if len(employees) == 0 && len(users) == 0 {
 		return nil, ErrInvalidCredentials
 	}
 
@@ -151,6 +194,18 @@ func (s *service) LookupTenantsForEmail(ctx context.Context, email, password str
 		}
 	}
 
+	for _, user := range users {
+		if user.PasswordHash == "" {
+			continue
+		}
+		if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(cleanPassword)) != nil {
+			continue
+		}
+		if isGlobalRole(user.Role) {
+			matchedGlobal = true
+		}
+	}
+
 	if len(choicesMap) == 0 {
 		if matchedGlobal {
 			return []TenantChoice{}, nil
@@ -177,9 +232,22 @@ func (s *service) getActiveTenant(ctx context.Context, tenantID string) (*models
 	return tenant, nil
 }
 
-func (s *service) findEmployeeForLogin(ctx context.Context, tenantID, email string) (*models.Employee, error) {
+type loginPrincipal struct {
+	employee *models.Employee
+	user     *models.User
+}
+
+func (s *service) findLoginPrincipal(ctx context.Context, tenantID, email string) (*loginPrincipal, error) {
 	if tenantID == "" {
-		employee, err := s.repo.GetByEmail(ctx, email)
+		user, err := s.repo.GetUserByEmail(ctx, email)
+		if err != nil {
+			return nil, err
+		}
+		if user != nil {
+			return &loginPrincipal{user: user}, nil
+		}
+
+		employee, err := s.repo.GetEmployeeByEmail(ctx, email)
 		if err != nil {
 			return nil, err
 		}
@@ -187,7 +255,7 @@ func (s *service) findEmployeeForLogin(ctx context.Context, tenantID, email stri
 			return nil, ErrInvalidCredentials
 		}
 		if isGlobalRole(employee.Role) || isBrandOwnerRole(employee.Role) {
-			return employee, nil
+			return &loginPrincipal{employee: employee}, nil
 		}
 		return nil, ErrTenantRequired
 	}
@@ -196,15 +264,23 @@ func (s *service) findEmployeeForLogin(ctx context.Context, tenantID, email stri
 		return nil, err
 	}
 
-	employee, err := s.repo.GetByEmailAndTenant(ctx, tenantID, email)
+	employee, err := s.repo.GetEmployeeByEmailAndTenant(ctx, tenantID, email)
 	if err != nil {
 		return nil, err
 	}
 	if employee != nil {
-		return employee, nil
+		return &loginPrincipal{employee: employee}, nil
 	}
 
-	globalEmployee, err := s.repo.GetByEmail(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	if user != nil {
+		return &loginPrincipal{user: user}, nil
+	}
+
+	globalEmployee, err := s.repo.GetEmployeeByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +288,7 @@ func (s *service) findEmployeeForLogin(ctx context.Context, tenantID, email stri
 		return nil, ErrInvalidCredentials
 	}
 	if isGlobalRole(globalEmployee.Role) {
-		return globalEmployee, nil
+		return &loginPrincipal{employee: globalEmployee}, nil
 	}
 	if isBrandOwnerRole(globalEmployee.Role) {
 		if globalEmployee.TenantID == nil {
@@ -223,7 +299,7 @@ func (s *service) findEmployeeForLogin(ctx context.Context, tenantID, email stri
 			return nil, err
 		}
 		if sameBrand {
-			return globalEmployee, nil
+			return &loginPrincipal{employee: globalEmployee}, nil
 		}
 	}
 
