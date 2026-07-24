@@ -1,15 +1,14 @@
 package extras
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"leguiburger/internal/auth"
 	"leguiburger/internal/models"
+	"leguiburger/internal/testutil"
 )
 
 type mockService struct {
@@ -53,30 +52,23 @@ func TestHandler_CreateExtra_Success(t *testing.T) {
 
 	handler := NewHandler(mockService)
 
-	body := []byte(`{
-		"name": "Cheddar",
+	req := testutil.JSONRequest(t, http.MethodPost, "/api/extras", map[string]interface{}{
+		"name":          "Cheddar",
 		"current_price": 250.00,
 		"current_stock": 10,
-		"track_stock": true
-	}`)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/extras", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
+		"track_stock":   true,
+	})
 	req.Header.Set("X-Tenant-ID", "tenant-ok")
 	claims := &auth.Claims{Role: auth.RoleSuperAdmin, TenantID: "tenant-ok"}
-	req = req.WithContext(context.WithValue(req.Context(), auth.ClaimsKey, claims))
+	req = testutil.WithClaims(t, req, claims)
 
 	rr := httptest.NewRecorder()
 	handler.HandleExtraRoutes(rr, req)
 
-	if rr.Code != http.StatusCreated {
-		t.Errorf("se esperaba status 201 Created, se obtuvo: %d", rr.Code)
-	}
+	testutil.AssertStatus(t, rr, http.StatusCreated)
 
 	var response models.Extra
-	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
-		t.Fatalf("error al decodificar la respuesta JSON: %v", err)
-	}
+	testutil.DecodeJSONBody(t, rr, &response)
 
 	if response.TenantID != "tenant-ok" || response.Name != "Cheddar" || response.CurrentPrice != 250 {
 		t.Errorf("se recibio una respuesta incorrecta: %+v", response)
@@ -86,13 +78,10 @@ func TestHandler_CreateExtra_Success(t *testing.T) {
 func TestHandler_CreateExtra_MissingTenantHeader(t *testing.T) {
 	handler := NewHandler(&mockService{})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/extras", bytes.NewBuffer([]byte("{}")))
-	req.Header.Set("Content-Type", "application/json")
+	req := testutil.JSONRequest(t, http.MethodPost, "/api/extras", map[string]interface{}{})
 
 	rr := httptest.NewRecorder()
 	handler.HandleExtraRoutes(rr, req)
 
-	if rr.Code != http.StatusUnauthorized {
-		t.Errorf("se esperaba status 401 Unauthorized por falta de auth, se obtuvo: %d", rr.Code)
-	}
+	testutil.AssertStatus(t, rr, http.StatusUnauthorized)
 }

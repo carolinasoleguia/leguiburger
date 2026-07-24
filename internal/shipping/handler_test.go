@@ -1,15 +1,14 @@
 package shipping
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"leguiburger/internal/auth"
 	"leguiburger/internal/models"
+	"leguiburger/internal/testutil"
 )
 
 type mockService struct {
@@ -55,31 +54,24 @@ func TestHandler_CreateShippingMethod_Success(t *testing.T) {
 
 	handler := NewHandler(mockService)
 
-	body := []byte(`{
-		"typification": "DELIVERY",
-		"name": "Envio Moto Express",
-		"description": "Entrega en menos de 45 minutos",
-		"cost": 1500.00,
-		"estimated_time": "30-45 min"
-	}`)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/shipping-methods", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
+	req := testutil.JSONRequest(t, http.MethodPost, "/api/shipping-methods", map[string]interface{}{
+		"typification":   "DELIVERY",
+		"name":           "Envio Moto Express",
+		"description":    "Entrega en menos de 45 minutos",
+		"cost":           1500.00,
+		"estimated_time": "30-45 min",
+	})
 	req.Header.Set("X-Tenant-ID", "tenant-ok")
 	claims := &auth.Claims{Role: auth.RoleSuperAdmin, TenantID: "tenant-ok"}
-	req = req.WithContext(context.WithValue(req.Context(), auth.ClaimsKey, claims))
+	req = testutil.WithClaims(t, req, claims)
 
 	rr := httptest.NewRecorder()
 	handler.HandleShippingRoutes(rr, req)
 
-	if rr.Code != http.StatusCreated {
-		t.Errorf("se esperaba status 201 Created, se obtuvo: %d", rr.Code)
-	}
+	testutil.AssertStatus(t, rr, http.StatusCreated)
 
 	var response models.ShippingMethod
-	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
-		t.Fatalf("error al decodificar la respuesta JSON: %v", err)
-	}
+	testutil.DecodeJSONBody(t, rr, &response)
 
 	if response.Description != "Entrega en menos de 45 minutos" {
 		t.Errorf("se guardo la descripcion incorrectamente: %s", response.Description)
@@ -89,13 +81,10 @@ func TestHandler_CreateShippingMethod_Success(t *testing.T) {
 func TestHandler_CreateShippingMethod_MissingTenantHeader(t *testing.T) {
 	handler := NewHandler(&mockService{})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/shipping-methods", bytes.NewBuffer([]byte("{}")))
-	req.Header.Set("Content-Type", "application/json")
+	req := testutil.JSONRequest(t, http.MethodPost, "/api/shipping-methods", map[string]interface{}{})
 
 	rr := httptest.NewRecorder()
 	handler.HandleShippingRoutes(rr, req)
 
-	if rr.Code != http.StatusUnauthorized {
-		t.Errorf("se esperaba status 401 Unauthorized por falta de auth, se obtuvo: %d", rr.Code)
-	}
+	testutil.AssertStatus(t, rr, http.StatusUnauthorized)
 }
