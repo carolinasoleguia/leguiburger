@@ -43,7 +43,13 @@ func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.
 
 func (r *repository) GetByEmail(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 	var employee models.Employee
-	err := db.DB.WithContext(ctx).Where("email = ?", email).First(&employee).Error
+	query := db.DB.WithContext(ctx).Where("email = ?", email)
+	if tenantID == "" {
+		query = query.Where("tenant_id IS NULL")
+	} else {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	err := query.First(&employee).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

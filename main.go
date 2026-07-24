@@ -14,6 +14,7 @@ import (
 	"leguiburger/internal/products"
 	"leguiburger/internal/recipes"
 	"leguiburger/internal/shipping"
+	"leguiburger/internal/supplies"
 	"leguiburger/internal/tenants"
 
 	"github.com/joho/godotenv"
@@ -67,6 +68,15 @@ func main() {
 
 	http.HandleFunc("/api/products/", productHandler.HandleProductRoutes)
 	http.HandleFunc("/api/products", productHandler.HandleProductRoutes)
+
+	//----------------------------------------------------------------//
+
+	supplyRepo := supplies.NewRepository()
+	supplyService := supplies.NewService(supplyRepo, tenantRepo)
+	supplyHandler := supplies.NewHandler(supplyService)
+
+	http.HandleFunc("/api/supplies/", supplyHandler.HandleSupplyRoutes)
+	http.HandleFunc("/api/supplies", supplyHandler.HandleSupplyRoutes)
 
 	//----------------------------------------------------------------//
 
