@@ -27,6 +27,7 @@ type Service interface {
 		id string,
 		subdomain string,
 		active *bool,
+		brandID *string,
 	) (*models.Tenant, error)
 
 	DeleteTenant(
@@ -124,6 +125,7 @@ func (s *service) UpdateTenant(
 	id string,
 	subdomain string,
 	active *bool,
+	brandID *string,
 ) (*models.Tenant, error) {
 
 	tenant, err := s.repo.GetByID(ctx, id)
@@ -134,6 +136,19 @@ func (s *service) UpdateTenant(
 
 	if tenant == nil {
 		return nil, ErrTenantNotFound
+	}
+
+	if brandID != nil {
+		if *brandID != tenant.BrandID {
+			brand, err := s.brandRepo.GetByID(ctx, *brandID)
+			if err != nil {
+				return nil, err
+			}
+			if brand == nil {
+				return nil, errors.New("marca inexistente")
+			}
+			tenant.BrandID = *brandID
+		}
 	}
 
 	if subdomain != "" {

@@ -29,6 +29,7 @@ type mockService struct {
 		id string,
 		subdomain string,
 		active *bool,
+		brandID *string,
 	) (*models.Tenant, error)
 
 	deleteTenantFunc func(
@@ -63,6 +64,7 @@ func (m *mockService) UpdateTenant(
 	id string,
 	subdomain string,
 	active *bool,
+	brandID *string,
 ) (*models.Tenant, error) {
 
 	if m.updateTenantFunc != nil {
@@ -71,6 +73,7 @@ func (m *mockService) UpdateTenant(
 			id,
 			subdomain,
 			active,
+			brandID,
 		)
 	}
 
@@ -169,13 +172,19 @@ func TestHandler_UpdateTenant_Success(t *testing.T) {
 			id string,
 			subdomain string,
 			active *bool,
+			brandID *string,
 		) (*models.Tenant, error) {
 
 			return &models.Tenant{
 
 				ID: id,
 
-				BrandID: "brand-id",
+				BrandID: func() string {
+					if brandID != nil {
+						return *brandID
+					}
+					return "brand-id"
+				}(),
 
 				Subdomain: subdomain,
 

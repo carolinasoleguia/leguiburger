@@ -30,6 +30,7 @@ type CreateTenantRequest struct {
 type UpdateTenantRequest struct {
 	Subdomain *string `json:"subdomain" validate:"omitempty,gt=0"`
 	Active    *bool   `json:"active"`
+	BrandID   *string `json:"brand_id"`
 }
 
 var validate = validator.New()
@@ -269,6 +270,7 @@ func (h *Handler) UpdateTenant(
 		id,
 		subdomain,
 		req.Active,
+		req.BrandID,
 	)
 
 	if err != nil {

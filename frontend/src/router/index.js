@@ -4,12 +4,17 @@ import LoginView from '../views/auth/LoginView.vue';
 import OwnerDashboard from '../views/owner/OwnerDashboard.vue';
 import TenantListView from '../views/owner/TenantListView.vue';
 import AdminListView from '../views/owner/AdminListView.vue';
+import BrandListView from '../views/owner/BrandListView.vue';
 import AdminDashboard from '../views/tenant/AdminDashboard.vue';
 import EmployeeDashboard from '../views/tenant/EmployeeDashboard.vue';
 import UnauthorizedView from '../views/shared/UnauthorizedView.vue';
 import NotFoundView from '../views/shared/NotFoundView.vue';
 
 const routes = [
+  {
+    path: '/',
+    redirect: { name: 'Login' }
+  },
   {
     path: '/login',
     name: 'Login',
@@ -29,6 +34,11 @@ const routes = [
         path: 'admins',
         name: 'OwnerAdmins',
         component: AdminListView
+      },
+      {
+        path: 'brands',
+        name: 'OwnerBrands',
+        component: BrandListView
       },
       {
         path: '',

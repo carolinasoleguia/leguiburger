@@ -12,32 +12,105 @@
       <table v-else class="data-table">
         <thead>
           <tr>
-            <th>Nombre</th>
+            <th>Marca / Comercio</th>
             <th>Subdominio</th>
-            <th>Tax ID</th>
+            <th>CUIT / Tax ID</th>
             <th>Estado</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="tenant in tenants" :key="tenant.id">
-            <td>{{ tenant.name }}</td>
+            <td>{{ tenant.brand?.name || tenant.name || '—' }}</td>
             <td>{{ tenant.subdomain }}</td>
-            <td>{{ tenant.tax_id }}</td>
+            <td>{{ tenant.brand?.tax_id || tenant.tax_id || '—' }}</td>
             <td>{{ tenant.active ? 'Activo' : 'Inactivo' }}</td>
+            <td class="table-actions">
+              <button class="btn-secondary" @click="openEditModal(tenant)">Editar</button>
+              <button class="btn-danger" @click="openDeleteModal(tenant)">Eliminar</button>
+            </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="isEditModalOpen" class="modal-overlay">
+      <div class="modal-card">
+        <h3>Editar Tenant</h3>
+        <p>Actualiza el subdominio para el comercio <strong>{{ editingTenant.brand?.name || editingTenant.subdomain }}</strong>.</p>
+
+        <form @submit.prevent="submitEdit">
+          <div class="input-group">
+            <label>Marca</label>
+            <select v-model="editForm.brand_id" required>
+              <option value="" disabled>Seleccionar marca</option>
+              <option v-for="brand in brands" :key="brand.id" :value="brand.id">
+                {{ brand.name }} - {{ brand.tax_id }}
+              </option>
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label>Subdominio</label>
+            <input type="text" v-model="editForm.subdomain" required />
+          </div>
+
+          <div v-if="modalError" class="status-text error">{{ modalError }}</div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" @click="closeEditModal" :disabled="loadingEdit">Cancelar</button>
+            <button type="submit" class="btn-primary" :disabled="loadingEdit || !editForm.brand_id">
+              <span v-if="loadingEdit" class="spinner"></span>
+              {{ loadingEdit ? 'Guardando...' : 'Guardar cambios' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div v-if="isDeleteModalOpen" class="modal-overlay">
+      <div class="modal-card">
+        <h3>Confirmar eliminación</h3>
+        <p>Esta acción desactivará el tenant <strong>{{ deletingTenant.brand?.name || deletingTenant.subdomain }}</strong> de forma lógica.</p>
+
+        <div v-if="modalError" class="status-text error">{{ modalError }}</div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" @click="closeDeleteModal" :disabled="loadingDelete">Cancelar</button>
+          <button type="button" class="btn-danger" @click="confirmDelete" :disabled="loadingDelete">
+            <span v-if="loadingDelete" class="spinner"></span>
+            {{ loadingDelete ? 'Eliminando...' : 'Eliminar' }}
+          </button>
+        </div>
+      </div>
     </div>
   </section>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { getJSON } from '../../services/api.js';
+import { getJSON, putJSON, deleteJSON } from '../../services/api.js';
 
 const tenants = ref([]);
+const brands = ref([]);
 const loading = ref(true);
 const error = ref('');
+const isEditModalOpen = ref(false);
+const isDeleteModalOpen = ref(false);
+const editingTenant = ref({});
+const deletingTenant = ref({});
+const editForm = ref({ subdomain: '', brand_id: '' });
+const loadingEdit = ref(false);
+const loadingDelete = ref(false);
+const modalError = ref('');
+
+async function loadBrands() {
+  try {
+    brands.value = await getJSON('/brands');
+  } catch (err) {
+    console.error('No se pudieron cargar las brands:', err);
+  }
+}
 
 async function loadTenants() {
   try {
@@ -49,5 +122,72 @@ async function loadTenants() {
   }
 }
 
-onMounted(loadTenants);
+function openEditModal(tenant) {
+  editingTenant.value = tenant;
+  editForm.value = {
+    subdomain: tenant.subdomain || '',
+    brand_id: tenant.brand?.id || ''
+  };
+  modalError.value = '';
+  isEditModalOpen.value = true;
+}
+
+function closeEditModal() {
+  isEditModalOpen.value = false;
+  editingTenant.value = {};
+  editForm.value = { subdomain: '' };
+  modalError.value = '';
+}
+
+async function submitEdit() {
+  if (!editingTenant.value.id) return;
+  loadingEdit.value = true;
+  modalError.value = '';
+
+  try {
+    await putJSON(`/tenants/${editingTenant.value.id}`, {
+      subdomain: editForm.value.subdomain,
+      brand_id: editForm.value.brand_id || undefined
+    });
+    await loadTenants();
+    closeEditModal();
+  } catch (err) {
+    modalError.value = err.message || 'Error al guardar los cambios.';
+  } finally {
+    loadingEdit.value = false;
+  }
+}
+
+function openDeleteModal(tenant) {
+  deletingTenant.value = tenant;
+  modalError.value = '';
+  isDeleteModalOpen.value = true;
+}
+
+function closeDeleteModal() {
+  isDeleteModalOpen.value = false;
+  deletingTenant.value = {};
+  modalError.value = '';
+}
+
+async function confirmDelete() {
+  if (!deletingTenant.value.id) return;
+  loadingDelete.value = true;
+  modalError.value = '';
+
+  try {
+    await deleteJSON(`/tenants/${deletingTenant.value.id}`);
+    await loadTenants();
+    closeDeleteModal();
+  } catch (err) {
+    modalError.value = err.message || 'Error al eliminar el tenant.';
+  } finally {
+    loadingDelete.value = false;
+  }
+}
+
+onMounted(async () => {
+  await loadBrands();
+  await loadTenants();
+});
 </script>

@@ -301,6 +301,7 @@ func TestUpdateTenant_Success(t *testing.T) {
 		"tenant-id",
 		"nuevo",
 		&active,
+		nil,
 	)
 
 	if err != nil {
@@ -343,6 +344,7 @@ func TestUpdateTenant_NotFound(t *testing.T) {
 		context.Background(),
 		"fake",
 		"sub",
+		nil,
 		nil,
 	)
 

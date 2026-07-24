@@ -5,6 +5,7 @@
       <nav>
         <router-link to="/owner/tenants" class="nav-link" active-class="active">Tenants</router-link>
         <router-link to="/owner/admins" class="nav-link" active-class="active">Admins</router-link>
+        <router-link to="/owner/brands" class="nav-link" active-class="active">Brands</router-link>
       </nav>
       <button class="btn-logout" @click="logout">Cerrar sesión</button>
     </aside>
