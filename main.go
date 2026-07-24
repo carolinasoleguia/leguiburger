@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"leguiburger/internal/auth"
+	"leguiburger/internal/brands"
 	"leguiburger/internal/customers"
 	"leguiburger/internal/db"
 	"leguiburger/internal/employees"
@@ -26,8 +27,18 @@ func main() {
 	db.Connect()
 
 	//----------------------------------------------------------------//
+
+	brandRepo := brands.NewRepository()
+	brandService := brands.NewService(brandRepo)
+	brandHandler := brands.NewHandler(brandService)
+
+	http.HandleFunc("/api/brands/", brandHandler.HandleBrandRoutes)
+	http.HandleFunc("/api/brands", brandHandler.HandleBrandRoutes)
+
+	//----------------------------------------------------------------//
+
 	tenantRepo := tenants.NewRepository()
-	tenantService := tenants.NewService(tenantRepo)
+	tenantService := tenants.NewService(tenantRepo, brandRepo)
 	tenantHandler := tenants.NewHandler(tenantService)
 
 	http.HandleFunc("/api/tenants/", tenantHandler.HandleTenantRoutes)

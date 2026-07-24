@@ -305,7 +305,11 @@ export default {
     async fetchTenants() {
       try {
         const res = await fetch('/api/tenants', {
-          headers: this.getHeaders()
+          method: 'GET',
+          headers: {
+            ...this.getHeaders(),
+            'Cache-Control': 'no-cache'
+          }
         });
 
         const data = await res.json();
@@ -366,7 +370,12 @@ export default {
 
     async fetchAdmins() {
       try {
-        const res = await fetch('/api/employees', { headers: this.getHeaders() });
+        const res = await fetch('/api/employees', {
+        headers: {
+          ...this.getHeaders(),
+          'Cache-Control': 'no-cache'
+        }
+      });
         if (res.ok) this.adminsList = await res.json();
       } catch (err) { console.error("Error al cargar admins:", err); }
     },

@@ -30,69 +30,109 @@ func (m *mockAuthRepository) GetByEmail(ctx context.Context, email string) (*mod
 }
 
 type mockTenantRepository struct {
-	getByIDFn               func(ctx context.Context, id string) (*models.Tenant, error)
-	getBySubdomainFn        func(ctx context.Context, subdomain string) (*models.Tenant, error)
-	getByTaxIDFn            func(ctx context.Context, taxID string) (*models.Tenant, error)
-	getByNameAndSubdomainFn func(ctx context.Context, name, subdomain string) (*models.Tenant, error)
-	createFn                func(ctx context.Context, tenant *models.Tenant) error
-	updateFn                func(ctx context.Context, tenant *models.Tenant) error
-	deleteFn                func(ctx context.Context, id string) error
-	getAllFn                func(ctx context.Context) ([]models.Tenant, error)
+	getByIDFn                  func(ctx context.Context, id string) (*models.Tenant, error)
+	getBySubdomainFn           func(ctx context.Context, subdomain string) (*models.Tenant, error)
+	getByNameAndSubdomainFn    func(ctx context.Context, name, subdomain string) (*models.Tenant, error)
+	getByBrandAndSubdomainFunc func(ctx context.Context, brandID, subdomain string) (*models.Tenant, error)
+	createFn                   func(ctx context.Context, tenant *models.Tenant) error
+	updateFn                   func(ctx context.Context, tenant *models.Tenant) error
+	deleteFn                   func(ctx context.Context, id string) error
+	getAllFn                   func(ctx context.Context) ([]models.Tenant, error)
 }
 
-func (m *mockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
+func (m *mockTenantRepository) GetByID(
+	ctx context.Context,
+	id string,
+) (*models.Tenant, error) {
+
 	if m.getByIDFn != nil {
 		return m.getByIDFn(ctx, id)
 	}
+
 	return nil, nil
 }
 
-func (m *mockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
+func (m *mockTenantRepository) GetAll(
+	ctx context.Context,
+) ([]models.Tenant, error) {
+
 	if m.getAllFn != nil {
 		return m.getAllFn(ctx)
 	}
+
 	return nil, nil
 }
+func (m *mockTenantRepository) GetBySubdomain(
+	ctx context.Context,
+	subdomain string,
+) (*models.Tenant, error) {
 
-func (m *mockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
 	if m.getBySubdomainFn != nil {
 		return m.getBySubdomainFn(ctx, subdomain)
 	}
+
 	return nil, nil
 }
 
-func (m *mockTenantRepository) GetByTaxID(ctx context.Context, taxID string) (*models.Tenant, error) {
-	if m.getByTaxIDFn != nil {
-		return m.getByTaxIDFn(ctx, taxID)
-	}
-	return nil, nil
-}
+func (m *mockTenantRepository) GetByNameAndSubdomain(
+	ctx context.Context,
+	name string,
+	subdomain string,
+) (*models.Tenant, error) {
 
-func (m *mockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name, subdomain string) (*models.Tenant, error) {
 	if m.getByNameAndSubdomainFn != nil {
 		return m.getByNameAndSubdomainFn(ctx, name, subdomain)
 	}
+
 	return nil, nil
 }
 
-func (m *mockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
+func (m *mockTenantRepository) GetByBrandAndSubdomain(
+	ctx context.Context,
+	brandID string,
+	subdomain string,
+) (*models.Tenant, error) {
+
+	if m.getByBrandAndSubdomainFunc != nil {
+		return m.getByBrandAndSubdomainFunc(ctx, brandID, subdomain)
+	}
+
+	return nil, nil
+}
+
+func (m *mockTenantRepository) Create(
+	ctx context.Context,
+	tenant *models.Tenant,
+) error {
+
 	if m.createFn != nil {
 		return m.createFn(ctx, tenant)
 	}
+
 	return nil
 }
 
-func (m *mockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
+func (m *mockTenantRepository) Update(
+	ctx context.Context,
+	tenant *models.Tenant,
+) error {
+
 	if m.updateFn != nil {
 		return m.updateFn(ctx, tenant)
 	}
+
 	return nil
 }
 
-func (m *mockTenantRepository) Delete(ctx context.Context, id string) error {
+func (m *mockTenantRepository) Delete(
+	ctx context.Context,
+	id string,
+) error {
+
 	if m.deleteFn != nil {
 		return m.deleteFn(ctx, id)
 	}
+
 	return nil
 }
 
@@ -142,9 +182,9 @@ func TestService_Login(t *testing.T) {
 	}
 
 	activeTenant := &models.Tenant{
-		ID:     validTenantID,
-		Name:   "LeguiBurger",
-		Active: true,
+		ID:      validTenantID,
+		BrandID: "brand-uuid-1",
+		Active:  true,
 	}
 
 	tests := []struct {
