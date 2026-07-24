@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"leguiburger/internal/auth"
 	"leguiburger/internal/models"
 
 	"golang.org/x/crypto/bcrypt"
@@ -193,6 +194,65 @@ func TestCreateEmployee_Success(t *testing.T) {
 
 }
 
+func TestCreateEmployee_AdminSameBrand_Success(t *testing.T) {
+	repo := &mockRepository{
+		getByEmailFunc: func(
+			ctx context.Context,
+			tenantID, email string,
+		) (*models.Employee, error) {
+			return nil, nil
+		},
+
+		createFunc: func(
+			ctx context.Context,
+			employee *models.Employee,
+		) error {
+			employee.ID = "created-id"
+			return nil
+		},
+	}
+
+	tenantRepo := &mockTenantRepository{
+		getByIDFunc: func(
+			ctx context.Context,
+			id string,
+		) (*models.Tenant, error) {
+			if id == "tenant-brand-1" {
+				return &models.Tenant{ID: id, BrandID: "brand-1"}, nil
+			}
+			return nil, nil
+		},
+	}
+
+	service := NewService(repo, tenantRepo)
+
+	brandID := "brand-1"
+	ctx := context.WithValue(context.Background(), auth.ClaimsKey, &auth.Claims{
+		Role:     "admin",
+		BrandID:  &brandID,
+		TenantID: "",
+	})
+
+	res, err := service.CreateEmployee(
+		ctx,
+		"tenant-brand-1",
+		"Chanchi",
+		"Gómez",
+		"chanchi@colab.com",
+		"admin123",
+		"2219999999",
+		"employee",
+	)
+
+	if err != nil {
+		t.Fatalf("se esperaba éxito para un admin del mismo brand: %v", err)
+	}
+
+	if res == nil || res.TenantID == nil || *res.TenantID != "tenant-brand-1" {
+		t.Fatalf("tenant incorrecto: %+v", res)
+	}
+}
+
 func TestCreateEmployee_Owner_Success(t *testing.T) {
 
 	repo := &mockRepository{
@@ -285,6 +345,38 @@ func TestCreateEmployee_NormalUser_RequiresTenantID(t *testing.T) {
 		)
 	}
 
+}
+
+func TestCreateEmployee_AdminCanUseTenantInSameBrand(t *testing.T) {
+	repo := &mockRepository{
+		getByEmailFunc: func(ctx context.Context, tenantID, email string) (*models.Employee, error) {
+			return nil, nil
+		},
+		createFunc: func(ctx context.Context, employee *models.Employee) error {
+			employee.ID = "created-id"
+			return nil
+		},
+	}
+
+	tenantRepo := &mockTenantRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
+			if id == "tenant-1" {
+				return &models.Tenant{ID: id, BrandID: "brand-id"}, nil
+			}
+			if id == "tenant-2" {
+				return &models.Tenant{ID: id, BrandID: "brand-id"}, nil
+			}
+			return &models.Tenant{ID: id, BrandID: "other-brand"}, nil
+		},
+	}
+
+	service := NewService(repo, tenantRepo)
+	ctx := context.WithValue(context.Background(), auth.ClaimsKey, &auth.Claims{Role: "admin", TenantID: "tenant-2"})
+
+	_, err := service.CreateEmployee(ctx, "tenant-1", "Ana", "Eguia", "ana@email.com", "Password123!", "", "employee")
+	if err != nil {
+		t.Fatalf("se esperaba permitir el tenant de la misma brand, se obtuvo %v", err)
+	}
 }
 
 func TestCreateEmployee_InvalidData(t *testing.T) {

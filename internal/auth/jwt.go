@@ -11,10 +11,11 @@ import (
 var jwtSecret []byte
 
 type Claims struct {
-	UserID   string `json:"user_id"`
-	Email    string `json:"email"`
-	Role     string `json:"role"`
-	TenantID string `json:"tenant_id,omitempty"`
+	UserID   string  `json:"user_id"`
+	Email    string  `json:"email"`
+	Role     string  `json:"role"`
+	TenantID string  `json:"tenant_id,omitempty"`
+	BrandID  *string `json:"brand_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -29,7 +30,7 @@ func ConfigureJWTSecret(secret string) error {
 }
 
 // GenerateToken firma un JWT valido por 24 horas.
-func GenerateToken(userID, email, role string, tenantID *string) (string, error) {
+func GenerateToken(userID, email, role string, tenantID *string, brandID *string) (string, error) {
 	if len(jwtSecret) == 0 {
 		return "", ErrJWTSecretRequired
 	}
@@ -44,6 +45,7 @@ func GenerateToken(userID, email, role string, tenantID *string) (string, error)
 		Email:    email,
 		Role:     role,
 		TenantID: tID,
+		BrandID:  brandID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

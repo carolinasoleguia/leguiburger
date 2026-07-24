@@ -45,15 +45,16 @@ func TestHandler_Login(t *testing.T) {
 				"password": "Password123!",
 			},
 			mockService: func(ctx context.Context, tenantID, email, password string) (*LoginResponse, error) {
+				employee := EmployeeDTO{
+					ID:       "emp-1",
+					TenantID: &tenantID,
+					Email:    email,
+					Role:     "admin",
+					IsActive: true,
+				}
 				return &LoginResponse{
-					Token: "mock.jwt.token",
-					Employee: EmployeeDTO{
-						ID:       "emp-1",
-						TenantID: &tenantID,
-						Email:    email,
-						Role:     "admin",
-						IsActive: true,
-					},
+					Token:    "mock.jwt.token",
+					Employee: &employee,
 				}, nil
 			},
 			expectedStatus: http.StatusOK,
@@ -67,14 +68,15 @@ func TestHandler_Login(t *testing.T) {
 				"password": "Password123!",
 			},
 			mockService: func(ctx context.Context, tenantID, email, password string) (*LoginResponse, error) {
+				employee := EmployeeDTO{
+					ID:       "owner-1",
+					Email:    email,
+					Role:     RoleOwner,
+					IsActive: true,
+				}
 				return &LoginResponse{
-					Token: "mock.jwt.owner.token",
-					Employee: EmployeeDTO{
-						ID:       "owner-1",
-						Email:    email,
-						Role:     RoleOwner,
-						IsActive: true,
-					},
+					Token:    "mock.jwt.owner.token",
+					Employee: &employee,
 				}, nil
 			},
 			expectedStatus: http.StatusOK,
@@ -193,7 +195,7 @@ func TestHandler_Login(t *testing.T) {
 			if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 				t.Fatalf("respuesta JSON invalida: %v", err)
 			}
-			if response.Token == "" || response.Employee.ID == "" {
+			if response.Token == "" || response.Employee == nil || response.Employee.ID == "" {
 				t.Fatal("se esperaba token y DTO publico de empleado")
 			}
 		})

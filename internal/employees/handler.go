@@ -116,11 +116,6 @@ func (h *Handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if claims.Role != "owner" && tenantID != strings.TrimSpace(claims.TenantID) {
-		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes crear empleados fuera de tu comercio")
-		return
-	}
-
 	employee, err := h.service.CreateEmployee(
 		r.Context(),
 		tenantID,
@@ -180,11 +175,6 @@ func (h *Handler) GetEmployee(w http.ResponseWriter, r *http.Request, id string)
 		tenantID = strings.TrimSpace(claims.TenantID)
 	}
 
-	if claims.Role != "owner" && tenantID != strings.TrimSpace(claims.TenantID) {
-		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes ver empleados de otro comercio")
-		return
-	}
-
 	employee, err := h.service.GetEmployee(r.Context(), tenantID, id)
 	if err != nil {
 		h.handleError(w, err)
@@ -204,11 +194,6 @@ func (h *Handler) UpdateEmployee(w http.ResponseWriter, r *http.Request, id stri
 	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
 	if tenantID == "" {
 		tenantID = strings.TrimSpace(claims.TenantID)
-	}
-
-	if claims.Role != "owner" && tenantID != strings.TrimSpace(claims.TenantID) {
-		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes editar empleados de otro comercio")
-		return
 	}
 
 	var input UpdateInput
@@ -236,11 +221,6 @@ func (h *Handler) DeleteEmployee(w http.ResponseWriter, r *http.Request, id stri
 	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
 	if tenantID == "" {
 		tenantID = strings.TrimSpace(claims.TenantID)
-	}
-
-	if claims.Role != "owner" && tenantID != strings.TrimSpace(claims.TenantID) {
-		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes borrar empleados de otro comercio")
-		return
 	}
 
 	if err := h.service.DeleteEmployee(r.Context(), tenantID, id); err != nil {

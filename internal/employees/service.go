@@ -62,6 +62,10 @@ func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastN
 	if ok {
 		actorRole := strings.ToLower(strings.TrimSpace(claims.Role))
 		actorTenantID := strings.TrimSpace(claims.TenantID)
+		actorBrandID := ""
+		if claims.BrandID != nil {
+			actorBrandID = strings.TrimSpace(*claims.BrandID)
+		}
 
 		if actorRole != auth.RoleOwner {
 			if cleanTenantID == "" {
@@ -70,7 +74,7 @@ func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastN
 			if cleanTenantID == "" {
 				return nil, ErrTenantNotFoundForEmployee
 			}
-			if cleanTenantID != actorTenantID {
+			if !s.isAllowedTenantForActor(ctx, cleanTenantID, actorRole, actorTenantID, actorBrandID) {
 				return nil, ErrUnauthorizedAction
 			}
 			if getRoleWeight(actorRole) <= getRoleWeight(cleanRole) {
@@ -156,10 +160,14 @@ func (s *service) GetAllEmployees(ctx context.Context) ([]models.Employee, error
 func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, password, phone, role string, isActive *bool) (*models.Employee, error) {
 	actorRole := ""
 	actorTenantID := ""
+	actorBrandID := ""
 	claims, ok := auth.GetClaimsFromContext(ctx)
 	if ok {
 		actorRole = strings.ToLower(strings.TrimSpace(claims.Role))
 		actorTenantID = strings.TrimSpace(claims.TenantID)
+		if claims.BrandID != nil {
+			actorBrandID = strings.TrimSpace(*claims.BrandID)
+		}
 
 		if actorRole != auth.RoleOwner {
 			if tenantID == "" {
@@ -168,7 +176,7 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 			if tenantID == "" {
 				return nil, ErrUnauthorizedAction
 			}
-			if tenantID != actorTenantID {
+			if !s.isAllowedTenantForActor(ctx, tenantID, actorRole, actorTenantID, actorBrandID) {
 				return nil, ErrUnauthorizedAction
 			}
 		}
@@ -244,10 +252,14 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error {
 	actorRole := ""
 	actorTenantID := ""
+	actorBrandID := ""
 	claims, ok := auth.GetClaimsFromContext(ctx)
 	if ok {
 		actorRole = strings.ToLower(strings.TrimSpace(claims.Role))
 		actorTenantID = strings.TrimSpace(claims.TenantID)
+		if claims.BrandID != nil {
+			actorBrandID = strings.TrimSpace(*claims.BrandID)
+		}
 
 		if actorRole != auth.RoleOwner {
 			if tenantID == "" {
@@ -256,7 +268,7 @@ func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error
 			if tenantID == "" {
 				return ErrUnauthorizedAction
 			}
-			if tenantID != actorTenantID {
+			if !s.isAllowedTenantForActor(ctx, tenantID, actorRole, actorTenantID, actorBrandID) {
 				return ErrUnauthorizedAction
 			}
 		}
@@ -275,6 +287,36 @@ func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error
 	}
 
 	return s.repo.Delete(ctx, tenantID, id)
+}
+
+func (s *service) isAllowedTenantForActor(ctx context.Context, tenantID, actorRole, actorTenantID, actorBrandID string) bool {
+	if actorRole == auth.RoleOwner {
+		return true
+	}
+	if strings.TrimSpace(tenantID) == "" {
+		return false
+	}
+	if strings.TrimSpace(actorTenantID) != "" && strings.TrimSpace(tenantID) == strings.TrimSpace(actorTenantID) {
+		return true
+	}
+	if strings.EqualFold(actorRole, "admin") {
+		tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+		if err != nil || tenant == nil {
+			return false
+		}
+		if strings.TrimSpace(actorBrandID) != "" {
+			return strings.TrimSpace(tenant.BrandID) == strings.TrimSpace(actorBrandID)
+		}
+		if strings.TrimSpace(actorTenantID) == "" {
+			return false
+		}
+		actorTenant, err := s.tenantRepo.GetByID(ctx, actorTenantID)
+		if err != nil || actorTenant == nil {
+			return false
+		}
+		return tenant.BrandID == actorTenant.BrandID
+	}
+	return false
 }
 
 func normalizeRole(role string) string {

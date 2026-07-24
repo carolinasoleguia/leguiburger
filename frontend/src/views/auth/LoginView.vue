@@ -107,7 +107,7 @@ function navigateToRole() {
     return;
   }
   if (role === 'admin') {
-    router.push(`/tenant/${auth.tenantId.value}/admin`);
+    router.push('/admin/landing');
     return;
   }
   if (role === 'employee') {

@@ -103,7 +103,19 @@ func (s *service) GetUser(ctx context.Context, id string) (*models.User, error) 
 }
 
 func (s *service) ListUsers(ctx context.Context) ([]models.User, error) {
-	return s.repo.GetAll(ctx)
+	users, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]models.User, 0, len(users))
+	for _, user := range users {
+		if strings.EqualFold(strings.TrimSpace(user.Role), "admin") {
+			filtered = append(filtered, user)
+		}
+	}
+
+	return filtered, nil
 }
 
 func (s *service) UpdateUser(ctx context.Context, id, firstName, lastName, email, password, role string, brandID *string, isActive *bool) (*models.User, error) {

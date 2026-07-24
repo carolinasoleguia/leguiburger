@@ -28,7 +28,7 @@ var (
 
 type LoginResponse struct {
 	Token    string      `json:"token"`
-	Employee EmployeeDTO `json:"employee"`
+	Employee *EmployeeDTO `json:"employee,omitempty"`
 	User     *UserDTO    `json:"user,omitempty"`
 }
 
@@ -89,10 +89,14 @@ func (s *service) Login(ctx context.Context, tenantID, email, password string) (
 	}
 
 	if loginUser.employee != nil {
+		if cleanTenantID == "" && loginUser.employee.TenantID != nil {
+			cleanTenantID = *loginUser.employee.TenantID
+		}
+
 		if !isGlobalRole(loginUser.employee.Role) && !isBrandOwnerRole(loginUser.employee.Role) && (loginUser.employee.TenantID == nil || *loginUser.employee.TenantID != cleanTenantID) {
 			return nil, ErrForbiddenTenant
 		}
-	
+
 		if err := bcrypt.CompareHashAndPassword([]byte(loginUser.employee.PasswordHash), []byte(cleanPassword)); err != nil {
 			return nil, ErrInvalidCredentials
 		}
@@ -106,14 +110,16 @@ func (s *service) Login(ctx context.Context, tenantID, email, password string) (
 			loginUser.employee.Email,
 			loginUser.employee.Role,
 			loginUser.employee.TenantID,
+			nil,
 		)
 		if err != nil {
 			return nil, err
 		}
 
+		employeeDTO := toEmployeeDTO(loginUser.employee)
 		return &LoginResponse{
 			Token:    token,
-			Employee: toEmployeeDTO(loginUser.employee),
+			Employee: &employeeDTO,
 		}, nil
 	}
 
@@ -130,15 +136,16 @@ func (s *service) Login(ctx context.Context, tenantID, email, password string) (
 		loginUser.user.Email,
 		loginUser.user.Role,
 		nil,
+		loginUser.user.BrandID,
 	)
 	if err != nil {
 		return nil, err
 	}
 
+	userDTO := &UserDTO{ID: loginUser.user.ID, Email: loginUser.user.Email, Role: loginUser.user.Role, BrandID: loginUser.user.BrandID, IsActive: loginUser.user.IsActive}
 	return &LoginResponse{
-		Token:    token,
-		Employee: EmployeeDTO{ID: loginUser.user.ID, Email: loginUser.user.Email, Role: loginUser.user.Role, IsActive: loginUser.user.IsActive},
-		User: &UserDTO{ID: loginUser.user.ID, Email: loginUser.user.Email, Role: loginUser.user.Role, BrandID: loginUser.user.BrandID, IsActive: loginUser.user.IsActive},
+		Token: token,
+		User:  userDTO,
 	}, nil
 }
 
@@ -174,7 +181,7 @@ func (s *service) LookupTenantsForEmail(ctx context.Context, email, password str
 			continue
 		}
 
-		if isGlobalRole(employee.Role) {
+		if isGlobalRole(employee.Role) || (isBrandOwnerRole(employee.Role) && employee.TenantID == nil) {
 			matchedGlobal = true
 			continue
 		}
@@ -192,6 +199,14 @@ func (s *service) LookupTenantsForEmail(ctx context.Context, email, password str
 			TenantID: tenant.ID,
 			Label:    tenant.Subdomain,
 		}
+		if err != nil || tenant == nil {
+			continue
+		}
+
+		choicesMap[tenant.ID] = TenantChoice{
+			TenantID: tenant.ID,
+			Label:    tenant.Subdomain,
+		}
 	}
 
 	for _, user := range users {
@@ -201,7 +216,7 @@ func (s *service) LookupTenantsForEmail(ctx context.Context, email, password str
 		if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(cleanPassword)) != nil {
 			continue
 		}
-		if isGlobalRole(user.Role) {
+		if isGlobalRole(user.Role) || isBrandOwnerRole(user.Role) {
 			matchedGlobal = true
 		}
 	}
@@ -210,7 +225,7 @@ func (s *service) LookupTenantsForEmail(ctx context.Context, email, password str
 		if matchedGlobal {
 			return []TenantChoice{}, nil
 		}
-		return nil, ErrInvalidCredentials
+		return []TenantChoice{}, nil
 	}
 
 	choices := make([]TenantChoice, 0, len(choicesMap))
@@ -253,6 +268,12 @@ func (s *service) findLoginPrincipal(ctx context.Context, tenantID, email string
 		}
 		if employee == nil {
 			return nil, ErrInvalidCredentials
+		}
+		if employee.TenantID != nil {
+			if err := s.validateTenant(ctx, *employee.TenantID); err != nil {
+				return nil, err
+			}
+			return &loginPrincipal{employee: employee}, nil
 		}
 		if isGlobalRole(employee.Role) || isBrandOwnerRole(employee.Role) {
 			return &loginPrincipal{employee: employee}, nil

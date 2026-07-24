@@ -54,7 +54,10 @@ func (r *repository) GetByEmail(ctx context.Context, email string) (*models.User
 
 func (r *repository) GetAll(ctx context.Context) ([]models.User, error) {
 	var users []models.User
-	err := db.DB.WithContext(ctx).Order("created_at DESC").Find(&users).Error
+	err := db.DB.WithContext(ctx).
+		Where("LOWER(role) = ?", "admin").
+		Order("created_at DESC").
+		Find(&users).Error
 	if err != nil {
 		return nil, err
 	}

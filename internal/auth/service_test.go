@@ -200,11 +200,126 @@ func TestService_LoginWithUsersTable(t *testing.T) {
 		t.Fatalf("no se esperaba error, se obtuvo %v", err)
 	}
 
-	if res.Employee.Role != RoleOwner {
-		t.Fatalf("se esperaba rol owner, se obtuvo %q", res.Employee.Role)
+	if res.Employee != nil {
+		t.Fatalf("se esperaba que no venga employee para un login de user, se obtuvo %+v", res.Employee)
 	}
 	if res.User == nil || res.User.Email != "owner@test.com" || res.User.Role != RoleOwner {
 		t.Fatalf("se esperaba payload de usuario para el owner, se obtuvo %+v", res.User)
+	}
+}
+
+func TestService_Login_AutoUsesEmployeeTenantWhenTenantMissing(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret")
+
+	password := "Secret123!"
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("no se pudo hashear password: %v", err)
+	}
+
+	tenantID := "tenant-uuid-1"
+	repoMock := &mockAuthRepository{
+		getEmployeeByEmailFn: func(ctx context.Context, email string) (*models.Employee, error) {
+			return &models.Employee{
+				ID:           "employee-uuid-1",
+				TenantID:     &tenantID,
+				Email:        email,
+				PasswordHash: string(hashedPassword),
+				Role:         "employee",
+				IsActive:     true,
+			}, nil
+		},
+	}
+
+	svc, err := NewService(repoMock, &mockTenantRepository{})
+	if err != nil {
+		t.Fatalf("no se esperaba error al crear servicio: %v", err)
+	}
+
+	res, err := svc.Login(context.Background(), "", "employee@test.com", password)
+	if err != nil {
+		t.Fatalf("no se esperaba error para un empleado con tenant asociado, se obtuvo %v", err)
+	}
+	if res.Employee == nil || res.Employee.TenantID == nil || *res.Employee.TenantID != tenantID {
+		t.Fatalf("se esperaba que el tenant del empleado se use automaticamente, se obtuvo %+v", res.Employee)
+	}
+}
+
+func TestService_LookupTenantsForEmail_AllowsAdminUsers(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret")
+
+	password := "Secret123!"
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("no se pudo hashear password: %v", err)
+	}
+
+	repoMock := &mockAuthRepository{
+		getAllEmployeesByEmailFn: func(ctx context.Context, email string) ([]models.Employee, error) {
+			return nil, nil
+		},
+		getAllUsersByEmailFn: func(ctx context.Context, email string) ([]models.User, error) {
+			return []models.User{{
+				ID:           "user-1",
+				Email:        "admin@test.com",
+				PasswordHash: string(hashedPassword),
+				Role:         "admin",
+				IsActive:     true,
+			}}, nil
+		},
+	}
+
+	svc, err := NewService(repoMock, &mockTenantRepository{})
+	if err != nil {
+		t.Fatalf("no se esperaba error al crear servicio: %v", err)
+	}
+
+	choices, err := svc.LookupTenantsForEmail(context.Background(), "admin@test.com", password)
+	if err != nil {
+		t.Fatalf("no se esperaba error para un admin user, se obtuvo %v", err)
+	}
+	if len(choices) != 0 {
+		t.Fatalf("se esperaba una lista vacia de choices para un admin global, se obtuvo %+v", choices)
+	}
+}
+
+func TestService_LookupTenantsForEmail_SkipsTenantSelectionForTenantEmployee(t *testing.T) {
+	t.Setenv("JWT_SECRET", "test-secret")
+
+	password := "Secret123!"
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("no se pudo hashear password: %v", err)
+	}
+
+	tenantID := "tenant-uuid-1"
+	repoMock := &mockAuthRepository{
+		getAllEmployeesByEmailFn: func(ctx context.Context, email string) ([]models.Employee, error) {
+			return []models.Employee{{
+				ID:           "employee-uuid-1",
+				TenantID:     &tenantID,
+				Email:        email,
+				PasswordHash: string(hashedPassword),
+				Role:         "employee",
+				IsActive:     true,
+			}}, nil
+		},
+		getAllUsersByEmailFn: func(ctx context.Context, email string) ([]models.User, error) {
+			return nil, nil
+		},
+	}
+
+	svc, err := NewService(repoMock, &mockTenantRepository{})
+	if err != nil {
+		t.Fatalf("no se esperaba error al crear servicio: %v", err)
+	}
+
+	choices, err := svc.LookupTenantsForEmail(context.Background(), "employee@test.com", password)
+	if err != nil {
+		t.Fatalf("no se esperaba error para un empleado con tenant asociado, se obtuvo %v", err)
+	}
+	if len(choices) != 0 {
+		t.Fatalf("se esperaba que no haya opciones de tienda para un empleado con tenant asociado, se obtuvo %+v", choices)
 	}
 }
 
@@ -418,7 +533,8 @@ func TestGenerateToken_ConfiguredSecret(t *testing.T) {
 	}
 
 	tenantID := "tenant-1"
-	token, err := GenerateToken("user-1", "user@test.com", "admin", &tenantID)
+	brandID := "brand-1"
+	token, err := GenerateToken("user-1", "user@test.com", "admin", &tenantID, &brandID)
 	if err != nil {
 		t.Fatalf("no se esperaba error generando token: %v", err)
 	}
@@ -428,7 +544,7 @@ func TestGenerateToken_ConfiguredSecret(t *testing.T) {
 		t.Fatalf("no se esperaba error validando token: %v", err)
 	}
 
-	if claims.UserID != "user-1" || claims.Email != "user@test.com" || claims.Role != "admin" || claims.TenantID != tenantID {
+	if claims.UserID != "user-1" || claims.Email != "user@test.com" || claims.Role != "admin" || claims.TenantID != tenantID || claims.BrandID == nil || *claims.BrandID != brandID {
 		t.Fatalf("claims inesperados: %+v", claims)
 	}
 }
@@ -441,7 +557,7 @@ func TestGenerateToken_MissingSecret(t *testing.T) {
 
 	jwtSecret = nil
 
-	_, err := GenerateToken("user-1", "user@test.com", "admin", nil)
+	_, err := GenerateToken("user-1", "user@test.com", "admin", nil, nil)
 	if !errors.Is(err, ErrJWTSecretRequired) {
 		t.Fatalf("se esperaba ErrJWTSecretRequired generando token, se obtuvo %v", err)
 	}

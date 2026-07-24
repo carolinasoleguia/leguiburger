@@ -6,6 +6,7 @@ import TenantListView from '../views/owner/TenantListView.vue';
 import AdminListView from '../views/owner/AdminListView.vue';
 import BrandListView from '../views/owner/BrandListView.vue';
 import AdminDashboard from '../views/tenant/AdminDashboard.vue';
+import AdminLandingView from '../views/tenant/AdminLandingView.vue';
 import EmployeeDashboard from '../views/tenant/EmployeeDashboard.vue';
 import UnauthorizedView from '../views/shared/UnauthorizedView.vue';
 import NotFoundView from '../views/shared/NotFoundView.vue';
@@ -45,6 +46,12 @@ const routes = [
         redirect: { name: 'OwnerTenants' }
       }
     ]
+  },
+  {
+    path: '/admin/landing',
+    name: 'AdminLanding',
+    component: AdminLandingView,
+    meta: { requiresAuth: true, roles: ['admin'] }
   },
   {
     path: '/tenant/:tenantId/admin',
@@ -88,7 +95,7 @@ router.beforeEach((to, from, next) => {
       return next({ path: '/owner' });
     }
     if (role === 'admin') {
-      return next({ path: `/tenant/${auth.tenantId.value}/admin` });
+      return next({ path: '/admin/landing' });
     }
     if (role === 'employee') {
       return next({ path: `/tenant/${auth.tenantId.value}/employee` });
