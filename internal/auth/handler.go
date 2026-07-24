@@ -29,6 +29,11 @@ func (h *Handler) HandleAuthRoutes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if trimmedPath == "api/auth/login/lookup" && r.Method == http.MethodPost {
+		h.LoginLookup(w, r)
+		return
+	}
+
 	RespondWithError(w, http.StatusNotFound, "NOT_FOUND", "Recurso no encontrado")
 }
 

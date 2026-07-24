@@ -13,6 +13,7 @@ import (
 type mockAuthRepository struct {
 	getByEmailAndTenantFn func(ctx context.Context, tenantID, email string) (*models.Employee, error)
 	getByEmailFn          func(ctx context.Context, email string) (*models.Employee, error)
+	getAllByEmailFn       func(ctx context.Context, email string) ([]models.Employee, error)
 }
 
 func (m *mockAuthRepository) GetByEmailAndTenant(ctx context.Context, tenantID, email string) (*models.Employee, error) {
@@ -25,6 +26,13 @@ func (m *mockAuthRepository) GetByEmailAndTenant(ctx context.Context, tenantID, 
 func (m *mockAuthRepository) GetByEmail(ctx context.Context, email string) (*models.Employee, error) {
 	if m.getByEmailFn != nil {
 		return m.getByEmailFn(ctx, email)
+	}
+	return nil, nil
+}
+
+func (m *mockAuthRepository) GetAllByEmail(ctx context.Context, email string) ([]models.Employee, error) {
+	if m.getAllByEmailFn != nil {
+		return m.getAllByEmailFn(ctx, email)
 	}
 	return nil, nil
 }
@@ -227,23 +235,23 @@ func TestService_Login(t *testing.T) {
 			expectSuccess: true,
 		},
 		{
-			name:     "empleado sin tenant devuelve tenant requerido",
+			name:     "empleado sin tenant puede iniciar sesion como admin",
 			tenantID: "",
 			email:    validEmail,
 			password: password,
 			mockRepoGlobal: func(ctx context.Context, email string) (*models.Employee, error) {
 				return dummyEmployee, nil
 			},
-			expectedErr:   ErrTenantRequired,
-			expectSuccess: false,
+			expectedErr:   nil,
+			expectSuccess: true,
 		},
 		{
-			name:     "empleado con tenant incorrecto devuelve forbidden",
+			name:     "empleado con tenant distinto puede iniciar sesion si es admin de la misma marca",
 			tenantID: "tenant-uuid-2",
 			email:    validEmail,
 			password: password,
 			mockTenant: func(ctx context.Context, id string) (*models.Tenant, error) {
-				return &models.Tenant{ID: id, Active: true}, nil
+				return &models.Tenant{ID: id, BrandID: "brand-uuid-1", Active: true}, nil
 			},
 			mockRepo: func(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 				return nil, nil
@@ -251,8 +259,8 @@ func TestService_Login(t *testing.T) {
 			mockRepoGlobal: func(ctx context.Context, email string) (*models.Employee, error) {
 				return dummyEmployee, nil
 			},
-			expectedErr:   ErrForbiddenTenant,
-			expectSuccess: false,
+			expectedErr:   nil,
+			expectSuccess: true,
 		},
 		{
 			name:     "tenant inexistente devuelve tenant invalido",

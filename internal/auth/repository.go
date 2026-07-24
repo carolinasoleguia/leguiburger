@@ -13,6 +13,7 @@ import (
 type Repository interface {
 	GetByEmailAndTenant(ctx context.Context, tenantID, email string) (*models.Employee, error)
 	GetByEmail(ctx context.Context, email string) (*models.Employee, error)
+	GetAllByEmail(ctx context.Context, email string) ([]models.Employee, error)
 }
 
 type repository struct{}
@@ -50,4 +51,16 @@ func (r *repository) GetByEmail(ctx context.Context, email string) (*models.Empl
 		return nil, err
 	}
 	return &emp, nil
+}
+
+func (r *repository) GetAllByEmail(ctx context.Context, email string) ([]models.Employee, error) {
+	var employees []models.Employee
+	err := db.DB.WithContext(ctx).
+		Where("LOWER(email) = LOWER(?) AND is_active = true", email).
+		Find(&employees).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return employees, nil
 }

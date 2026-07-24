@@ -1,4 +1,4 @@
-import { apiFetch } from './api.js';
+import { apiFetch, postJSON } from './api.js';
 
 export async function login(credentials) {
   const response = await apiFetch('/auth/login', {
@@ -12,4 +12,8 @@ export async function login(credentials) {
   }
 
   return response.json();
+}
+
+export async function lookupTenantOptions(credentials) {
+  return postJSON('/auth/login/lookup', credentials);
 }

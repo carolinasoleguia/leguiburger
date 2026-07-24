@@ -31,7 +31,10 @@ export async function postJSON(path, body) {
   const response = await apiFetch(path, { method: 'POST', body: JSON.stringify(body) });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.message || 'Error en la petición POST');
+    const err = new Error(payload.message || 'Error en la petición POST');
+    try { err.code = payload.code } catch (e) {}
+    err.status = response.status;
+    throw err;
   }
   return response.json();
 }
@@ -40,7 +43,10 @@ export async function putJSON(path, body) {
   const response = await apiFetch(path, { method: 'PUT', body: JSON.stringify(body) });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.message || 'Error en la petición PUT');
+    const err = new Error(payload.message || 'Error en la petición PUT');
+    try { err.code = payload.code } catch (e) {}
+    err.status = response.status;
+    throw err;
   }
   return response.json();
 }
@@ -49,7 +55,10 @@ export async function deleteJSON(path) {
   const response = await apiFetch(path, { method: 'DELETE' });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.message || 'Error en la petición DELETE');
+    const err = new Error(payload.message || 'Error en la petición DELETE');
+    try { err.code = payload.code } catch (e) {}
+    err.status = response.status;
+    throw err;
   }
   if (response.status === 204) {
     return null;

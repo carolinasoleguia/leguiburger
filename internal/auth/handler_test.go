@@ -10,7 +10,8 @@ import (
 )
 
 type mockAuthService struct {
-	loginFn func(ctx context.Context, tenantID, email, password string) (*LoginResponse, error)
+	loginFn             func(ctx context.Context, tenantID, email, password string) (*LoginResponse, error)
+	lookupTenantsFn     func(ctx context.Context, email, password string) ([]TenantChoice, error)
 }
 
 func (m *mockAuthService) Login(ctx context.Context, tenantID, email, password string) (*LoginResponse, error) {
@@ -18,6 +19,13 @@ func (m *mockAuthService) Login(ctx context.Context, tenantID, email, password s
 		return nil, ErrInvalidCredentials
 	}
 	return m.loginFn(ctx, tenantID, email, password)
+}
+
+func (m *mockAuthService) LookupTenantsForEmail(ctx context.Context, email, password string) ([]TenantChoice, error) {
+	if m.lookupTenantsFn == nil {
+		return nil, ErrInvalidCredentials
+	}
+	return m.lookupTenantsFn(ctx, email, password)
 }
 
 func TestHandler_Login(t *testing.T) {

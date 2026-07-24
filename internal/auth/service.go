@@ -42,8 +42,14 @@ type EmployeeDTO struct {
 	IsActive  bool    `json:"is_active"`
 }
 
+type TenantChoice struct {
+	TenantID string `json:"tenant_id"`
+	Label    string `json:"label"`
+}
+
 type Service interface {
 	Login(ctx context.Context, tenantID, email, password string) (*LoginResponse, error)
+	LookupTenantsForEmail(ctx context.Context, email, password string) ([]TenantChoice, error)
 }
 
 type service struct {
@@ -73,7 +79,7 @@ func (s *service) Login(ctx context.Context, tenantID, email, password string) (
 		return nil, err
 	}
 
-	if !isGlobalRole(employee.Role) && (employee.TenantID == nil || *employee.TenantID != cleanTenantID) {
+	if !isGlobalRole(employee.Role) && !isBrandOwnerRole(employee.Role) && (employee.TenantID == nil || *employee.TenantID != cleanTenantID) {
 		return nil, ErrForbiddenTenant
 	}
 
@@ -97,6 +103,80 @@ func (s *service) Login(ctx context.Context, tenantID, email, password string) (
 	}, nil
 }
 
+func (s *service) LookupTenantsForEmail(ctx context.Context, email, password string) ([]TenantChoice, error) {
+	cleanEmail := strings.ToLower(strings.TrimSpace(email))
+	cleanPassword := strings.TrimSpace(password)
+
+	if cleanEmail == "" || cleanPassword == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	employees, err := s.repo.GetAllByEmail(ctx, cleanEmail)
+	if err != nil {
+		return nil, err
+	}
+	if len(employees) == 0 {
+		return nil, ErrInvalidCredentials
+	}
+
+	choicesMap := map[string]TenantChoice{}
+	matchedGlobal := false
+
+	for _, employee := range employees {
+		if employee.PasswordHash == "" {
+			continue
+		}
+
+		if bcrypt.CompareHashAndPassword([]byte(employee.PasswordHash), []byte(cleanPassword)) != nil {
+			continue
+		}
+
+		if isGlobalRole(employee.Role) {
+			matchedGlobal = true
+			continue
+		}
+
+		if employee.TenantID == nil {
+			continue
+		}
+
+		tenant, err := s.getActiveTenant(ctx, *employee.TenantID)
+		if err != nil || tenant == nil {
+			continue
+		}
+
+		choicesMap[tenant.ID] = TenantChoice{
+			TenantID: tenant.ID,
+			Label:    tenant.Subdomain,
+		}
+	}
+
+	if len(choicesMap) == 0 {
+		if matchedGlobal {
+			return []TenantChoice{}, nil
+		}
+		return nil, ErrInvalidCredentials
+	}
+
+	choices := make([]TenantChoice, 0, len(choicesMap))
+	for _, choice := range choicesMap {
+		choices = append(choices, choice)
+	}
+
+	return choices, nil
+}
+
+func (s *service) getActiveTenant(ctx context.Context, tenantID string) (*models.Tenant, error) {
+	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if tenant == nil || !tenant.Active {
+		return nil, nil
+	}
+	return tenant, nil
+}
+
 func (s *service) findEmployeeForLogin(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 	if tenantID == "" {
 		employee, err := s.repo.GetByEmail(ctx, email)
@@ -106,10 +186,10 @@ func (s *service) findEmployeeForLogin(ctx context.Context, tenantID, email stri
 		if employee == nil {
 			return nil, ErrInvalidCredentials
 		}
-		if !isGlobalRole(employee.Role) {
-			return nil, ErrTenantRequired
+		if isGlobalRole(employee.Role) || isBrandOwnerRole(employee.Role) {
+			return employee, nil
 		}
-		return employee, nil
+		return nil, ErrTenantRequired
 	}
 
 	if err := s.validateTenant(ctx, tenantID); err != nil {
@@ -131,11 +211,43 @@ func (s *service) findEmployeeForLogin(ctx context.Context, tenantID, email stri
 	if globalEmployee == nil {
 		return nil, ErrInvalidCredentials
 	}
-	if !isGlobalRole(globalEmployee.Role) {
-		return nil, ErrForbiddenTenant
+	if isGlobalRole(globalEmployee.Role) {
+		return globalEmployee, nil
+	}
+	if isBrandOwnerRole(globalEmployee.Role) {
+		if globalEmployee.TenantID == nil {
+			return nil, ErrInvalidCredentials
+		}
+		sameBrand, err := s.isTenantInSameBrand(ctx, tenantID, *globalEmployee.TenantID)
+		if err != nil {
+			return nil, err
+		}
+		if sameBrand {
+			return globalEmployee, nil
+		}
 	}
 
-	return globalEmployee, nil
+	return nil, ErrForbiddenTenant
+}
+
+func (s *service) isTenantInSameBrand(ctx context.Context, tenantID, otherTenantID string) (bool, error) {
+	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		return false, err
+	}
+	if tenant == nil || !tenant.Active {
+		return false, ErrTenantNotFoundForAuth
+	}
+
+	otherTenant, err := s.tenantRepo.GetByID(ctx, otherTenantID)
+	if err != nil {
+		return false, err
+	}
+	if otherTenant == nil || !otherTenant.Active {
+		return false, ErrTenantNotFoundForAuth
+	}
+
+	return tenant.BrandID == otherTenant.BrandID, nil
 }
 
 func (s *service) validateTenant(ctx context.Context, tenantID string) error {
@@ -152,6 +264,15 @@ func (s *service) validateTenant(ctx context.Context, tenantID string) error {
 func isGlobalRole(role string) bool {
 	switch strings.ToLower(strings.TrimSpace(role)) {
 	case RoleOwner, RoleSuperAdmin:
+		return true
+	default:
+		return false
+	}
+}
+
+func isBrandOwnerRole(role string) bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "admin":
 		return true
 	default:
 		return false
