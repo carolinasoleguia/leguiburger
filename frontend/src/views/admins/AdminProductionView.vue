@@ -1,26 +1,27 @@
 <template>
-  <section>
+  <section class="admin-production">
     <div class="section-header">
-      <div class="section-title">
+      <div>
         <h2>Gestión de producción</h2>
-        <p>Registra y revisa los reportes de producción diaria.</p>
+        <p>Seleccioná un tenant para cargar sus insumos.</p>
       </div>
-      <button class="btn-primary" @click="openCreateModal">Nuevo registro</button>
     </div>
 
     <div class="card">
-      <div class="filters-grid">
+      <div class="controls-grid">
         <div class="input-group">
-          <label>Desde</label>
-          <input type="date" v-model="filters.start_date" />
+          <label>Tenant</label>
+          <select v-model="selectedTenant">
+            <option value="">-- Seleccionar tenant --</option>
+            <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
+              {{ tenant.subdomain || tenant.id }}
+            </option>
+          </select>
         </div>
-        <div class="input-group">
-          <label>Hasta</label>
-          <input type="date" v-model="filters.end_date" />
-        </div>
-        <div class="filter-actions">
-          <button class="btn-secondary" @click="resetFilters">Limpiar filtros</button>
-          <button class="btn-primary" @click="loadReports">Aplicar filtros</button>
+        <div class="control-actions">
+          <button class="btn-primary" @click="loadSupplies" :disabled="!selectedTenant || loading">
+            Cargar insumos
+          </button>
         </div>
       </div>
 
@@ -28,325 +29,140 @@
         <span class="spinner-large"></span>
       </div>
       <div v-else-if="error" class="status-text error">{{ error }}</div>
-      <div v-else-if="reports.length === 0" class="status-text">No se encontraron registros de producción.</div>
+      <div v-else-if="!selectedTenant" class="status-text">Seleccioná un tenant para ver sus insumos.</div>
+      <div v-else-if="supplies.length === 0" class="status-text">No se encontraron insumos para el tenant seleccionado.</div>
 
       <table v-else class="data-table">
         <thead>
           <tr>
             <th>#</th>
-            <th>Fecha</th>
-            <th>Medallones</th>
-            <th>Panes</th>
-            <th>Creado por</th>
-            <th>Notas</th>
-            <th>Acciones</th>
+            <th>Nombre</th>
+            <th>Stock</th>
+            <th>Precio mayorista</th>
+            <th>Unidad</th>
+            <th>Activo</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(report, index) in reports" :key="report.id">
+          <tr v-for="(supply, index) in supplies" :key="supply.id">
             <td>{{ index + 1 }}</td>
-            <td>{{ report.production_date }}</td>
-            <td>{{ report.medallions_produced }}</td>
-            <td>{{ report.breads_purchased }}</td>
-            <td>{{ report.created_by || '-' }}</td>
-            <td>{{ report.notes || '-' }}</td>
-            <td class="table-actions">
-              <button class="btn-secondary" @click="openEditModal(report)">Editar</button>
-              <button class="btn-danger" @click="confirmDelete(report)">Eliminar</button>
-            </td>
+            <td>{{ supply.name }}</td>
+            <td>{{ supply.current_stock }}</td>
+            <td>{{ supply.current_wholesale_cost }}</td>
+            <td>{{ supply.measurement_unit }}</td>
+            <td>{{ supply.is_active ? 'Sí' : 'No' }}</td>
           </tr>
         </tbody>
       </table>
-
-      <div class="production-summary">
-        <div class="summary-card">
-          <h3>Total medallones</h3>
-          <p>{{ totalMedallions }}</p>
-        </div>
-        <div class="summary-card">
-          <h3>Total panes</h3>
-          <p>{{ totalBreads }}</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="card chart-card">
-      <h3>Últimos 7 días</h3>
-      <div class="chart-grid">
-        <div class="chart-block">
-          <p>Medallones</p>
-          <div class="chart-bar" v-for="point in chartData.medallions" :key="point.date">
-            <div class="bar" :style="`height: ${point.value / maxChartValue * 100}%`"></div>
-            <span>{{ point.date.slice(5) }}</span>
-          </div>
-        </div>
-        <div class="chart-block">
-          <p>Panes</p>
-          <div class="chart-bar" v-for="point in chartData.breads" :key="point.date">
-            <div class="bar" :style="`height: ${point.value / maxChartValue * 100}%`"></div>
-            <span>{{ point.date.slice(5) }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="isCreateModalOpen || isEditModalOpen" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-card">
-        <button type="button" class="modal-close" @click="closeModal">×</button>
-        <h3>{{ isEditModalOpen ? 'Editar registro' : 'Nuevo registro' }}</h3>
-        <p>{{ isEditModalOpen ? 'Actualiza el registro de producción.' : 'Crea un nuevo registro de producción para el tenant.' }}</p>
-
-        <form @submit.prevent="isEditModalOpen ? submitEdit() : submitCreate()">
-          <div class="input-grid">
-            <div class="input-group">
-              <label>Fecha</label>
-              <input type="date" v-model="form.production_date" required />
-            </div>
-            <div class="input-group">
-              <label>Medallones producidos</label>
-              <input type="number" min="0" v-model.number="form.medallions_produced" required />
-            </div>
-            <div class="input-group">
-              <label>Panes comprados</label>
-              <input type="number" min="0" v-model.number="form.breads_purchased" required />
-            </div>
-          </div>
-          <div class="input-group">
-            <label>Notas</label>
-            <textarea rows="4" v-model="form.notes"></textarea>
-          </div>
-
-          <div class="modal-actions">
-            <button type="button" class="btn-secondary" @click="closeModal" :disabled="actionLoading">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="actionLoading">
-              <span v-if="actionLoading" class="spinner"></span>
-              {{ actionLoading ? 'Guardando...' : (isEditModalOpen ? 'Guardar cambios' : 'Crear registro') }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div v-if="isConfirmDeleteOpen" class="alert-overlay" @click.self="closeDeleteConfirm">
-      <div class="alert-card">
-        <h3 class="alert-title">Confirmar eliminación</h3>
-        <p class="alert-message">¿Eliminar el registro del {{ deleteTarget.production_date }}?</p>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary" @click="closeDeleteConfirm">Cancelar</button>
-          <button type="button" class="btn-danger" @click="deleteReport" :disabled="actionLoading">
-            <span v-if="actionLoading" class="spinner"></span>
-            {{ actionLoading ? 'Eliminando...' : 'Eliminar' }}
-          </button>
-        </div>
-      </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { getJSON, postJSON, putJSON, deleteJSON } from '../../services/api.js';
-import { useRoute } from 'vue-router';
+import { ref, onMounted } from 'vue';
+import { apiFetch, getJSON } from '../../services/api.js';
+import { useAuth } from '../../composables/useAuth.js';
 
-const route = useRoute();
-const tenantId = route.params.tenantId;
-
-const reports = ref([]);
-const loading = ref(true);
+const auth = useAuth();
+const tenants = ref([]);
+const selectedTenant = ref('');
+const supplies = ref([]);
+const loading = ref(false);
 const error = ref('');
-const filters = ref({ start_date: '', end_date: '' });
-const isCreateModalOpen = ref(false);
-const isEditModalOpen = ref(false);
-const isConfirmDeleteOpen = ref(false);
-const deleteTarget = ref(null);
-const actionLoading = ref(false);
-const form = ref({
-  id: '',
-  production_date: '',
-  medallions_produced: 0,
-  breads_purchased: 0,
-  notes: ''
-});
 
-const totalMedallions = computed(() => reports.value.reduce((sum, item) => sum + (item.medallions_produced || 0), 0));
-const totalBreads = computed(() => reports.value.reduce((sum, item) => sum + (item.breads_purchased || 0), 0));
+async function loadTenants() {
+  try {
+    const brandId = auth.user.value?.brand_id || auth.user.value?.brandID || '';
+    const url = brandId ? `/tenants?brand_id=${brandId}` : '/tenants';
+    tenants.value = await getJSON(url);
+  } catch (err) {
+    error.value = err.message || 'No se pudieron cargar los tenants.';
+  }
+}
 
-const chartData = computed(() => {
-  const sorted = [...reports.value].sort((a, b) => a.production_date.localeCompare(b.production_date));
-  return {
-    medallions: sorted.map(r => ({ date: r.production_date, value: r.medallions_produced || 0 })),
-    breads: sorted.map(r => ({ date: r.production_date, value: r.breads_purchased || 0 }))
-  };
-});
+async function loadSupplies() {
+  if (!selectedTenant.value) {
+    supplies.value = [];
+    return;
+  }
 
-const maxChartValue = computed(() => {
-  const values = [...chartData.value.medallions, ...chartData.value.breads].map(item => item.value);
-  const max = Math.max(...values, 1);
-  return max;
-});
-
-async function loadReports() {
   loading.value = true;
   error.value = '';
   try {
-    const query = new URLSearchParams();
-    if (filters.value.start_date) query.set('start_date', filters.value.start_date);
-    if (filters.value.end_date) query.set('end_date', filters.value.end_date);
-    reports.value = await getJSON(`/production?${query.toString()}`);
+    const response = await apiFetch('/supplies', {
+      method: 'GET',
+      headers: {
+        'X-Tenant-ID': selectedTenant.value
+      }
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => 'Error cargando insumos');
+      throw new Error(text || 'Error cargando insumos');
+    }
+    supplies.value = await response.json();
   } catch (err) {
-    error.value = err.message || 'No se pudieron cargar los reportes de producción.';
+    error.value = err.message || 'No se pudieron cargar los insumos.';
+    supplies.value = [];
   } finally {
     loading.value = false;
   }
 }
 
-function resetFilters() {
-  filters.value.start_date = '';
-  filters.value.end_date = '';
-  loadReports();
-}
-
-function openCreateModal() {
-  form.value = { id: '', production_date: '', medallions_produced: 0, breads_purchased: 0, notes: '' };
-  isCreateModalOpen.value = true;
-}
-
-function openEditModal(report) {
-  form.value = { ...report };
-  isEditModalOpen.value = true;
-}
-
-function closeModal() {
-  isCreateModalOpen.value = false;
-  isEditModalOpen.value = false;
-}
-
-function confirmDelete(report) {
-  deleteTarget.value = report;
-  isConfirmDeleteOpen.value = true;
-}
-
-function closeDeleteConfirm() {
-  isConfirmDeleteOpen.value = false;
-  deleteTarget.value = null;
-}
-
-async function submitCreate() {
-  actionLoading.value = true;
-  try {
-    await postJSON('/production', { ...form.value, tenant_id: tenantId });
-    await loadReports();
-    closeModal();
-  } catch (err) {
-    error.value = err.message || 'Error al crear registro de producción.';
-  } finally {
-    actionLoading.value = false;
+onMounted(async () => {
+  await loadTenants();
+  if (tenants.value.length > 0) {
+    selectedTenant.value = tenants.value[0].id;
+    await loadSupplies();
   }
-}
-
-async function submitEdit() {
-  actionLoading.value = true;
-  try {
-    await putJSON(`/production/${form.value.id}`, {
-      production_date: form.value.production_date,
-      medallions_produced: form.value.medallions_produced,
-      breads_purchased: form.value.breads_purchased,
-      notes: form.value.notes
-    });
-    await loadReports();
-    closeModal();
-  } catch (err) {
-    error.value = err.message || 'Error al actualizar registro de producción.';
-  } finally {
-    actionLoading.value = false;
-  }
-}
-
-async function deleteReport() {
-  actionLoading.value = true;
-  try {
-    await deleteJSON(`/production/${deleteTarget.value.id}`);
-    await loadReports();
-    closeDeleteConfirm();
-  } catch (err) {
-    error.value = err.message || 'Error al eliminar registro de producción.';
-  } finally {
-    actionLoading.value = false;
-  }
-}
-
-onMounted(loadReports);
+});
 </script>
 
 <style scoped>
-.filters-grid {
+.admin-production {
+  padding: 1.5rem;
+}
+.controls-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  margin-bottom: 24px;
-}
-.filter-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-.production-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 24px;
-}
-.summary-card {
-  padding: 24px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-.summary-card h3 {
-  margin: 0 0 12px;
-  color: var(--text-muted);
-}
-.summary-card p {
-  margin: 0;
-  font-size: 2.4rem;
-  font-weight: 700;
-}
-.chart-card {
-  padding: 24px;
-}
-.chart-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-top: 18px;
-}
-.chart-block {
-  padding: 18px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.9);
-}
-.chart-bar {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 10px;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
   align-items: end;
-  min-height: 220px;
 }
-.chart-bar .bar {
+.control-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.data-table {
   width: 100%;
-  background: linear-gradient(180deg, rgba(96, 165, 250, 0.5), rgba(37, 99, 235, 0.9));
-  border-radius: 12px 12px 0 0;
+  border-collapse: collapse;
 }
-.chart-bar span {
-  margin-top: 8px;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-align: center;
+.data-table th,
+.data-table td {
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  text-align: left;
 }
-@media (max-width: 900px) {
-  .filters-grid,
-  .chart-grid,
-  .production-summary {
+.centered-loading {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+.status-text {
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  margin-top: 1rem;
+}
+.status-text.error {
+  color: #f87171;
+}
+@media (max-width: 720px) {
+  .controls-grid {
     grid-template-columns: 1fr;
   }
 }

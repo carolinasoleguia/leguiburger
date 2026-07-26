@@ -26,17 +26,17 @@ var (
 )
 
 type LoginResponse struct {
-	Token    string      `json:"token"`
+	Token    string       `json:"token"`
 	Employee *EmployeeDTO `json:"employee,omitempty"`
-	User     *UserDTO    `json:"user,omitempty"`
+	User     *UserDTO     `json:"user,omitempty"`
 }
 
 type UserDTO struct {
-	ID        string  `json:"id"`
-	Email     string  `json:"email"`
-	Role      string  `json:"role"`
-	BrandID   *string `json:"brand_id,omitempty"`
-	IsActive  bool    `json:"is_active"`
+	ID       string  `json:"id"`
+	Email    string  `json:"email"`
+	Role     string  `json:"role"`
+	BrandID  *string `json:"brand_id,omitempty"`
+	IsActive bool    `json:"is_active"`
 }
 
 type EmployeeDTO struct {

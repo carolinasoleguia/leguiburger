@@ -122,7 +122,7 @@ router.beforeEach((to, from, next) => {
       return next({ path: '/owner' });
     }
     if (role === 'admin') {
-      return next({ path: '/admin/landing' });
+      return next({ path: '/admin' });
     }
     if (role === 'employee') {
       return next({ path: `/tenant/${auth.tenantId.value}/employee` });

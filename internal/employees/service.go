@@ -26,7 +26,7 @@ type Service interface {
 	CreateEmployee(ctx context.Context, tenantID, firstName, lastName, email, password, phone, role string) (*models.Employee, error)
 	GetEmployee(ctx context.Context, tenantID, id string) (*models.Employee, error)
 	ListEmployees(ctx context.Context, tenantID string) ([]models.Employee, error)
-	GetAllEmployees(ctx context.Context) ([]models.Employee, error) // <--- Agregado a la interfaz
+	GetAllEmployees(ctx context.Context) ([]models.Employee, error)
 	UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, password, phone, role string, isActive *bool) (*models.Employee, error)
 	DeleteEmployee(ctx context.Context, tenantID, id string) error
 }
@@ -138,15 +138,28 @@ func (s *service) GetEmployee(ctx context.Context, tenantID, id string) (*models
 }
 
 func (s *service) ListEmployees(ctx context.Context, tenantID string) ([]models.Employee, error) {
-	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	if tenant == nil {
-		return nil, ErrTenantNotFoundForEmployee
+	cleanTenantID := strings.TrimSpace(tenantID)
+	if cleanTenantID != "" {
+		tenant, err := s.tenantRepo.GetByID(ctx, cleanTenantID)
+		if err != nil {
+			return nil, err
+		}
+		if tenant == nil {
+			return nil, ErrTenantNotFoundForEmployee
+		}
+
+		return s.repo.FetchAll(ctx, cleanTenantID)
 	}
 
-	return s.repo.FetchAll(ctx, tenantID)
+	claims, ok := auth.GetClaimsFromContext(ctx)
+	if ok && strings.EqualFold(strings.TrimSpace(claims.Role), "admin") && claims.BrandID != nil {
+		brandID := strings.TrimSpace(*claims.BrandID)
+		if brandID != "" {
+			return s.repo.FetchByBrandID(ctx, brandID)
+		}
+	}
+
+	return nil, ErrTenantNotFoundForEmployee
 }
 
 func (s *service) GetAllEmployees(ctx context.Context) ([]models.Employee, error) {
@@ -168,26 +181,28 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 		if claims.BrandID != nil {
 			actorBrandID = strings.TrimSpace(*claims.BrandID)
 		}
-
-		if actorRole != auth.RoleOwner {
-			if tenantID == "" {
-				tenantID = actorTenantID
-			}
-			if tenantID == "" {
-				return nil, ErrUnauthorizedAction
-			}
-			if !s.isAllowedTenantForActor(ctx, tenantID, actorRole, actorTenantID, actorBrandID) {
-				return nil, ErrUnauthorizedAction
-			}
-		}
 	}
 
-	employee, err := s.repo.GetByID(ctx, tenantID, id)
+	employee, err := s.repo.GetByID(ctx, strings.TrimSpace(tenantID), id)
 	if err != nil {
 		return nil, err
 	}
 	if employee == nil {
 		return nil, ErrEmployeeNotFound
+	}
+
+	effectiveTenantID := ""
+	if employee.TenantID != nil {
+		effectiveTenantID = strings.TrimSpace(*employee.TenantID)
+	}
+
+	if actorRole != auth.RoleOwner {
+		if effectiveTenantID == "" {
+			return nil, ErrUnauthorizedAction
+		}
+		if !s.isAllowedTenantForActor(ctx, effectiveTenantID, actorRole, actorTenantID, actorBrandID) {
+			return nil, ErrUnauthorizedAction
+		}
 	}
 
 	if actorRole != auth.RoleOwner && getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
@@ -228,7 +243,7 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 			return nil, ErrInvalidEmployeeData
 		}
 		if cleanEmail != employee.Email {
-			existing, err := s.repo.GetByEmail(ctx, tenantID, cleanEmail)
+			existing, err := s.repo.GetByEmail(ctx, effectiveTenantID, cleanEmail)
 			if err != nil {
 				return nil, err
 			}
@@ -260,18 +275,6 @@ func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error
 		if claims.BrandID != nil {
 			actorBrandID = strings.TrimSpace(*claims.BrandID)
 		}
-
-		if actorRole != auth.RoleOwner {
-			if tenantID == "" {
-				tenantID = actorTenantID
-			}
-			if tenantID == "" {
-				return ErrUnauthorizedAction
-			}
-			if !s.isAllowedTenantForActor(ctx, tenantID, actorRole, actorTenantID, actorBrandID) {
-				return ErrUnauthorizedAction
-			}
-		}
 	}
 
 	employee, err := s.repo.GetByID(ctx, tenantID, id)
@@ -282,11 +285,25 @@ func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error
 		return ErrEmployeeNotFound
 	}
 
+	effectiveTenantID := ""
+	if employee.TenantID != nil {
+		effectiveTenantID = strings.TrimSpace(*employee.TenantID)
+	}
+
+	if actorRole != auth.RoleOwner {
+		if effectiveTenantID == "" {
+			return ErrUnauthorizedAction
+		}
+		if !s.isAllowedTenantForActor(ctx, effectiveTenantID, actorRole, actorTenantID, actorBrandID) {
+			return ErrUnauthorizedAction
+		}
+	}
+
 	if actorRole != auth.RoleOwner && getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
 		return ErrUnauthorizedAction
 	}
 
-	return s.repo.Delete(ctx, tenantID, id)
+	return s.repo.Delete(ctx, effectiveTenantID, id)
 }
 
 func (s *service) isAllowedTenantForActor(ctx context.Context, tenantID, actorRole, actorTenantID, actorBrandID string) bool {

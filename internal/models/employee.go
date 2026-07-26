@@ -5,6 +5,7 @@ import "time"
 type Employee struct {
 	ID           string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
 	TenantID     *string   `gorm:"type:uuid" json:"tenant_id,omitempty"`
+	Tenant       *Tenant   `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
 	FirstName    string    `gorm:"type:varchar(50);not null" json:"first_name"`
 	LastName     string    `gorm:"type:varchar(50);not null" json:"last_name"`
 	Email        string    `gorm:"type:varchar(150);unique;not null" json:"email"`

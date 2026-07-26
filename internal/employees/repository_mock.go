@@ -7,13 +7,14 @@ import (
 )
 
 type mockRepository struct {
-	createFunc     func(ctx context.Context, employee *models.Employee) error
-	getByIDFunc    func(ctx context.Context, tenantID, id string) (*models.Employee, error)
-	getByEmailFunc func(ctx context.Context, tenantID, email string) (*models.Employee, error)
-	fetchAllFunc   func(ctx context.Context, tenantID string) ([]models.Employee, error)
-	getAllFunc     func(ctx context.Context) ([]models.Employee, error)
-	updateFunc     func(ctx context.Context, employee *models.Employee) error
-	deleteFunc     func(ctx context.Context, tenantID, id string) error
+	createFunc      func(ctx context.Context, employee *models.Employee) error
+	getByIDFunc     func(ctx context.Context, tenantID, id string) (*models.Employee, error)
+	getByEmailFunc  func(ctx context.Context, tenantID, email string) (*models.Employee, error)
+	fetchAllFunc    func(ctx context.Context, tenantID string) ([]models.Employee, error)
+	fetchByBrandIDFn func(ctx context.Context, brandID string) ([]models.Employee, error)
+	getAllFunc      func(ctx context.Context) ([]models.Employee, error)
+	updateFunc      func(ctx context.Context, employee *models.Employee) error
+	deleteFunc      func(ctx context.Context, tenantID, id string) error
 }
 
 func (m *mockRepository) Create(ctx context.Context, employee *models.Employee) error {
@@ -49,6 +50,13 @@ func (m *mockRepository) FetchAll(ctx context.Context, tenantID string) ([]model
 		return nil, nil
 	}
 	return m.fetchAllFunc(ctx, tenantID)
+}
+
+func (m *mockRepository) FetchByBrandID(ctx context.Context, brandID string) ([]models.Employee, error) {
+	if m.fetchByBrandIDFn == nil {
+		return nil, nil
+	}
+	return m.fetchByBrandIDFn(ctx, brandID)
 }
 
 func (m *mockRepository) Update(ctx context.Context, employee *models.Employee) error {

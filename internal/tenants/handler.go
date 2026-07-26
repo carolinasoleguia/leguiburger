@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-playground/validator/v10"
 	"leguiburger/internal/auth"
 	"leguiburger/internal/models"
+
+	"github.com/go-playground/validator/v10"
 )
 
 type Handler struct {

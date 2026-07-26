@@ -4,9 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"strings"
+
+	"leguiburger/internal/db"
+	"leguiburger/internal/models"
+
+	"gorm.io/gorm"
 )
 
 type contextKey string
@@ -20,31 +24,25 @@ type ErrorResponse struct {
 
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Println("--- [DEBUG AuthMiddleware] Entró una petición a:", r.Method, r.URL.Path)
 
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			log.Println("DEBUG: No vino el header Authorization")
 			RespondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Se requiere token de autenticacion")
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			log.Println("DEBUG: Formato de token inválido")
 			RespondWithError(w, http.StatusUnauthorized, "INVALID_TOKEN_FORMAT", "Formato de token invalido")
 			return
 		}
 
-		log.Println("DEBUG: Token recibido, intentando validar...")
 		claims, err := ValidateToken(parts[1])
 		if err != nil {
-			log.Println("DEBUG: Error al validar token:", err)
 			RespondWithError(w, http.StatusUnauthorized, "INVALID_OR_EXPIRED_TOKEN", "Token invalido o expirado")
 			return
 		}
 
-		log.Println("DEBUG: ¡Token VÁLIDO! Permitiendo acceso al usuario:", claims.Email)
 		ctx := context.WithValue(r.Context(), ClaimsKey, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
@@ -97,7 +95,30 @@ func TenantIDFromRequest(r *http.Request) (string, error) {
 		return "", ErrMissingTenantID
 	}
 
-	if claims.Role != RoleOwner && tenantID != strings.TrimSpace(claims.TenantID) {
+	if claims.Role == RoleOwner {
+		return tenantID, nil
+	}
+
+	if strings.EqualFold(strings.TrimSpace(claims.Role), "admin") && claims.BrandID != nil {
+		if tenantID == strings.TrimSpace(claims.TenantID) {
+			return tenantID, nil
+		}
+
+		var tenant models.Tenant
+		err := db.DB.WithContext(r.Context()).First(&tenant, "id = ?", tenantID).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return "", ErrForbiddenTenant
+			}
+			return "", ErrForbiddenTenant
+		}
+		if strings.TrimSpace(tenant.BrandID) != strings.TrimSpace(*claims.BrandID) {
+			return "", ErrForbiddenTenant
+		}
+		return tenantID, nil
+	}
+
+	if tenantID != strings.TrimSpace(claims.TenantID) {
 		return "", ErrForbiddenTenant
 	}
 

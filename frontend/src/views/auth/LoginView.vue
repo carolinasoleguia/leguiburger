@@ -62,7 +62,7 @@ function navigateToRole() {
     return;
   }
   if (role === 'admin') {
-    router.push('/admin/landing');
+    router.push('/admin');
     return;
   }
   if (role === 'employee') {

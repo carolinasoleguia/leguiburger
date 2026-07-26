@@ -14,7 +14,8 @@ type Repository interface {
 	GetByID(ctx context.Context, tenantID, id string) (*models.Employee, error)
 	GetByEmail(ctx context.Context, tenantID, email string) (*models.Employee, error)
 	FetchAll(ctx context.Context, tenantID string) ([]models.Employee, error)
-	GetAll(ctx context.Context) ([]models.Employee, error) // <--- Agregado a la interfaz
+	FetchByBrandID(ctx context.Context, brandID string) ([]models.Employee, error)
+	GetAll(ctx context.Context) ([]models.Employee, error)
 	Update(ctx context.Context, employee *models.Employee) error
 	Delete(ctx context.Context, tenantID, id string) error
 }
@@ -31,7 +32,10 @@ func (r *repository) Create(ctx context.Context, employee *models.Employee) erro
 
 func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.Employee, error) {
 	var employee models.Employee
-	query := db.DB.WithContext(ctx).Where("id = ?", id)
+	query := db.DB.WithContext(ctx).
+		Preload("Tenant").
+		Preload("Tenant.Brand").
+		Where("id = ?", id)
 	if tenantID != "" {
 		query = query.Where("tenant_id = ?", tenantID)
 	}
@@ -65,7 +69,29 @@ func (r *repository) GetByEmail(ctx context.Context, tenantID, email string) (*m
 
 func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.Employee, error) {
 	var employees []models.Employee
-	err := db.DB.WithContext(ctx).Where("tenant_id = ?", tenantID).Find(&employees).Error
+	err := db.DB.WithContext(ctx).
+		Preload("Tenant").
+		Preload("Tenant.Brand").
+		Where("tenant_id = ?", tenantID).
+		Find(&employees).
+		Error
+	return employees, err
+}
+
+func (r *repository) FetchByBrandID(ctx context.Context, brandID string) ([]models.Employee, error) {
+	var employees []models.Employee
+
+	err := db.DB.WithContext(ctx).
+		Model(&models.Employee{}).
+		Preload("Tenant", func(tx *gorm.DB) *gorm.DB {
+			return tx.Select("id", "subdomain", "brand_id")
+		}).
+		Preload("Tenant.Brand").
+		Joins("JOIN tenants ON tenants.id = employees.tenant_id").
+		Where("tenants.brand_id = ?", brandID).
+		Find(&employees).
+		Error
+
 	return employees, err
 }
 
@@ -73,8 +99,11 @@ func (r *repository) GetAll(ctx context.Context) ([]models.Employee, error) {
 	var employees []models.Employee
 
 	err := db.DB.WithContext(ctx).
+		Preload("Tenant").
+		Preload("Tenant.Brand").
 		Where("tenant_id IS NOT NULL").
-		Find(&employees).Error
+		Find(&employees).
+		Error
 	if err != nil {
 		return nil, err
 	}

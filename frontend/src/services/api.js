@@ -11,8 +11,8 @@ function buildHeaders(customHeaders = {}) {
 
 export async function apiFetch(path, options = {}) {
   const response = await fetch(`${BASE_API}${path}`, {
+    ...options,
     headers: buildHeaders(options.headers),
-    ...options
   });
 
   return response;
