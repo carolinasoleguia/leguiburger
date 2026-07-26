@@ -40,6 +40,11 @@ type Repository interface {
 	GetAll(
 		ctx context.Context,
 	) ([]models.Tenant, error)
+
+	GetByBrandID(
+		ctx context.Context,
+		brandID string,
+	) ([]models.Tenant, error)
 }
 
 type repository struct{}
@@ -71,6 +76,28 @@ func (r *repository) GetAll(
 	err := db.DB.
 		WithContext(ctx).
 		Preload("Brand").
+		Order("created_at DESC").
+		Find(&tenants).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tenants, nil
+}
+
+func (r *repository) GetByBrandID(
+	ctx context.Context,
+	brandID string,
+) ([]models.Tenant, error) {
+
+	var tenants []models.Tenant
+
+	err := db.DB.
+		WithContext(ctx).
+		Preload("Brand").
+		Where("brand_id = ?", brandID).
 		Order("created_at DESC").
 		Find(&tenants).
 		Error

@@ -17,6 +17,7 @@ type mockRepository struct {
 	updateFunc                 func(ctx context.Context, tenant *models.Tenant) error
 	deleteFunc                 func(ctx context.Context, id string) error
 	getAllFunc                 func(ctx context.Context) ([]models.Tenant, error)
+	getByBrandIDFunc           func(ctx context.Context, brandID string) ([]models.Tenant, error)
 }
 
 func (m *mockRepository) Create(
@@ -92,6 +93,16 @@ func (m *mockRepository) GetAll(
 		return m.getAllFunc(ctx)
 	}
 
+	return nil, nil
+}
+
+func (m *mockRepository) GetByBrandID(
+	ctx context.Context,
+	brandID string,
+) ([]models.Tenant, error) {
+	if m.getByBrandIDFunc != nil {
+		return m.getByBrandIDFunc(ctx, brandID)
+	}
 	return nil, nil
 }
 

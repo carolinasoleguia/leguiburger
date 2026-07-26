@@ -2,12 +2,17 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useAuth } from '../composables/useAuth.js';
 import LoginView from '../views/auth/LoginView.vue';
 import OwnerDashboard from '../views/owner/OwnerDashboard.vue';
+import OwnerHomeView from '../views/owner/OwnerHomeView.vue';
 import TenantListView from '../views/owner/TenantListView.vue';
 import AdminListView from '../views/owner/AdminListView.vue';
 import BrandListView from '../views/owner/BrandListView.vue';
-import AdminDashboard from '../views/tenant/AdminDashboard.vue';
-import AdminLandingView from '../views/tenant/AdminLandingView.vue';
-import EmployeeDashboard from '../views/tenant/EmployeeDashboard.vue';
+import AdminDashboard from '../views/admins/AdminDashboard.vue';
+import AdminLandingView from '../views/admins/AdminLandingView.vue';
+import AdminHomeView from '../views/admins/AdminHomeView.vue';
+import AdminEmployeesView from '../views/admins/AdminEmployeesView.vue';
+import AdminProductionView from '../views/admins/AdminProductionView.vue';
+import EmployeeDashboard from '../views/employees/EmployeeDashboard.vue';
+import CatalogLandingView from '../views/buyers/CatalogLandingView.vue';
 import UnauthorizedView from '../views/shared/UnauthorizedView.vue';
 import NotFoundView from '../views/shared/NotFoundView.vue';
 
@@ -27,6 +32,16 @@ const routes = [
     meta: { requiresAuth: true, roles: ['owner'] },
     children: [
       {
+        path: '',
+        name: 'OwnerHome',
+        component: OwnerHomeView
+      },
+      {
+        path: 'brands',
+        name: 'OwnerBrands',
+        component: BrandListView
+      },
+      {
         path: 'tenants',
         name: 'OwnerTenants',
         component: TenantListView
@@ -35,15 +50,6 @@ const routes = [
         path: 'admins',
         name: 'OwnerAdmins',
         component: AdminListView
-      },
-      {
-        path: 'brands',
-        name: 'OwnerBrands',
-        component: BrandListView
-      },
-      {
-        path: '',
-        redirect: { name: 'OwnerTenants' }
       }
     ]
   },
@@ -54,16 +60,37 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin'] }
   },
   {
-    path: '/tenant/:tenantId/admin',
-    name: 'TenantAdminDashboard',
+    path: '/admin',
     component: AdminDashboard,
-    meta: { requiresAuth: true, roles: ['admin'], tenantMatch: true }
+    meta: { requiresAuth: true, roles: ['admin'] },
+    children: [
+      {
+        path: '',
+        name: 'AdminHome',
+        component: AdminHomeView
+      },
+      {
+        path: 'employees',
+        name: 'AdminEmployees',
+        component: AdminEmployeesView
+      },
+      {
+        path: 'production',
+        name: 'AdminProduction',
+        component: AdminProductionView
+      }
+    ]
   },
   {
     path: '/tenant/:tenantId/employee',
     name: 'TenantEmployeeDashboard',
     component: EmployeeDashboard,
     meta: { requiresAuth: true, roles: ['employee'], tenantMatch: true }
+  },
+  {
+    path: '/catalogo',
+    name: 'CatalogLanding',
+    component: CatalogLandingView
   },
   {
     path: '/unauthorized',

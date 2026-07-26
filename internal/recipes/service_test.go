@@ -12,6 +12,7 @@ type mockTenantRepository struct {
 	getByIDFunc                func(ctx context.Context, id string) (*models.Tenant, error)
 	getAllFunc                 func(ctx context.Context) ([]models.Tenant, error)
 	getByBrandAndSubdomainFunc func(ctx context.Context, brandID, subdomain string) (*models.Tenant, error)
+	getByBrandIDFunc           func(ctx context.Context, brandID string) ([]models.Tenant, error)
 }
 
 func (m *mockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
@@ -46,6 +47,12 @@ func (m *mockTenantRepository) GetByBrandAndSubdomain(
 		return m.getByBrandAndSubdomainFunc(ctx, brandID, subdomain)
 	}
 
+	return nil, nil
+}
+func (m *mockTenantRepository) GetByBrandID(ctx context.Context, brandID string) ([]models.Tenant, error) {
+	if m.getByBrandIDFunc != nil {
+		return m.getByBrandIDFunc(ctx, brandID)
+	}
 	return nil, nil
 }
 func (m *mockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {

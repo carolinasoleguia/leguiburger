@@ -23,6 +23,7 @@ type mockTenantRepository struct {
 		id string,
 	) (*models.Tenant, error)
 
+	getByBrandIDFn func(ctx context.Context, brandID string) ([]models.Tenant, error)
 	getAllFunc func(
 		ctx context.Context,
 	) ([]models.Tenant, error)
@@ -194,6 +195,12 @@ func TestCreateEmployee_Success(t *testing.T) {
 
 }
 
+func (m *mockTenantRepository) GetByBrandID(ctx context.Context, brandID string) ([]models.Tenant, error) {
+	if m.getByBrandIDFn != nil {
+		return m.getByBrandIDFn(ctx, brandID)
+	}
+	return nil, nil
+}
 func TestCreateEmployee_AdminSameBrand_Success(t *testing.T) {
 	repo := &mockRepository{
 		getByEmailFunc: func(

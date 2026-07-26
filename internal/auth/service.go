@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"leguiburger/internal/models"
-	"leguiburger/internal/tenants"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -63,10 +62,10 @@ type Service interface {
 
 type service struct {
 	repo       Repository
-	tenantRepo tenants.Repository
+	tenantRepo TenantRepository
 }
 
-func NewService(repo Repository, tenantRepo tenants.Repository) (Service, error) {
+func NewService(repo Repository, tenantRepo TenantRepository) (Service, error) {
 	if err := ConfigureJWTSecret(os.Getenv("JWT_SECRET")); err != nil {
 		return nil, err
 	}
@@ -190,23 +189,9 @@ func (s *service) LookupTenantsForEmail(ctx context.Context, email, password str
 			continue
 		}
 
-		tenant, err := s.getActiveTenant(ctx, *employee.TenantID)
-		if err != nil || tenant == nil {
-			continue
-		}
-
-		choicesMap[tenant.ID] = TenantChoice{
-			TenantID: tenant.ID,
-			Label:    tenant.Subdomain,
-		}
-		if err != nil || tenant == nil {
-			continue
-		}
-
-		choicesMap[tenant.ID] = TenantChoice{
-			TenantID: tenant.ID,
-			Label:    tenant.Subdomain,
-		}
+		// If the employee already belongs to a tenant, skip tenant selection
+		// and return an empty list so the frontend won't prompt for a tenant.
+		return []TenantChoice{}, nil
 	}
 
 	for _, user := range users {
@@ -356,6 +341,10 @@ func (s *service) validateTenant(ctx context.Context, tenantID string) error {
 		return ErrTenantNotFoundForAuth
 	}
 	return nil
+}
+
+type TenantRepository interface {
+	GetByID(ctx context.Context, id string) (*models.Tenant, error)
 }
 
 func isGlobalRole(role string) bool {

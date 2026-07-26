@@ -13,7 +13,3 @@ export async function login(credentials) {
 
   return response.json();
 }
-
-export async function lookupTenantOptions(credentials) {
-  return postJSON('/auth/login/lookup', credentials);
-}

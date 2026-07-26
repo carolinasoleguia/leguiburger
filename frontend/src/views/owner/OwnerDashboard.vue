@@ -3,9 +3,10 @@
     <aside class="sidebar">
       <div class="brand-logo">🍔 Leguiburger SaaS</div>
       <nav>
-        <router-link to="/owner/tenants" class="nav-link" active-class="active">Tenants</router-link>
-        <router-link to="/owner/admins" class="nav-link" active-class="active">Admins</router-link>
-        <router-link to="/owner/brands" class="nav-link" active-class="active">Brands</router-link>
+        <router-link to="/owner" class="nav-link" active-class="" exact-active-class="active">Home</router-link>
+        <router-link to="/owner/brands" class="nav-link" active-class="active">Gestión de Marcas</router-link>
+        <router-link to="/owner/tenants" class="nav-link" active-class="active">Gestión de Locales</router-link>
+        <router-link to="/owner/admins" class="nav-link" active-class="active">Gestión de Administradores</router-link>
       </nav>
       <button class="btn-logout" @click="logout">Cerrar sesión</button>
     </aside>

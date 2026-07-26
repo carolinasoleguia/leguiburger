@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"leguiburger/internal/auth"
 	"leguiburger/internal/models"
 )
 
@@ -39,6 +40,11 @@ type mockService struct {
 
 	getAllTenantsFunc func(
 		ctx context.Context,
+	) ([]models.Tenant, error)
+
+	getTenantsByBrandIDFunc func(
+		ctx context.Context,
+		brandID string,
 	) ([]models.Tenant, error)
 }
 
@@ -103,6 +109,13 @@ func (m *mockService) GetAllTenants(
 	return nil, nil
 }
 
+func (m *mockService) GetTenantsByBrandID(ctx context.Context, brandID string) ([]models.Tenant, error) {
+	if m.getTenantsByBrandIDFunc != nil {
+		return m.getTenantsByBrandIDFunc(ctx, brandID)
+	}
+	return nil, nil
+}
+
 // ---------------- TESTS ----------------
 
 func TestHandler_RegisterTenant_Success(t *testing.T) {
@@ -144,6 +157,9 @@ func TestHandler_RegisterTenant_Success(t *testing.T) {
 		"/api/tenants",
 		bytes.NewBuffer(body),
 	)
+
+	// add owner claims to context so handler permits creation
+	req = req.WithContext(context.WithValue(req.Context(), auth.ClaimsKey, &auth.Claims{Role: auth.RoleOwner}))
 
 	rec := httptest.NewRecorder()
 

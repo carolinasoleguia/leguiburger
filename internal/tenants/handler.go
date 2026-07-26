@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"leguiburger/internal/auth"
+	"leguiburger/internal/models"
 )
 
 type Handler struct {
@@ -120,6 +122,18 @@ func (h *Handler) HandleTenantRoutes(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) CreateTenant(w http.ResponseWriter, r *http.Request) {
 
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok || claims.Role != auth.RoleOwner {
+		h.respondWithError(
+			w,
+			http.StatusForbidden,
+			"FORBIDDEN",
+			"Acceso denegado: Se requiere rol de Owner",
+			nil,
+		)
+		return
+	}
+
 	var req CreateTenantRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -201,10 +215,68 @@ func (h *Handler) CreateTenant(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetTenants(w http.ResponseWriter, r *http.Request) {
 
-	tenants, err := h.service.GetAllTenants(r.Context())
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(
+			w,
+			http.StatusUnauthorized,
+			"UNAUTHORIZED",
+			"No autorizado",
+			nil,
+		)
+		return
+	}
+
+	brandIDQuery := strings.TrimSpace(r.URL.Query().Get("brand_id"))
+	var tenants []models.Tenant
+	var err error
+
+	if brandIDQuery != "" {
+		if claims.Role != auth.RoleOwner && (claims.BrandID == nil || strings.TrimSpace(*claims.BrandID) != brandIDQuery) {
+			h.respondWithError(
+				w,
+				http.StatusForbidden,
+				"FORBIDDEN",
+				"Acceso denegado: no puedes listar tenants de otra marca",
+				nil,
+			)
+			return
+		}
+
+		tenants, err = h.service.GetTenantsByBrandID(r.Context(), brandIDQuery)
+	} else {
+		tenants, err = h.service.GetAllTenants(r.Context())
+
+		if err != nil {
+			h.respondWithError(
+				w,
+				http.StatusInternalServerError,
+				"INTERNAL_SERVER_ERROR",
+				"Error al obtener los comercios",
+				nil,
+			)
+
+			return
+		}
+
+		if claims.Role == "admin" {
+			brandID := ""
+			if claims.BrandID != nil {
+				brandID = strings.TrimSpace(*claims.BrandID)
+			}
+			if brandID != "" {
+				filtered := make([]models.Tenant, 0, len(tenants))
+				for _, tenant := range tenants {
+					if tenant.Brand.ID == brandID || tenant.BrandID == brandID {
+						filtered = append(filtered, tenant)
+					}
+				}
+				tenants = filtered
+			}
+		}
+	}
 
 	if err != nil {
-
 		h.respondWithError(
 			w,
 			http.StatusInternalServerError,
@@ -212,7 +284,6 @@ func (h *Handler) GetTenants(w http.ResponseWriter, r *http.Request) {
 			"Error al obtener los comercios",
 			nil,
 		)
-
 		return
 	}
 

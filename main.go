@@ -15,6 +15,7 @@ import (
 	"leguiburger/internal/products"
 	"leguiburger/internal/recipes"
 	"leguiburger/internal/shipping"
+	"leguiburger/internal/production"
 	"leguiburger/internal/supplies"
 	"leguiburger/internal/tenants"
 	"leguiburger/internal/users"
@@ -48,9 +49,9 @@ func main() {
 	tenantService := tenants.NewService(tenantRepo, brandRepo)
 	tenantHandler := tenants.NewHandler(tenantService)
 
-	tenantHandlerWithOwner := auth.AuthMiddleware(auth.RequireOwnerMiddleware(tenantHandler.HandleTenantRoutes))
-	http.HandleFunc("/api/tenants", tenantHandlerWithOwner)
-	http.HandleFunc("/api/tenants/", tenantHandlerWithOwner)
+	tenantHandlerWithAuth := auth.AuthMiddleware(tenantHandler.HandleTenantRoutes)
+	http.HandleFunc("/api/tenants", tenantHandlerWithAuth)
+	http.HandleFunc("/api/tenants/", tenantHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
@@ -122,6 +123,14 @@ func main() {
 	userHandler := users.NewHandler(userService)
 	userHandlerWithAuth := auth.AuthMiddleware(userHandler.HandleUserRoutes)
 	registerRoute("/api/users", userHandlerWithAuth)
+
+	//----------------------------------------------------------------//
+
+	productionRepo := production.NewRepository()
+	productionService := production.NewService(productionRepo, tenantRepo)
+	productionHandler := production.NewHandler(productionService)
+	productionHandlerWithAuth := auth.AuthMiddleware(productionHandler.HandleProductionRoutes)
+	registerRoute("/api/production", productionHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 

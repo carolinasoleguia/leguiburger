@@ -3,14 +3,13 @@
     <div class="card">
       <div class="dashboard-header">
         <div>
-          <h1>Panel del Admin</h1>
-          <p>Administra productos, ventas y usuarios del tenant <strong>{{ tenantId }}</strong>.</p>
+          <h1>Hola Empleado!</h1>
+          <p>Bienvenido a tu panel.</p>
+          <p>Tenant: <strong>{{ tenantId }}</strong></p>
         </div>
         <button class="btn-logout" @click="logout">Cerrar sesión</button>
       </div>
-      <div class="quick-actions">
-        <router-link :to="`/tenant/${tenantId}/admin`" class="btn-secondary">Vista general</router-link>
-      </div>
+      <div class="role-notice">Tu experiencia es distinta a la del administrador.</div>
     </div>
   </section>
 </template>

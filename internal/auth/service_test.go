@@ -57,6 +57,7 @@ type mockTenantRepository struct {
 	getByIDFn                  func(ctx context.Context, id string) (*models.Tenant, error)
 	getBySubdomainFn           func(ctx context.Context, subdomain string) (*models.Tenant, error)
 	getByNameAndSubdomainFn    func(ctx context.Context, name, subdomain string) (*models.Tenant, error)
+	getByBrandIDFn             func(ctx context.Context, brandID string) ([]models.Tenant, error)
 	getByBrandAndSubdomainFunc func(ctx context.Context, brandID, subdomain string) (*models.Tenant, error)
 	createFn                   func(ctx context.Context, tenant *models.Tenant) error
 	updateFn                   func(ctx context.Context, tenant *models.Tenant) error
@@ -73,7 +74,7 @@ func (m *mockTenantRepository) GetByID(
 		return m.getByIDFn(ctx, id)
 	}
 
-	return nil, nil
+	return &models.Tenant{ID: id, Active: true}, nil
 }
 
 func (m *mockTenantRepository) GetAll(
@@ -121,6 +122,13 @@ func (m *mockTenantRepository) GetByBrandAndSubdomain(
 		return m.getByBrandAndSubdomainFunc(ctx, brandID, subdomain)
 	}
 
+	return nil, nil
+}
+
+func (m *mockTenantRepository) GetByBrandID(ctx context.Context, brandID string) ([]models.Tenant, error) {
+	if m.getByBrandIDFn != nil {
+		return m.getByBrandIDFn(ctx, brandID)
+	}
 	return nil, nil
 }
 

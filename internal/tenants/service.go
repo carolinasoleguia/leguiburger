@@ -38,6 +38,11 @@ type Service interface {
 	GetAllTenants(
 		ctx context.Context,
 	) ([]models.Tenant, error)
+
+	GetTenantsByBrandID(
+		ctx context.Context,
+		brandID string,
+	) ([]models.Tenant, error)
 }
 
 type service struct {
@@ -116,6 +121,14 @@ func (s *service) GetAllTenants(
 ) ([]models.Tenant, error) {
 
 	return s.repo.GetAll(ctx)
+}
+
+func (s *service) GetTenantsByBrandID(
+	ctx context.Context,
+	brandID string,
+) ([]models.Tenant, error) {
+
+	return s.repo.GetByBrandID(ctx, brandID)
 }
 
 // UPDATE
