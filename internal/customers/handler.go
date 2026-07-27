@@ -3,6 +3,7 @@ package customers
 import (
 	"encoding/json"
 	"errors"
+	"leguiburger/internal/auth"
 	"net/http"
 	"strings"
 )
@@ -80,9 +81,17 @@ func (h *Handler) HandleCustomerRoutes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	tenantID, err := auth.TenantIDFromRequest(r)
+	if err != nil {
+		if errors.Is(err, auth.ErrMissingTenantID) {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
+		if errors.Is(err, auth.ErrForbiddenTenant) {
+			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
+			return
+		}
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 
@@ -102,9 +111,17 @@ func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListCustomers(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	tenantID, err := auth.TenantIDFromRequest(r)
+	if err != nil {
+		if errors.Is(err, auth.ErrMissingTenantID) {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
+		if errors.Is(err, auth.ErrForbiddenTenant) {
+			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
+			return
+		}
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 
@@ -118,9 +135,17 @@ func (h *Handler) ListCustomers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetCustomer(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	tenantID, err := auth.TenantIDFromRequest(r)
+	if err != nil {
+		if errors.Is(err, auth.ErrMissingTenantID) {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
+		if errors.Is(err, auth.ErrForbiddenTenant) {
+			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
+			return
+		}
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 
@@ -134,9 +159,17 @@ func (h *Handler) GetCustomer(w http.ResponseWriter, r *http.Request, id string)
 }
 
 func (h *Handler) UpdateCustomer(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	tenantID, err := auth.TenantIDFromRequest(r)
+	if err != nil {
+		if errors.Is(err, auth.ErrMissingTenantID) {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
+		if errors.Is(err, auth.ErrForbiddenTenant) {
+			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
+			return
+		}
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 
@@ -156,9 +189,17 @@ func (h *Handler) UpdateCustomer(w http.ResponseWriter, r *http.Request, id stri
 }
 
 func (h *Handler) DeleteCustomer(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	tenantID, err := auth.TenantIDFromRequest(r)
+	if err != nil {
+		if errors.Is(err, auth.ErrMissingTenantID) {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
+		if errors.Is(err, auth.ErrForbiddenTenant) {
+			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
+			return
+		}
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 

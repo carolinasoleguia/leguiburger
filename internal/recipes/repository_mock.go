@@ -5,61 +5,61 @@ import (
 	"leguiburger/internal/models"
 )
 
-type MockRepository struct {
-	OnCreate                 func(ctx context.Context, recipe *models.Recipe) error
-	OnGetByID                func(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error)
-	OnFetchAll               func(ctx context.Context, tenantID string) ([]models.Recipe, error)
-	OnUpdate                 func(ctx context.Context, recipe *models.Recipe) error
-	OnDelete                 func(ctx context.Context, tenantID, productID, supplyID string) error
-	OnProductExistsForTenant func(ctx context.Context, tenantID, productID string) (bool, error)
-	OnSupplyExistsForTenant  func(ctx context.Context, tenantID, supplyID string) (bool, error)
+type mockRepository struct {
+	createFunc                 func(ctx context.Context, recipe *models.Recipe) error
+	getByIDFunc                func(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error)
+	fetchAllFunc               func(ctx context.Context, tenantID string) ([]models.Recipe, error)
+	updateFunc                 func(ctx context.Context, recipe *models.Recipe) error
+	deleteFunc                 func(ctx context.Context, tenantID, productID, supplyID string) error
+	productExistsForTenantFunc func(ctx context.Context, tenantID, productID string) (bool, error)
+	supplyExistsForTenantFunc  func(ctx context.Context, tenantID, supplyID string) (bool, error)
 }
 
-func (m *MockRepository) Create(ctx context.Context, recipe *models.Recipe) error {
-	if m.OnCreate == nil {
+func (m *mockRepository) Create(ctx context.Context, recipe *models.Recipe) error {
+	if m.createFunc == nil {
 		return nil
 	}
-	return m.OnCreate(ctx, recipe)
+	return m.createFunc(ctx, recipe)
 }
 
-func (m *MockRepository) GetByID(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
-	if m.OnGetByID == nil {
+func (m *mockRepository) GetByID(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
+	if m.getByIDFunc == nil {
 		return nil, nil
 	}
-	return m.OnGetByID(ctx, tenantID, productID, supplyID)
+	return m.getByIDFunc(ctx, tenantID, productID, supplyID)
 }
 
-func (m *MockRepository) FetchAll(ctx context.Context, tenantID string) ([]models.Recipe, error) {
-	if m.OnFetchAll == nil {
+func (m *mockRepository) FetchAll(ctx context.Context, tenantID string) ([]models.Recipe, error) {
+	if m.fetchAllFunc == nil {
 		return nil, nil
 	}
-	return m.OnFetchAll(ctx, tenantID)
+	return m.fetchAllFunc(ctx, tenantID)
 }
 
-func (m *MockRepository) Update(ctx context.Context, recipe *models.Recipe) error {
-	if m.OnUpdate == nil {
+func (m *mockRepository) Update(ctx context.Context, recipe *models.Recipe) error {
+	if m.updateFunc == nil {
 		return nil
 	}
-	return m.OnUpdate(ctx, recipe)
+	return m.updateFunc(ctx, recipe)
 }
 
-func (m *MockRepository) Delete(ctx context.Context, tenantID, productID, supplyID string) error {
-	if m.OnDelete == nil {
+func (m *mockRepository) Delete(ctx context.Context, tenantID, productID, supplyID string) error {
+	if m.deleteFunc == nil {
 		return nil
 	}
-	return m.OnDelete(ctx, tenantID, productID, supplyID)
+	return m.deleteFunc(ctx, tenantID, productID, supplyID)
 }
 
-func (m *MockRepository) ProductExistsForTenant(ctx context.Context, tenantID, productID string) (bool, error) {
-	if m.OnProductExistsForTenant == nil {
+func (m *mockRepository) ProductExistsForTenant(ctx context.Context, tenantID, productID string) (bool, error) {
+	if m.productExistsForTenantFunc == nil {
 		return true, nil
 	}
-	return m.OnProductExistsForTenant(ctx, tenantID, productID)
+	return m.productExistsForTenantFunc(ctx, tenantID, productID)
 }
 
-func (m *MockRepository) SupplyExistsForTenant(ctx context.Context, tenantID, supplyID string) (bool, error) {
-	if m.OnSupplyExistsForTenant == nil {
+func (m *mockRepository) SupplyExistsForTenant(ctx context.Context, tenantID, supplyID string) (bool, error) {
+	if m.supplyExistsForTenantFunc == nil {
 		return true, nil
 	}
-	return m.OnSupplyExistsForTenant(ctx, tenantID, supplyID)
+	return m.supplyExistsForTenantFunc(ctx, tenantID, supplyID)
 }

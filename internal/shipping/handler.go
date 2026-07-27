@@ -3,6 +3,7 @@ package shipping
 import (
 	"encoding/json"
 	"errors"
+	"leguiburger/internal/auth"
 	"net/http"
 	"strings"
 )
@@ -89,9 +90,17 @@ func (h *Handler) HandleShippingRoutes(w http.ResponseWriter, r *http.Request) {
 // --- MÉTODOS DEL CRUD ADAPTADOS ---
 
 func (h *Handler) CreateShippingMethod(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	tenantID, err := auth.TenantIDFromRequest(r)
+	if err != nil {
+		if errors.Is(err, auth.ErrMissingTenantID) {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
+		if errors.Is(err, auth.ErrForbiddenTenant) {
+			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
+			return
+		}
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 
@@ -119,9 +128,17 @@ func (h *Handler) CreateShippingMethod(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListShippingMethods(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	tenantID, err := auth.TenantIDFromRequest(r)
+	if err != nil {
+		if errors.Is(err, auth.ErrMissingTenantID) {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
+		if errors.Is(err, auth.ErrForbiddenTenant) {
+			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
+			return
+		}
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 
@@ -135,9 +152,17 @@ func (h *Handler) ListShippingMethods(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetShippingMethod(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	tenantID, err := auth.TenantIDFromRequest(r)
+	if err != nil {
+		if errors.Is(err, auth.ErrMissingTenantID) {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
+		if errors.Is(err, auth.ErrForbiddenTenant) {
+			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
+			return
+		}
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 
@@ -151,9 +176,17 @@ func (h *Handler) GetShippingMethod(w http.ResponseWriter, r *http.Request, id s
 }
 
 func (h *Handler) UpdateShippingMethod(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	tenantID, err := auth.TenantIDFromRequest(r)
+	if err != nil {
+		if errors.Is(err, auth.ErrMissingTenantID) {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
+		if errors.Is(err, auth.ErrForbiddenTenant) {
+			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
+			return
+		}
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 
@@ -163,7 +196,7 @@ func (h *Handler) UpdateShippingMethod(w http.ResponseWriter, r *http.Request, i
 		return
 	}
 
-	method, err := h.service.UpdateMethod(r.Context(), tenantID, id, input.Name, input.Description, input.Typification, input.Cost, input.EstimatedTime, input.IsActive)
+	method, err := h.service.UpdateMethod(r.Context(), tenantID, id, input.Name, input.Typification, input.Description, input.Cost, input.EstimatedTime, input.IsActive)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -173,9 +206,17 @@ func (h *Handler) UpdateShippingMethod(w http.ResponseWriter, r *http.Request, i
 }
 
 func (h *Handler) DeleteShippingMethod(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	tenantID, err := auth.TenantIDFromRequest(r)
+	if err != nil {
+		if errors.Is(err, auth.ErrMissingTenantID) {
+			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+			return
+		}
+		if errors.Is(err, auth.ErrForbiddenTenant) {
+			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
+			return
+		}
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 

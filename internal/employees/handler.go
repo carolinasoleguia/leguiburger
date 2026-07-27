@@ -3,6 +3,7 @@ package employees
 import (
 	"encoding/json"
 	"errors"
+	"leguiburger/internal/auth"
 	"net/http"
 	"strings"
 )
@@ -16,22 +17,23 @@ func NewHandler(s Service) *Handler {
 }
 
 type CreateInput struct {
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
-	Phone        string `json:"phone"`
-	Role         string `json:"role"`
+	TenantID  string `json:"tenant_id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	Phone     string `json:"phone"`
+	Role      string `json:"role"`
 }
 
 type UpdateInput struct {
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
-	Phone        string `json:"phone"`
-	Role         string `json:"role"`
-	IsActive     *bool  `json:"is_active"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	Phone     string `json:"phone"`
+	Role      string `json:"role"`
+	IsActive  *bool  `json:"is_active"`
 }
 
 type ErrorResponse struct {
@@ -85,19 +87,45 @@ func (h *Handler) HandleEmployeeRoutes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-		return
-	}
-
 	var input CreateInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
 
-	employee, err := h.service.CreateEmployee(r.Context(), tenantID, input.FirstName, input.LastName, input.Email, input.PasswordHash, input.Phone, input.Role)
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		return
+	}
+
+	tenantID := strings.TrimSpace(input.TenantID)
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	}
+
+	normalizedRole := strings.ToLower(strings.TrimSpace(input.Role))
+	isGlobalUser := normalizedRole == "owner" || normalizedRole == "super_admin"
+
+	if tenantID == "" && claims.Role != "owner" {
+		tenantID = strings.TrimSpace(claims.TenantID)
+	}
+
+	if tenantID == "" && !isGlobalUser {
+		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+		return
+	}
+
+	employee, err := h.service.CreateEmployee(
+		r.Context(),
+		tenantID,
+		input.FirstName,
+		input.LastName,
+		input.Email,
+		input.Password,
+		input.Phone,
+		input.Role,
+	)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -107,13 +135,26 @@ func (h *Handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListEmployees(w http.ResponseWriter, r *http.Request) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
 	}
 
-	employees, err := h.service.ListEmployees(r.Context(), tenantID)
+	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(claims.TenantID)
+	}
+
+	var employees interface{}
+	var err error
+
+	if claims.Role == "owner" && tenantID == "" {
+		employees, err = h.service.GetAllEmployees(r.Context())
+	} else {
+		employees, err = h.service.ListEmployees(r.Context(), tenantID)
+	}
+
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -123,10 +164,15 @@ func (h *Handler) ListEmployees(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetEmployee(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
+	}
+
+	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(claims.TenantID)
 	}
 
 	employee, err := h.service.GetEmployee(r.Context(), tenantID, id)
@@ -139,10 +185,15 @@ func (h *Handler) GetEmployee(w http.ResponseWriter, r *http.Request, id string)
 }
 
 func (h *Handler) UpdateEmployee(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
+	}
+
+	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(claims.TenantID)
 	}
 
 	var input UpdateInput
@@ -151,7 +202,7 @@ func (h *Handler) UpdateEmployee(w http.ResponseWriter, r *http.Request, id stri
 		return
 	}
 
-	employee, err := h.service.UpdateEmployee(r.Context(), tenantID, id, input.FirstName, input.LastName, input.Email, input.PasswordHash, input.Phone, input.Role, input.IsActive)
+	employee, err := h.service.UpdateEmployee(r.Context(), tenantID, id, input.FirstName, input.LastName, input.Email, input.Password, input.Phone, input.Role, input.IsActive)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -161,10 +212,15 @@ func (h *Handler) UpdateEmployee(w http.ResponseWriter, r *http.Request, id stri
 }
 
 func (h *Handler) DeleteEmployee(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID := r.Header.Get("X-Tenant-ID")
-	if tenantID == "" {
-		h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 		return
+	}
+
+	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(claims.TenantID)
 	}
 
 	if err := h.service.DeleteEmployee(r.Context(), tenantID, id); err != nil {
@@ -172,7 +228,7 @@ func (h *Handler) DeleteEmployee(w http.ResponseWriter, r *http.Request, id stri
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	h.respondWithJSON(w, http.StatusOK, map[string]string{"message": "Empleado desactivado con éxito"})
 }
 
 func (h *Handler) handleError(w http.ResponseWriter, err error) {
@@ -186,6 +242,8 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_EMPLOYEE_ROLE", err.Error())
 	} else if errors.Is(err, ErrTenantNotFoundForEmployee) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_TENANT", err.Error())
+	} else if errors.Is(err, ErrUnauthorizedAction) {
+		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", err.Error())
 	} else {
 		h.respondWithError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error inesperado")
 	}

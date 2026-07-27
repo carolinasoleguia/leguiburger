@@ -5,53 +5,53 @@ import (
 	"leguiburger/internal/models"
 )
 
-type MockRepository struct {
-	OnCreate    func(ctx context.Context, product *models.Product) error
-	OnGetByID   func(ctx context.Context, tenantID, id string) (*models.Product, error)
-	OnGetByName func(ctx context.Context, tenantID, name string) (*models.Product, error)
-	OnFetchAll  func(ctx context.Context, tenantID string) ([]models.Product, error)
-	OnUpdate    func(ctx context.Context, product *models.Product) error
-	OnDelete    func(ctx context.Context, tenantID, id string) error
+type mockRepository struct {
+	createFunc    func(ctx context.Context, product *models.Product) error
+	getByIDFunc   func(ctx context.Context, tenantID, id string) (*models.Product, error)
+	getByNameFunc func(ctx context.Context, tenantID, name string) (*models.Product, error)
+	fetchAllFunc  func(ctx context.Context, tenantID string) ([]models.Product, error)
+	updateFunc    func(ctx context.Context, product *models.Product) error
+	deleteFunc    func(ctx context.Context, tenantID, id string) error
 }
 
-func (m *MockRepository) Create(ctx context.Context, product *models.Product) error {
-	if m.OnCreate == nil {
+func (m *mockRepository) Create(ctx context.Context, product *models.Product) error {
+	if m.createFunc == nil {
 		return nil
 	}
-	return m.OnCreate(ctx, product)
+	return m.createFunc(ctx, product)
 }
 
-func (m *MockRepository) GetByID(ctx context.Context, tenantID, id string) (*models.Product, error) {
-	if m.OnGetByID == nil {
+func (m *mockRepository) GetByID(ctx context.Context, tenantID, id string) (*models.Product, error) {
+	if m.getByIDFunc == nil {
 		return nil, nil
 	}
-	return m.OnGetByID(ctx, tenantID, id)
+	return m.getByIDFunc(ctx, tenantID, id)
 }
 
-func (m *MockRepository) GetByName(ctx context.Context, tenantID, name string) (*models.Product, error) {
-	if m.OnGetByName == nil {
+func (m *mockRepository) GetByName(ctx context.Context, tenantID, name string) (*models.Product, error) {
+	if m.getByNameFunc == nil {
 		return nil, nil
 	}
-	return m.OnGetByName(ctx, tenantID, name)
+	return m.getByNameFunc(ctx, tenantID, name)
 }
 
-func (m *MockRepository) FetchAll(ctx context.Context, tenantID string) ([]models.Product, error) {
-	if m.OnFetchAll == nil {
+func (m *mockRepository) FetchAll(ctx context.Context, tenantID string) ([]models.Product, error) {
+	if m.fetchAllFunc == nil {
 		return nil, nil
 	}
-	return m.OnFetchAll(ctx, tenantID)
+	return m.fetchAllFunc(ctx, tenantID)
 }
 
-func (m *MockRepository) Update(ctx context.Context, product *models.Product) error {
-	if m.OnUpdate == nil {
+func (m *mockRepository) Update(ctx context.Context, product *models.Product) error {
+	if m.updateFunc == nil {
 		return nil
 	}
-	return m.OnUpdate(ctx, product)
+	return m.updateFunc(ctx, product)
 }
 
-func (m *MockRepository) Delete(ctx context.Context, tenantID, id string) error {
-	if m.OnDelete == nil {
+func (m *mockRepository) Delete(ctx context.Context, tenantID, id string) error {
+	if m.deleteFunc == nil {
 		return nil
 	}
-	return m.OnDelete(ctx, tenantID, id)
+	return m.deleteFunc(ctx, tenantID, id)
 }

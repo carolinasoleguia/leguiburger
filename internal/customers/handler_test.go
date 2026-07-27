@@ -1,43 +1,43 @@
 package customers
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"leguiburger/internal/auth"
 	"leguiburger/internal/models"
+	"leguiburger/internal/testutil"
 )
 
-type MockService struct {
-	OnCreateCustomer func(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error)
+type mockService struct {
+	createCustomerFunc func(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error)
 }
 
-func (m *MockService) CreateCustomer(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error) {
-	return m.OnCreateCustomer(ctx, tenantID, firstName, lastName, email, phone)
+func (m *mockService) CreateCustomer(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error) {
+	return m.createCustomerFunc(ctx, tenantID, firstName, lastName, email, phone)
 }
 
-func (m *MockService) GetCustomer(ctx context.Context, tenantID, id string) (*models.Customer, error) {
+func (m *mockService) GetCustomer(ctx context.Context, tenantID, id string) (*models.Customer, error) {
 	return nil, nil
 }
 
-func (m *MockService) ListCustomers(ctx context.Context, tenantID string) ([]models.Customer, error) {
+func (m *mockService) ListCustomers(ctx context.Context, tenantID string) ([]models.Customer, error) {
 	return nil, nil
 }
 
-func (m *MockService) UpdateCustomer(ctx context.Context, tenantID, id, firstName, lastName, email, phone string) (*models.Customer, error) {
+func (m *mockService) UpdateCustomer(ctx context.Context, tenantID, id, firstName, lastName, email, phone string) (*models.Customer, error) {
 	return nil, nil
 }
 
-func (m *MockService) DeleteCustomer(ctx context.Context, tenantID, id string) error {
+func (m *mockService) DeleteCustomer(ctx context.Context, tenantID, id string) error {
 	return nil
 }
 
 func TestHandler_CreateCustomer_Success(t *testing.T) {
-	mockService := &MockService{
-		OnCreateCustomer: func(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error) {
+	mockService := &mockService{
+		createCustomerFunc: func(ctx context.Context, tenantID, firstName, lastName, email, phone string) (*models.Customer, error) {
 			return &models.Customer{
 				ID:        "new-id",
 				TenantID:  tenantID,
@@ -51,44 +51,36 @@ func TestHandler_CreateCustomer_Success(t *testing.T) {
 
 	handler := NewHandler(mockService)
 
-	body := []byte(`{
+	req := testutil.JSONRequest(t, http.MethodPost, "/api/customers", map[string]interface{}{
 		"first_name": "Juan",
-		"last_name": "Perez",
-		"email": "juan@email.com",
-		"phone": "2215555555"
-	}`)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/customers", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
+		"last_name":  "Perez",
+		"email":      "juan@email.com",
+		"phone":      "2215555555",
+	})
 	req.Header.Set("X-Tenant-ID", "tenant-ok")
+	claims := &auth.Claims{Role: auth.RoleSuperAdmin, TenantID: "tenant-ok"}
+	req = testutil.WithClaims(t, req, claims)
 
 	rr := httptest.NewRecorder()
 	handler.HandleCustomerRoutes(rr, req)
 
-	if rr.Code != http.StatusCreated {
-		t.Errorf("se esperaba status 201 Created, se obtuvo: %d", rr.Code)
-	}
+	testutil.AssertStatus(t, rr, http.StatusCreated)
 
 	var response models.Customer
-	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
-		t.Fatalf("error al decodificar la respuesta JSON: %v", err)
-	}
+	testutil.DecodeJSONBody(t, rr, &response)
 
 	if response.TenantID != "tenant-ok" || response.Email != "juan@email.com" {
-		t.Errorf("se recibió una respuesta incorrecta: %+v", response)
+		t.Errorf("se recibio una respuesta incorrecta: %+v", response)
 	}
 }
 
 func TestHandler_CreateCustomer_MissingTenantHeader(t *testing.T) {
-	handler := NewHandler(&MockService{})
+	handler := NewHandler(&mockService{})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/customers", bytes.NewBuffer([]byte("{}")))
-	req.Header.Set("Content-Type", "application/json")
+	req := testutil.JSONRequest(t, http.MethodPost, "/api/customers", map[string]interface{}{})
 
 	rr := httptest.NewRecorder()
 	handler.HandleCustomerRoutes(rr, req)
 
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("se esperaba status 400 Bad Request por falta de Tenant, se obtuvo: %d", rr.Code)
-	}
+	testutil.AssertStatus(t, rr, http.StatusUnauthorized)
 }
