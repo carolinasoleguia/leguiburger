@@ -12,6 +12,7 @@ DROP TABLE IF EXISTS supply_cost_history CASCADE;
 DROP TABLE IF EXISTS supplies CASCADE;
 DROP TABLE IF EXISTS extras CASCADE;
 DROP TABLE IF EXISTS price_history CASCADE;
+DROP TABLE IF EXISTS tenant_products CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS customers CASCADE;
 DROP TABLE IF EXISTS employees CASCADE;
@@ -96,16 +97,25 @@ CREATE TABLE customers (
 -- 6. PRODUCTOS, EXTRAS Y INSUMOS
 CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    brand_id UUID NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
     name VARCHAR NOT NULL,
     description TEXT,
-    current_price NUMERIC NOT NULL CHECK (current_price >= 0),
-    current_stock INT4 NOT NULL DEFAULT 0 CHECK (current_stock >= 0),
-    track_stock BOOL NOT NULL DEFAULT TRUE,
+    base_price NUMERIC NOT NULL CHECK (base_price >= 0),
     image_url VARCHAR,
     is_active BOOL NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT unique_tenant_product_name UNIQUE (tenant_id, name)
+    CONSTRAINT unique_brand_product_name UNIQUE (brand_id, name)
+);
+
+CREATE TABLE tenant_products (
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    price_override NUMERIC CHECK (price_override IS NULL OR price_override >= 0),
+    current_stock INT4 NOT NULL DEFAULT 0 CHECK (current_stock >= 0),
+    track_stock BOOL NOT NULL DEFAULT TRUE,
+    is_available BOOL NOT NULL DEFAULT TRUE,
+    is_active BOOL NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (tenant_id, product_id)
 );
 
 CREATE TABLE extras (
@@ -138,7 +148,9 @@ CREATE TABLE price_history (
     price NUMERIC NOT NULL CHECK (price >= 0),
     start_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     end_date TIMESTAMPTZ,
-    created_by UUID REFERENCES employees(id) ON DELETE SET NULL
+    created_by UUID REFERENCES employees(id) ON DELETE SET NULL,
+    CONSTRAINT fk_price_history_tenant_product FOREIGN KEY (tenant_id, product_id)
+        REFERENCES tenant_products(tenant_id, product_id) ON DELETE CASCADE
 );
 
 CREATE TABLE supply_cost_history (
@@ -254,7 +266,9 @@ CREATE TABLE production_reports (
 
 -- 9. ÍNDICES DE RENDIMIENTO (Multi-tenant & Dashboards)
 CREATE INDEX idx_customers_tenant ON customers(tenant_id);
-CREATE INDEX idx_products_tenant ON products(tenant_id);
+CREATE INDEX idx_products_brand ON products(brand_id);
+CREATE INDEX idx_tenant_products_tenant ON tenant_products(tenant_id);
+CREATE INDEX idx_tenant_products_product ON tenant_products(product_id);
 CREATE INDEX idx_orders_tenant_status_date ON orders(tenant_id, order_status_id, created_at DESC);
 CREATE INDEX idx_sales_tenant_date ON sales(tenant_id, sale_date DESC);
 CREATE INDEX idx_supplies_low_stock ON supplies(tenant_id) WHERE current_stock < 5 AND is_active = TRUE;

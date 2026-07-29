@@ -35,8 +35,9 @@ func (r *repository) GetByID(ctx context.Context, tenantID, productID, supplyID 
 		Table("recipes").
 		Select("recipes.*").
 		Joins("JOIN products ON products.id = recipes.product_id").
+		Joins("JOIN tenants ON tenants.brand_id = products.brand_id").
 		Joins("JOIN supplies ON supplies.id = recipes.supply_id").
-		Where("products.tenant_id = ? AND supplies.tenant_id = ? AND recipes.product_id = ? AND recipes.supply_id = ?", tenantID, tenantID, productID, supplyID).
+		Where("tenants.id = ? AND supplies.tenant_id = ? AND recipes.product_id = ? AND recipes.supply_id = ?", tenantID, tenantID, productID, supplyID).
 		First(&recipe).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -53,8 +54,9 @@ func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.Re
 		Table("recipes").
 		Select("recipes.*").
 		Joins("JOIN products ON products.id = recipes.product_id").
+		Joins("JOIN tenants ON tenants.brand_id = products.brand_id").
 		Joins("JOIN supplies ON supplies.id = recipes.supply_id").
-		Where("products.tenant_id = ? AND supplies.tenant_id = ?", tenantID, tenantID).
+		Where("tenants.id = ? AND supplies.tenant_id = ?", tenantID, tenantID).
 		Find(&recipes).Error
 	return recipes, err
 }
@@ -72,8 +74,9 @@ func (r *repository) Delete(ctx context.Context, tenantID, productID, supplyID s
 func (r *repository) ProductExistsForTenant(ctx context.Context, tenantID, productID string) (bool, error) {
 	var count int64
 	err := db.DB.WithContext(ctx).
-		Model(&models.Product{}).
-		Where("tenant_id = ? AND id = ?", tenantID, productID).
+		Table("products").
+		Joins("JOIN tenants ON tenants.brand_id = products.brand_id").
+		Where("tenants.id = ? AND products.id = ?", tenantID, productID).
 		Count(&count).Error
 	return count > 0, err
 }

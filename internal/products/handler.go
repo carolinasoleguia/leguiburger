@@ -18,19 +18,18 @@ func NewHandler(s Service) *Handler {
 
 type CreateInput struct {
 	Name         string  `json:"name"`
+	BrandID      string  `json:"brand_id"`
 	Description  string  `json:"description"`
+	BasePrice    float64 `json:"base_price"`
 	CurrentPrice float64 `json:"current_price"`
-	CurrentStock int     `json:"current_stock"`
-	TrackStock   *bool   `json:"track_stock"`
 	ImageURL     string  `json:"image_url"`
 }
 
 type UpdateInput struct {
 	Name         string   `json:"name"`
 	Description  string   `json:"description"`
+	BasePrice    *float64 `json:"base_price"`
 	CurrentPrice *float64 `json:"current_price"`
-	CurrentStock *int     `json:"current_stock"`
-	TrackStock   *bool    `json:"track_stock"`
 	ImageURL     string   `json:"image_url"`
 	IsActive     *bool    `json:"is_active"`
 }
@@ -86,27 +85,24 @@ func (h *Handler) HandleProductRoutes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := auth.TenantIDFromRequest(r)
-	if err != nil {
-		if errors.Is(err, auth.ErrMissingTenantID) {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
-		if errors.Is(err, auth.ErrForbiddenTenant) {
-			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
-			return
-		}
-		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
-		return
-	}
-
 	var input CreateInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
 
-	product, err := h.service.CreateProduct(r.Context(), tenantID, input.Name, input.Description, input.CurrentPrice, input.CurrentStock, input.TrackStock, input.ImageURL)
+	brandID, err := h.brandIDFromRequest(r, input.BrandID)
+	if err != nil {
+		h.handleBrandRequestError(w, err)
+		return
+	}
+
+	basePrice := input.BasePrice
+	if basePrice == 0 && input.CurrentPrice > 0 {
+		basePrice = input.CurrentPrice
+	}
+
+	product, err := h.service.CreateProduct(r.Context(), brandID, input.Name, input.Description, basePrice, input.ImageURL)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -116,21 +112,13 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := auth.TenantIDFromRequest(r)
+	brandID, err := h.brandIDFromRequest(r, r.URL.Query().Get("brand_id"))
 	if err != nil {
-		if errors.Is(err, auth.ErrMissingTenantID) {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
-		if errors.Is(err, auth.ErrForbiddenTenant) {
-			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
-			return
-		}
-		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		h.handleBrandRequestError(w, err)
 		return
 	}
 
-	products, err := h.service.ListProducts(r.Context(), tenantID)
+	products, err := h.service.ListProducts(r.Context(), brandID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -140,21 +128,13 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID, err := auth.TenantIDFromRequest(r)
+	brandID, err := h.brandIDFromRequest(r, r.URL.Query().Get("brand_id"))
 	if err != nil {
-		if errors.Is(err, auth.ErrMissingTenantID) {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
-		if errors.Is(err, auth.ErrForbiddenTenant) {
-			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
-			return
-		}
-		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		h.handleBrandRequestError(w, err)
 		return
 	}
 
-	product, err := h.service.GetProduct(r.Context(), tenantID, id)
+	product, err := h.service.GetProduct(r.Context(), brandID, id)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -164,27 +144,24 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request, id string) 
 }
 
 func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID, err := auth.TenantIDFromRequest(r)
-	if err != nil {
-		if errors.Is(err, auth.ErrMissingTenantID) {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
-		if errors.Is(err, auth.ErrForbiddenTenant) {
-			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
-			return
-		}
-		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
-		return
-	}
-
 	var input UpdateInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
 
-	product, err := h.service.UpdateProduct(r.Context(), tenantID, id, input.Name, input.Description, input.CurrentPrice, input.CurrentStock, input.TrackStock, input.ImageURL, input.IsActive)
+	brandID, err := h.brandIDFromRequest(r, r.URL.Query().Get("brand_id"))
+	if err != nil {
+		h.handleBrandRequestError(w, err)
+		return
+	}
+
+	basePrice := input.BasePrice
+	if basePrice == nil {
+		basePrice = input.CurrentPrice
+	}
+
+	product, err := h.service.UpdateProduct(r.Context(), brandID, id, input.Name, input.Description, basePrice, input.ImageURL, input.IsActive)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -194,21 +171,13 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request, id strin
 }
 
 func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID, err := auth.TenantIDFromRequest(r)
+	brandID, err := h.brandIDFromRequest(r, r.URL.Query().Get("brand_id"))
 	if err != nil {
-		if errors.Is(err, auth.ErrMissingTenantID) {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
-		if errors.Is(err, auth.ErrForbiddenTenant) {
-			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
-			return
-		}
-		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		h.handleBrandRequestError(w, err)
 		return
 	}
 
-	if err := h.service.DeleteProduct(r.Context(), tenantID, id); err != nil {
+	if err := h.service.DeleteProduct(r.Context(), brandID, id); err != nil {
 		h.handleError(w, err)
 		return
 	}
@@ -225,13 +194,46 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_PRODUCT_DATA", err.Error())
 	} else if errors.Is(err, ErrInvalidProductPrice) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_PRODUCT_PRICE", err.Error())
-	} else if errors.Is(err, ErrInvalidProductStock) {
-		h.respondWithError(w, http.StatusBadRequest, "INVALID_PRODUCT_STOCK", err.Error())
-	} else if errors.Is(err, ErrTenantNotFoundForProduct) {
-		h.respondWithError(w, http.StatusBadRequest, "INVALID_TENANT", err.Error())
+	} else if errors.Is(err, ErrBrandNotFoundForProduct) {
+		h.respondWithError(w, http.StatusBadRequest, "INVALID_BRAND", err.Error())
 	} else {
 		h.respondWithError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error inesperado")
 	}
+}
+
+func (h *Handler) brandIDFromRequest(r *http.Request, explicitBrandID string) (string, error) {
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		return "", errors.New("UNAUTHORIZED")
+	}
+
+	brandID := strings.TrimSpace(explicitBrandID)
+	if brandID == "" {
+		brandID = strings.TrimSpace(r.Header.Get("X-Brand-ID"))
+	}
+	if brandID == "" && claims.BrandID != nil {
+		brandID = strings.TrimSpace(*claims.BrandID)
+	}
+	if brandID == "" {
+		return "", ErrBrandNotFoundForProduct
+	}
+	if claims.Role != auth.RoleOwner && claims.BrandID != nil && brandID != strings.TrimSpace(*claims.BrandID) {
+		return "", auth.ErrForbiddenTenant
+	}
+
+	return brandID, nil
+}
+
+func (h *Handler) handleBrandRequestError(w http.ResponseWriter, err error) {
+	if errors.Is(err, auth.ErrForbiddenTenant) {
+		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en esta marca")
+		return
+	}
+	if errors.Is(err, ErrBrandNotFoundForProduct) {
+		h.respondWithError(w, http.StatusBadRequest, "MISSING_BRAND_ID", "Falta el ID de la marca")
+		return
+	}
+	h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 }
 
 func (h *Handler) respondWithError(w http.ResponseWriter, status int, code, msg string) {

@@ -17,6 +17,7 @@ import (
 	"leguiburger/internal/recipes"
 	"leguiburger/internal/shipping"
 	"leguiburger/internal/supplies"
+	"leguiburger/internal/tenantproducts"
 	"leguiburger/internal/tenants"
 	"leguiburger/internal/users"
 
@@ -92,11 +93,20 @@ func main() {
 	//----------------------------------------------------------------//
 
 	productRepo := products.NewRepository()
-	productService := products.NewService(productRepo, tenantRepo)
+	productService := products.NewService(productRepo, brandRepo)
 	productHandler := products.NewHandler(productService)
 	productHandlerWithAuth := auth.AuthMiddleware(productHandler.HandleProductRoutes)
 
 	registerRoute("/api/products", productHandlerWithAuth)
+
+	//----------------------------------------------------------------//
+
+	tenantProductRepo := tenantproducts.NewRepository()
+	tenantProductService := tenantproducts.NewService(tenantProductRepo, tenantRepo)
+	tenantProductHandler := tenantproducts.NewHandler(tenantProductService)
+	tenantProductHandlerWithAuth := auth.AuthMiddleware(tenantProductHandler.HandleTenantProductRoutes)
+
+	registerRoute("/api/tenant-products", tenantProductHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
