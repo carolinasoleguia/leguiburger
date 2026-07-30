@@ -1,18 +1,27 @@
 const BASE_API = '/api';
 
-function buildHeaders(customHeaders = {}) {
+function isFormDataBody(body) {
+  return typeof FormData !== 'undefined' && !!body && (body instanceof FormData || body.constructor?.name === 'FormData');
+}
+
+function buildHeaders(customHeaders = {}, body = null) {
   const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
+  const headers = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...customHeaders
   };
+
+  if (!isFormDataBody(body)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  return headers;
 }
 
 export async function apiFetch(path, options = {}) {
   const response = await fetch(`${BASE_API}${path}`, {
     ...options,
-    headers: buildHeaders(options.headers),
+    headers: buildHeaders(options.headers, options.body),
   });
 
   return response;

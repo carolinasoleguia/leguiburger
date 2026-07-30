@@ -3,9 +3,17 @@ package products
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"leguiburger/internal/auth"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -85,8 +93,8 @@ func (h *Handler) HandleProductRoutes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
-	var input CreateInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	input, uploadedImageURL, err := h.decodeCreateInput(r)
+	if err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
@@ -100,6 +108,9 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	basePrice := input.BasePrice
 	if basePrice == 0 && input.CurrentPrice > 0 {
 		basePrice = input.CurrentPrice
+	}
+	if uploadedImageURL != "" {
+		input.ImageURL = uploadedImageURL
 	}
 
 	product, err := h.service.CreateProduct(r.Context(), brandID, input.Name, input.Description, basePrice, input.ImageURL)
@@ -144,8 +155,8 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request, id string) 
 }
 
 func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request, id string) {
-	var input UpdateInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	input, uploadedImageURL, err := h.decodeUpdateInput(r)
+	if err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
@@ -159,6 +170,9 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request, id strin
 	basePrice := input.BasePrice
 	if basePrice == nil {
 		basePrice = input.CurrentPrice
+	}
+	if uploadedImageURL != "" {
+		input.ImageURL = uploadedImageURL
 	}
 
 	product, err := h.service.UpdateProduct(r.Context(), brandID, id, input.Name, input.Description, basePrice, input.ImageURL, input.IsActive)
@@ -246,4 +260,157 @@ func (h *Handler) respondWithJSON(w http.ResponseWriter, status int, data interf
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
+}
+
+func (h *Handler) decodeCreateInput(r *http.Request) (CreateInput, string, error) {
+	if isMultipartRequest(r) {
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			return CreateInput{}, "", err
+		}
+
+		input := CreateInput{
+			Name:        strings.TrimSpace(r.FormValue("name")),
+			BrandID:     strings.TrimSpace(r.FormValue("brand_id")),
+			Description: r.FormValue("description"),
+			ImageURL:    strings.TrimSpace(r.FormValue("image_url")),
+		}
+		if basePrice, err := parseOptionalFloat(r.FormValue("base_price")); err == nil {
+			input.BasePrice = basePrice
+		}
+		if currentPrice, err := parseOptionalFloat(r.FormValue("current_price")); err == nil {
+			input.CurrentPrice = currentPrice
+		}
+
+		fileHeader, err := fileHeaderFromForm(r, "image_file")
+		if err != nil {
+			return CreateInput{}, "", err
+		}
+		if fileHeader != nil {
+			imageURL, err := h.storeProductImage(fileHeader)
+			if err != nil {
+				return CreateInput{}, "", err
+			}
+			return input, imageURL, nil
+		}
+
+		return input, "", nil
+	}
+
+	var input CreateInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		return CreateInput{}, "", err
+	}
+	return input, "", nil
+}
+
+func (h *Handler) decodeUpdateInput(r *http.Request) (UpdateInput, string, error) {
+	if isMultipartRequest(r) {
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			return UpdateInput{}, "", err
+		}
+
+		input := UpdateInput{
+			Name:        strings.TrimSpace(r.FormValue("name")),
+			Description: r.FormValue("description"),
+			ImageURL:    "",
+		}
+		if basePriceStr := strings.TrimSpace(r.FormValue("base_price")); basePriceStr != "" {
+			if basePrice, err := strconv.ParseFloat(basePriceStr, 64); err == nil {
+				input.BasePrice = &basePrice
+			}
+		}
+		if currentPriceStr := strings.TrimSpace(r.FormValue("current_price")); currentPriceStr != "" {
+			if currentPrice, err := strconv.ParseFloat(currentPriceStr, 64); err == nil {
+				input.CurrentPrice = &currentPrice
+			}
+		}
+		if isActiveStr := strings.TrimSpace(r.FormValue("is_active")); isActiveStr != "" {
+			if isActive, err := strconv.ParseBool(isActiveStr); err == nil {
+				input.IsActive = &isActive
+			}
+		}
+
+		imageURL := strings.TrimSpace(r.FormValue("image_url"))
+		fileHeader, err := fileHeaderFromForm(r, "image_file")
+		if err != nil {
+			return UpdateInput{}, "", err
+		}
+		if fileHeader != nil {
+			savedImageURL, err := h.storeProductImage(fileHeader)
+			if err != nil {
+				return UpdateInput{}, "", err
+			}
+			imageURL = savedImageURL
+		}
+		if imageURL != "" {
+			input.ImageURL = imageURL
+		}
+
+		return input, imageURL, nil
+	}
+
+	var input UpdateInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		return UpdateInput{}, "", err
+	}
+	return input, input.ImageURL, nil
+}
+
+func (h *Handler) storeProductImage(fileHeader *multipart.FileHeader) (string, error) {
+	if fileHeader == nil {
+		return "", nil
+	}
+
+	if err := os.MkdirAll(filepath.Join("uploads", "products"), 0o755); err != nil {
+		return "", err
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	if ext == "" {
+		ext = ".jpg"
+	}
+
+	fileName := fmt.Sprintf("%s%s", uuid.NewString(), ext)
+	filePath := filepath.Join("uploads", "products", fileName)
+
+	destination, err := os.Create(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer destination.Close()
+
+	if _, err := io.Copy(destination, file); err != nil {
+		return "", err
+	}
+
+	return "/uploads/products/" + fileName, nil
+}
+
+func parseOptionalFloat(value string) (float64, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return 0, nil
+	}
+	return strconv.ParseFloat(trimmed, 64)
+}
+
+func fileHeaderFromForm(r *http.Request, fieldName string) (*multipart.FileHeader, error) {
+	_, fileHeader, err := r.FormFile(fieldName)
+	if err != nil {
+		if errors.Is(err, http.ErrMissingFile) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return fileHeader, nil
+}
+
+func isMultipartRequest(r *http.Request) bool {
+	return strings.Contains(strings.ToLower(r.Header.Get("Content-Type")), "multipart/form-data")
 }
