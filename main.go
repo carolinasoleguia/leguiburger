@@ -158,7 +158,6 @@ func main() {
 	//----------------------------------------------------------------//
 	// 📂 SERVIR EL FRONTEND ESTÁTICO EN LA RAIZ (/)
 	//----------------------------------------------------------------//
-	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 	http.HandleFunc("/", spaHandler("./frontend/dist"))
 
 	port := os.Getenv("PORT")

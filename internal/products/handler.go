@@ -4,24 +4,28 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"leguiburger/internal/auth"
+	"log"
 	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/google/uuid"
 )
 
 type Handler struct {
-	service Service
+	service    Service
+	imageStore ProductImageStore
 }
 
 func NewHandler(s Service) *Handler {
-	return &Handler{service: s}
+	return &Handler{service: s, imageStore: NewProductImageStoreFromEnv()}
+}
+
+func NewHandlerWithImageStore(s Service, imageStore ProductImageStore) *Handler {
+	if imageStore == nil {
+		imageStore = NewProductImageStoreFromEnv()
+	}
+	return &Handler{service: s, imageStore: imageStore}
 }
 
 type CreateInput struct {
@@ -95,7 +99,7 @@ func (h *Handler) HandleProductRoutes(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	input, uploadedImageURL, err := h.decodeCreateInput(r)
 	if err != nil {
-		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
+		h.handleDecodeError(w, err)
 		return
 	}
 
@@ -157,7 +161,7 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request, id string) 
 func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request, id string) {
 	input, uploadedImageURL, err := h.decodeUpdateInput(r)
 	if err != nil {
-		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
+		h.handleDecodeError(w, err)
 		return
 	}
 
@@ -213,6 +217,16 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 	} else {
 		h.respondWithError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error inesperado")
 	}
+}
+
+func (h *Handler) handleDecodeError(w http.ResponseWriter, err error) {
+	if errors.Is(err, ErrProductImageUploadFailed) {
+		log.Printf("product image upload failed: %v", err)
+		h.respondWithError(w, http.StatusBadRequest, "IMAGE_UPLOAD_FAILED", "No se pudo subir la imagen del producto")
+		return
+	}
+
+	h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "Datos inválidos")
 }
 
 func (h *Handler) brandIDFromRequest(r *http.Request, explicitBrandID string) (string, error) {
@@ -286,9 +300,9 @@ func (h *Handler) decodeCreateInput(r *http.Request) (CreateInput, string, error
 			return CreateInput{}, "", err
 		}
 		if fileHeader != nil {
-			imageURL, err := h.storeProductImage(fileHeader)
+			imageURL, err := h.storeProductImage(r, fileHeader)
 			if err != nil {
-				return CreateInput{}, "", err
+				return CreateInput{}, "", fmt.Errorf("%w: %v", ErrProductImageUploadFailed, err)
 			}
 			return input, imageURL, nil
 		}
@@ -336,9 +350,9 @@ func (h *Handler) decodeUpdateInput(r *http.Request) (UpdateInput, string, error
 			return UpdateInput{}, "", err
 		}
 		if fileHeader != nil {
-			savedImageURL, err := h.storeProductImage(fileHeader)
+			savedImageURL, err := h.storeProductImage(r, fileHeader)
 			if err != nil {
-				return UpdateInput{}, "", err
+				return UpdateInput{}, "", fmt.Errorf("%w: %v", ErrProductImageUploadFailed, err)
 			}
 			imageURL = savedImageURL
 		}
@@ -356,40 +370,12 @@ func (h *Handler) decodeUpdateInput(r *http.Request) (UpdateInput, string, error
 	return input, input.ImageURL, nil
 }
 
-func (h *Handler) storeProductImage(fileHeader *multipart.FileHeader) (string, error) {
+func (h *Handler) storeProductImage(r *http.Request, fileHeader *multipart.FileHeader) (string, error) {
 	if fileHeader == nil {
 		return "", nil
 	}
 
-	if err := os.MkdirAll(filepath.Join("uploads", "products"), 0o755); err != nil {
-		return "", err
-	}
-
-	file, err := fileHeader.Open()
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
-	if ext == "" {
-		ext = ".jpg"
-	}
-
-	fileName := fmt.Sprintf("%s%s", uuid.NewString(), ext)
-	filePath := filepath.Join("uploads", "products", fileName)
-
-	destination, err := os.Create(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer destination.Close()
-
-	if _, err := io.Copy(destination, file); err != nil {
-		return "", err
-	}
-
-	return "/uploads/products/" + fileName, nil
+	return h.imageStore.SaveProductImage(r.Context(), fileHeader)
 }
 
 func parseOptionalFloat(value string) (float64, error) {

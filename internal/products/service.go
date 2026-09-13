@@ -9,11 +9,12 @@ import (
 )
 
 var (
-	ErrProductNotFound         = errors.New("producto no encontrado")
-	ErrDuplicateProductName    = errors.New("ya existe un producto con ese nombre para esta marca")
-	ErrInvalidProductData      = errors.New("el nombre del producto es obligatorio")
-	ErrInvalidProductPrice     = errors.New("el precio del producto no puede ser negativo")
-	ErrBrandNotFoundForProduct = errors.New("la marca especificada no existe")
+	ErrProductNotFound          = errors.New("producto no encontrado")
+	ErrDuplicateProductName     = errors.New("ya existe un producto con ese nombre para esta marca")
+	ErrInvalidProductData       = errors.New("el nombre del producto es obligatorio")
+	ErrInvalidProductPrice      = errors.New("el precio del producto no puede ser negativo")
+	ErrBrandNotFoundForProduct  = errors.New("la marca especificada no existe")
+	ErrProductImageUploadFailed = errors.New("no se pudo subir la imagen del producto")
 )
 
 type Service interface {
