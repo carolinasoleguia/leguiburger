@@ -3,9 +3,17 @@ package products
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"leguiburger/internal/auth"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -18,19 +26,18 @@ func NewHandler(s Service) *Handler {
 
 type CreateInput struct {
 	Name         string  `json:"name"`
+	BrandID      string  `json:"brand_id"`
 	Description  string  `json:"description"`
+	BasePrice    float64 `json:"base_price"`
 	CurrentPrice float64 `json:"current_price"`
-	CurrentStock int     `json:"current_stock"`
-	TrackStock   *bool   `json:"track_stock"`
 	ImageURL     string  `json:"image_url"`
 }
 
 type UpdateInput struct {
 	Name         string   `json:"name"`
 	Description  string   `json:"description"`
+	BasePrice    *float64 `json:"base_price"`
 	CurrentPrice *float64 `json:"current_price"`
-	CurrentStock *int     `json:"current_stock"`
-	TrackStock   *bool    `json:"track_stock"`
 	ImageURL     string   `json:"image_url"`
 	IsActive     *bool    `json:"is_active"`
 }
@@ -86,27 +93,27 @@ func (h *Handler) HandleProductRoutes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := auth.TenantIDFromRequest(r)
+	input, uploadedImageURL, err := h.decodeCreateInput(r)
 	if err != nil {
-		if errors.Is(err, auth.ErrMissingTenantID) {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
-		if errors.Is(err, auth.ErrForbiddenTenant) {
-			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
-			return
-		}
-		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
-		return
-	}
-
-	var input CreateInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
 
-	product, err := h.service.CreateProduct(r.Context(), tenantID, input.Name, input.Description, input.CurrentPrice, input.CurrentStock, input.TrackStock, input.ImageURL)
+	brandID, err := h.brandIDFromRequest(r, input.BrandID)
+	if err != nil {
+		h.handleBrandRequestError(w, err)
+		return
+	}
+
+	basePrice := input.BasePrice
+	if basePrice == 0 && input.CurrentPrice > 0 {
+		basePrice = input.CurrentPrice
+	}
+	if uploadedImageURL != "" {
+		input.ImageURL = uploadedImageURL
+	}
+
+	product, err := h.service.CreateProduct(r.Context(), brandID, input.Name, input.Description, basePrice, input.ImageURL)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -116,21 +123,13 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
-	tenantID, err := auth.TenantIDFromRequest(r)
+	brandID, err := h.brandIDFromRequest(r, r.URL.Query().Get("brand_id"))
 	if err != nil {
-		if errors.Is(err, auth.ErrMissingTenantID) {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
-		if errors.Is(err, auth.ErrForbiddenTenant) {
-			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
-			return
-		}
-		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		h.handleBrandRequestError(w, err)
 		return
 	}
 
-	products, err := h.service.ListProducts(r.Context(), tenantID)
+	products, err := h.service.ListProducts(r.Context(), brandID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -140,21 +139,13 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID, err := auth.TenantIDFromRequest(r)
+	brandID, err := h.brandIDFromRequest(r, r.URL.Query().Get("brand_id"))
 	if err != nil {
-		if errors.Is(err, auth.ErrMissingTenantID) {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
-		if errors.Is(err, auth.ErrForbiddenTenant) {
-			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
-			return
-		}
-		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		h.handleBrandRequestError(w, err)
 		return
 	}
 
-	product, err := h.service.GetProduct(r.Context(), tenantID, id)
+	product, err := h.service.GetProduct(r.Context(), brandID, id)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -164,27 +155,27 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request, id string) 
 }
 
 func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID, err := auth.TenantIDFromRequest(r)
+	input, uploadedImageURL, err := h.decodeUpdateInput(r)
 	if err != nil {
-		if errors.Is(err, auth.ErrMissingTenantID) {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
-		if errors.Is(err, auth.ErrForbiddenTenant) {
-			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
-			return
-		}
-		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
-		return
-	}
-
-	var input UpdateInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
 
-	product, err := h.service.UpdateProduct(r.Context(), tenantID, id, input.Name, input.Description, input.CurrentPrice, input.CurrentStock, input.TrackStock, input.ImageURL, input.IsActive)
+	brandID, err := h.brandIDFromRequest(r, r.URL.Query().Get("brand_id"))
+	if err != nil {
+		h.handleBrandRequestError(w, err)
+		return
+	}
+
+	basePrice := input.BasePrice
+	if basePrice == nil {
+		basePrice = input.CurrentPrice
+	}
+	if uploadedImageURL != "" {
+		input.ImageURL = uploadedImageURL
+	}
+
+	product, err := h.service.UpdateProduct(r.Context(), brandID, id, input.Name, input.Description, basePrice, input.ImageURL, input.IsActive)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -194,21 +185,13 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request, id strin
 }
 
 func (h *Handler) DeleteProduct(w http.ResponseWriter, r *http.Request, id string) {
-	tenantID, err := auth.TenantIDFromRequest(r)
+	brandID, err := h.brandIDFromRequest(r, r.URL.Query().Get("brand_id"))
 	if err != nil {
-		if errors.Is(err, auth.ErrMissingTenantID) {
-			h.respondWithError(w, http.StatusBadRequest, "MISSING_TENANT_ID", "Falta el ID del comercio")
-			return
-		}
-		if errors.Is(err, auth.ErrForbiddenTenant) {
-			h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en este comercio")
-			return
-		}
-		h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
+		h.handleBrandRequestError(w, err)
 		return
 	}
 
-	if err := h.service.DeleteProduct(r.Context(), tenantID, id); err != nil {
+	if err := h.service.DeleteProduct(r.Context(), brandID, id); err != nil {
 		h.handleError(w, err)
 		return
 	}
@@ -225,13 +208,46 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_PRODUCT_DATA", err.Error())
 	} else if errors.Is(err, ErrInvalidProductPrice) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_PRODUCT_PRICE", err.Error())
-	} else if errors.Is(err, ErrInvalidProductStock) {
-		h.respondWithError(w, http.StatusBadRequest, "INVALID_PRODUCT_STOCK", err.Error())
-	} else if errors.Is(err, ErrTenantNotFoundForProduct) {
-		h.respondWithError(w, http.StatusBadRequest, "INVALID_TENANT", err.Error())
+	} else if errors.Is(err, ErrBrandNotFoundForProduct) {
+		h.respondWithError(w, http.StatusBadRequest, "INVALID_BRAND", err.Error())
 	} else {
 		h.respondWithError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Error inesperado")
 	}
+}
+
+func (h *Handler) brandIDFromRequest(r *http.Request, explicitBrandID string) (string, error) {
+	claims, ok := auth.GetClaimsFromContext(r.Context())
+	if !ok {
+		return "", errors.New("UNAUTHORIZED")
+	}
+
+	brandID := strings.TrimSpace(explicitBrandID)
+	if brandID == "" {
+		brandID = strings.TrimSpace(r.Header.Get("X-Brand-ID"))
+	}
+	if brandID == "" && claims.BrandID != nil {
+		brandID = strings.TrimSpace(*claims.BrandID)
+	}
+	if brandID == "" {
+		return "", ErrBrandNotFoundForProduct
+	}
+	if claims.Role != auth.RoleOwner && claims.BrandID != nil && brandID != strings.TrimSpace(*claims.BrandID) {
+		return "", auth.ErrForbiddenTenant
+	}
+
+	return brandID, nil
+}
+
+func (h *Handler) handleBrandRequestError(w http.ResponseWriter, err error) {
+	if errors.Is(err, auth.ErrForbiddenTenant) {
+		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No puedes operar en esta marca")
+		return
+	}
+	if errors.Is(err, ErrBrandNotFoundForProduct) {
+		h.respondWithError(w, http.StatusBadRequest, "MISSING_BRAND_ID", "Falta el ID de la marca")
+		return
+	}
+	h.respondWithError(w, http.StatusUnauthorized, "UNAUTHORIZED", "No autorizado")
 }
 
 func (h *Handler) respondWithError(w http.ResponseWriter, status int, code, msg string) {
@@ -244,4 +260,157 @@ func (h *Handler) respondWithJSON(w http.ResponseWriter, status int, data interf
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
+}
+
+func (h *Handler) decodeCreateInput(r *http.Request) (CreateInput, string, error) {
+	if isMultipartRequest(r) {
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			return CreateInput{}, "", err
+		}
+
+		input := CreateInput{
+			Name:        strings.TrimSpace(r.FormValue("name")),
+			BrandID:     strings.TrimSpace(r.FormValue("brand_id")),
+			Description: r.FormValue("description"),
+			ImageURL:    strings.TrimSpace(r.FormValue("image_url")),
+		}
+		if basePrice, err := parseOptionalFloat(r.FormValue("base_price")); err == nil {
+			input.BasePrice = basePrice
+		}
+		if currentPrice, err := parseOptionalFloat(r.FormValue("current_price")); err == nil {
+			input.CurrentPrice = currentPrice
+		}
+
+		fileHeader, err := fileHeaderFromForm(r, "image_file")
+		if err != nil {
+			return CreateInput{}, "", err
+		}
+		if fileHeader != nil {
+			imageURL, err := h.storeProductImage(fileHeader)
+			if err != nil {
+				return CreateInput{}, "", err
+			}
+			return input, imageURL, nil
+		}
+
+		return input, "", nil
+	}
+
+	var input CreateInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		return CreateInput{}, "", err
+	}
+	return input, "", nil
+}
+
+func (h *Handler) decodeUpdateInput(r *http.Request) (UpdateInput, string, error) {
+	if isMultipartRequest(r) {
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			return UpdateInput{}, "", err
+		}
+
+		input := UpdateInput{
+			Name:        strings.TrimSpace(r.FormValue("name")),
+			Description: r.FormValue("description"),
+			ImageURL:    "",
+		}
+		if basePriceStr := strings.TrimSpace(r.FormValue("base_price")); basePriceStr != "" {
+			if basePrice, err := strconv.ParseFloat(basePriceStr, 64); err == nil {
+				input.BasePrice = &basePrice
+			}
+		}
+		if currentPriceStr := strings.TrimSpace(r.FormValue("current_price")); currentPriceStr != "" {
+			if currentPrice, err := strconv.ParseFloat(currentPriceStr, 64); err == nil {
+				input.CurrentPrice = &currentPrice
+			}
+		}
+		if isActiveStr := strings.TrimSpace(r.FormValue("is_active")); isActiveStr != "" {
+			if isActive, err := strconv.ParseBool(isActiveStr); err == nil {
+				input.IsActive = &isActive
+			}
+		}
+
+		imageURL := strings.TrimSpace(r.FormValue("image_url"))
+		fileHeader, err := fileHeaderFromForm(r, "image_file")
+		if err != nil {
+			return UpdateInput{}, "", err
+		}
+		if fileHeader != nil {
+			savedImageURL, err := h.storeProductImage(fileHeader)
+			if err != nil {
+				return UpdateInput{}, "", err
+			}
+			imageURL = savedImageURL
+		}
+		if imageURL != "" {
+			input.ImageURL = imageURL
+		}
+
+		return input, imageURL, nil
+	}
+
+	var input UpdateInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		return UpdateInput{}, "", err
+	}
+	return input, input.ImageURL, nil
+}
+
+func (h *Handler) storeProductImage(fileHeader *multipart.FileHeader) (string, error) {
+	if fileHeader == nil {
+		return "", nil
+	}
+
+	if err := os.MkdirAll(filepath.Join("uploads", "products"), 0o755); err != nil {
+		return "", err
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	if ext == "" {
+		ext = ".jpg"
+	}
+
+	fileName := fmt.Sprintf("%s%s", uuid.NewString(), ext)
+	filePath := filepath.Join("uploads", "products", fileName)
+
+	destination, err := os.Create(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer destination.Close()
+
+	if _, err := io.Copy(destination, file); err != nil {
+		return "", err
+	}
+
+	return "/uploads/products/" + fileName, nil
+}
+
+func parseOptionalFloat(value string) (float64, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return 0, nil
+	}
+	return strconv.ParseFloat(trimmed, 64)
+}
+
+func fileHeaderFromForm(r *http.Request, fieldName string) (*multipart.FileHeader, error) {
+	_, fileHeader, err := r.FormFile(fieldName)
+	if err != nil {
+		if errors.Is(err, http.ErrMissingFile) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return fileHeader, nil
+}
+
+func isMultipartRequest(r *http.Request) bool {
+	return strings.Contains(strings.ToLower(r.Header.Get("Content-Type")), "multipart/form-data")
 }

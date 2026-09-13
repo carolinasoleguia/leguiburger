@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"leguiburger/internal/auth"
 	"leguiburger/internal/brands"
@@ -17,6 +19,7 @@ import (
 	"leguiburger/internal/recipes"
 	"leguiburger/internal/shipping"
 	"leguiburger/internal/supplies"
+	"leguiburger/internal/tenantproducts"
 	"leguiburger/internal/tenants"
 	"leguiburger/internal/users"
 
@@ -92,11 +95,20 @@ func main() {
 	//----------------------------------------------------------------//
 
 	productRepo := products.NewRepository()
-	productService := products.NewService(productRepo, tenantRepo)
+	productService := products.NewService(productRepo, brandRepo)
 	productHandler := products.NewHandler(productService)
 	productHandlerWithAuth := auth.AuthMiddleware(productHandler.HandleProductRoutes)
 
 	registerRoute("/api/products", productHandlerWithAuth)
+
+	//----------------------------------------------------------------//
+
+	tenantProductRepo := tenantproducts.NewRepository()
+	tenantProductService := tenantproducts.NewService(tenantProductRepo, tenantRepo)
+	tenantProductHandler := tenantproducts.NewHandler(tenantProductService)
+	tenantProductHandlerWithAuth := auth.AuthMiddleware(tenantProductHandler.HandleTenantProductRoutes)
+
+	registerRoute("/api/tenant-products", tenantProductHandlerWithAuth)
 
 	//----------------------------------------------------------------//
 
@@ -146,8 +158,8 @@ func main() {
 	//----------------------------------------------------------------//
 	// 📂 SERVIR EL FRONTEND ESTÁTICO EN LA RAIZ (/)
 	//----------------------------------------------------------------//
-	fs := http.FileServer(http.Dir("./frontend/dist"))
-	http.Handle("/", fs)
+	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+	http.HandleFunc("/", spaHandler("./frontend/dist"))
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -156,4 +168,30 @@ func main() {
 
 	fmt.Printf("Servidor corriendo exitosamente en http://localhost:%s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+func spaHandler(distDir string) http.HandlerFunc {
+	fileServer := http.FileServer(http.Dir(distDir))
+	indexPath := filepath.Join(distDir, "index.html")
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/api" {
+			http.NotFound(w, r)
+			return
+		}
+
+		requestPath := filepath.Clean(r.URL.Path)
+		if requestPath == "." || requestPath == string(filepath.Separator) {
+			http.ServeFile(w, r, indexPath)
+			return
+		}
+
+		filePath := filepath.Join(distDir, requestPath)
+		if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		http.ServeFile(w, r, indexPath)
+	}
 }

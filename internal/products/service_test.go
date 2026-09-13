@@ -8,62 +8,30 @@ import (
 	"leguiburger/internal/models"
 )
 
-type mockTenantRepository struct {
-	getByIDFunc                func(ctx context.Context, id string) (*models.Tenant, error)
-	getAllFunc                 func(ctx context.Context) ([]models.Tenant, error)
-	getByBrandAndSubdomainFunc func(ctx context.Context, brandID, subdomain string) (*models.Tenant, error)
-	getByBrandIDFunc           func(ctx context.Context, brandID string) ([]models.Tenant, error)
+type mockBrandRepository struct {
+	getByIDFunc func(ctx context.Context, id string) (*models.Brand, error)
 }
 
-func (m *mockTenantRepository) GetByID(ctx context.Context, id string) (*models.Tenant, error) {
-	return m.getByIDFunc(ctx, id)
-}
-func (m *mockTenantRepository) GetAll(ctx context.Context) ([]models.Tenant, error) {
-	if m.getAllFunc != nil {
-		return m.getAllFunc(ctx)
+func (m *mockBrandRepository) GetByID(ctx context.Context, id string) (*models.Brand, error) {
+	if m.getByIDFunc != nil {
+		return m.getByIDFunc(ctx, id)
 	}
+	return &models.Brand{ID: id}, nil
+}
+func (m *mockBrandRepository) Create(ctx context.Context, brand *models.Brand) error { return nil }
+func (m *mockBrandRepository) GetAll(ctx context.Context) ([]models.Brand, error)    { return nil, nil }
+func (m *mockBrandRepository) GetByName(ctx context.Context, name string) (*models.Brand, error) {
 	return nil, nil
 }
-func (m *mockTenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
-	return nil
-}
-func (m *mockTenantRepository) GetByTaxID(ctx context.Context, taxId string) (*models.Tenant, error) {
-	return nil, nil
-}
-func (m *mockTenantRepository) GetBySubdomain(ctx context.Context, subdomain string) (*models.Tenant, error) {
-	return nil, nil
-}
-func (m *mockTenantRepository) GetByNameAndSubdomain(ctx context.Context, name string, subdomain string) (*models.Tenant, error) {
-	return nil, nil
-}
-func (m *mockTenantRepository) GetByBrandAndSubdomain(
-	ctx context.Context,
-	brandID string,
-	subdomain string,
-) (*models.Tenant, error) {
-
-	if m.getByBrandAndSubdomainFunc != nil {
-		return m.getByBrandAndSubdomainFunc(ctx, brandID, subdomain)
-	}
-
-	return nil, nil
-}
-func (m *mockTenantRepository) GetByBrandID(ctx context.Context, brandID string) ([]models.Tenant, error) {
-	if m.getByBrandIDFunc != nil {
-		return m.getByBrandIDFunc(ctx, brandID)
-	}
-	return nil, nil
-}
-func (m *mockTenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
-	return nil
-}
-func (m *mockTenantRepository) Delete(ctx context.Context, id string) error {
-	return nil
-}
+func (m *mockBrandRepository) Update(ctx context.Context, brand *models.Brand) error { return nil }
+func (m *mockBrandRepository) Delete(ctx context.Context, id string) error           { return nil }
 
 func TestCreateProduct_Success(t *testing.T) {
 	repo := &mockRepository{
-		getByNameFunc: func(ctx context.Context, tenantID, name string) (*models.Product, error) {
+		getByNameFunc: func(ctx context.Context, brandID, name string) (*models.Product, error) {
+			if brandID != "brand-1" {
+				t.Errorf("se esperaba brand-1, se obtuvo: %s", brandID)
+			}
 			if name != "Doble Cheddar" {
 				t.Errorf("se esperaba nombre normalizado, se obtuvo: %s", name)
 			}
@@ -75,80 +43,87 @@ func TestCreateProduct_Success(t *testing.T) {
 		},
 	}
 
-	tenantRepo := &mockTenantRepository{
-		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
-			return &models.Tenant{ID: id}, nil
-		},
-	}
+	service := NewService(repo, &mockBrandRepository{})
 
-	service := NewService(repo, tenantRepo)
-	trackStock := false
-
-	res, err := service.CreateProduct(context.Background(), "tenant-1", " Doble Cheddar ", " Burger con cheddar ", 4500, 20, &trackStock, " https://example.com/burger.jpg ")
+	res, err := service.CreateProduct(context.Background(), "brand-1", " Doble Cheddar ", " Burger con cheddar ", 4500, " https://example.com/burger.jpg ")
 	if err != nil {
 		t.Fatalf("se esperaba exito, se obtuvo error: %v", err)
 	}
 
-	if res.Name != "Doble Cheddar" || res.Description != "Burger con cheddar" || res.CurrentPrice != 4500 || res.CurrentStock != 20 || res.TrackStock != false || res.ImageURL != "https://example.com/burger.jpg" || res.IsActive != true {
+	if res.BrandID != "brand-1" || res.Name != "Doble Cheddar" || res.Description != "Burger con cheddar" || res.BasePrice != 4500 || res.ImageURL != "https://example.com/burger.jpg" || res.IsActive != true {
 		t.Errorf("los datos no se normalizaron correctamente: %+v", res)
 	}
 }
 
 func TestCreateProduct_InvalidName(t *testing.T) {
-	service := NewService(&mockRepository{}, &mockTenantRepository{})
+	service := NewService(&mockRepository{}, &mockBrandRepository{})
 
-	_, err := service.CreateProduct(context.Background(), "tenant-1", "", "Desc", 100, 1, nil, "")
+	_, err := service.CreateProduct(context.Background(), "brand-1", "", "Desc", 100, "")
 	if !errors.Is(err, ErrInvalidProductData) {
 		t.Errorf("se esperaba ErrInvalidProductData, se obtuvo: %v", err)
 	}
 }
 
 func TestCreateProduct_InvalidPrice(t *testing.T) {
-	service := NewService(&mockRepository{}, &mockTenantRepository{})
+	service := NewService(&mockRepository{}, &mockBrandRepository{})
 
-	_, err := service.CreateProduct(context.Background(), "tenant-1", "Burger", "Desc", -1, 1, nil, "")
+	_, err := service.CreateProduct(context.Background(), "brand-1", "Burger", "Desc", -1, "")
 	if !errors.Is(err, ErrInvalidProductPrice) {
 		t.Errorf("se esperaba ErrInvalidProductPrice, se obtuvo: %v", err)
 	}
 }
 
-func TestCreateProduct_DuplicateName(t *testing.T) {
-	repo := &mockRepository{
-		getByNameFunc: func(ctx context.Context, tenantID, name string) (*models.Product, error) {
-			return &models.Product{ID: "existing-id", Name: name}, nil
+func TestCreateProduct_BrandNotFound(t *testing.T) {
+	brandRepo := &mockBrandRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Brand, error) {
+			return nil, nil
 		},
 	}
 
-	service := NewService(repo, &mockTenantRepository{})
-	_, err := service.CreateProduct(context.Background(), "tenant-1", "Burger", "Desc", 100, 1, nil, "")
+	service := NewService(&mockRepository{}, brandRepo)
+	_, err := service.CreateProduct(context.Background(), "missing-brand", "Burger", "Desc", 100, "")
+
+	if !errors.Is(err, ErrBrandNotFoundForProduct) {
+		t.Errorf("se esperaba ErrBrandNotFoundForProduct, se obtuvo: %v", err)
+	}
+}
+
+func TestCreateProduct_DuplicateName(t *testing.T) {
+	repo := &mockRepository{
+		getByNameFunc: func(ctx context.Context, brandID, name string) (*models.Product, error) {
+			return &models.Product{ID: "existing-id", BrandID: brandID, Name: name}, nil
+		},
+	}
+
+	service := NewService(repo, &mockBrandRepository{})
+	_, err := service.CreateProduct(context.Background(), "brand-1", "Burger", "Desc", 100, "")
 
 	if !errors.Is(err, ErrDuplicateProductName) {
 		t.Errorf("se esperaba ErrDuplicateProductName, se obtuvo: %v", err)
 	}
 }
 
-func TestListProducts_TenantNotFound(t *testing.T) {
-	repo := &mockRepository{}
-	tenantRepo := &mockTenantRepository{
-		getByIDFunc: func(ctx context.Context, id string) (*models.Tenant, error) {
+func TestListProducts_BrandNotFound(t *testing.T) {
+	brandRepo := &mockBrandRepository{
+		getByIDFunc: func(ctx context.Context, id string) (*models.Brand, error) {
 			return nil, nil
 		},
 	}
 
-	service := NewService(repo, tenantRepo)
-	_, err := service.ListProducts(context.Background(), "tenant-fantasma")
+	service := NewService(&mockRepository{}, brandRepo)
+	_, err := service.ListProducts(context.Background(), "brand-fantasma")
 
-	if !errors.Is(err, ErrTenantNotFoundForProduct) {
-		t.Errorf("se esperaba ErrTenantNotFoundForProduct, se obtuvo: %v", err)
+	if !errors.Is(err, ErrBrandNotFoundForProduct) {
+		t.Errorf("se esperaba ErrBrandNotFoundForProduct, se obtuvo: %v", err)
 	}
 }
 
 func TestUpdateProduct_Success(t *testing.T) {
 	repo := &mockRepository{
-		getByIDFunc: func(ctx context.Context, tenantID, id string) (*models.Product, error) {
-			return &models.Product{ID: id, TenantID: tenantID, Name: "Burger", Description: "Vieja", CurrentPrice: 100, CurrentStock: 5, TrackStock: true, IsActive: true}, nil
+		getByIDFunc: func(ctx context.Context, brandID, id string) (*models.Product, error) {
+			return &models.Product{ID: id, BrandID: brandID, Name: "Burger", Description: "Vieja", BasePrice: 100, IsActive: true}, nil
 		},
-		getByNameFunc: func(ctx context.Context, tenantID, name string) (*models.Product, error) {
+		getByNameFunc: func(ctx context.Context, brandID, name string) (*models.Product, error) {
 			return nil, nil
 		},
 		updateFunc: func(ctx context.Context, product *models.Product) error {
@@ -156,30 +131,29 @@ func TestUpdateProduct_Success(t *testing.T) {
 		},
 	}
 
-	service := NewService(repo, &mockTenantRepository{})
+	service := NewService(repo, &mockBrandRepository{})
 	newPrice := 150.0
-	newStock := 8
 	newActive := false
 
-	res, err := service.UpdateProduct(context.Background(), "tenant-1", "product-1", "Doble Burger", "Nueva", &newPrice, &newStock, nil, "https://example.com/new.jpg", &newActive)
+	res, err := service.UpdateProduct(context.Background(), "brand-1", "product-1", "Doble Burger", "Nueva", &newPrice, "https://example.com/new.jpg", &newActive)
 	if err != nil {
 		t.Fatalf("se esperaba exito, se obtuvo error: %v", err)
 	}
 
-	if res.Name != "Doble Burger" || res.Description != "Nueva" || res.CurrentPrice != 150 || res.CurrentStock != 8 || res.ImageURL != "https://example.com/new.jpg" || res.IsActive != false {
+	if res.Name != "Doble Burger" || res.Description != "Nueva" || res.BasePrice != 150 || res.ImageURL != "https://example.com/new.jpg" || res.IsActive != false {
 		t.Errorf("los datos no se actualizaron correctamente: %+v", res)
 	}
 }
 
 func TestDeleteProduct_NotFound(t *testing.T) {
 	repo := &mockRepository{
-		getByIDFunc: func(ctx context.Context, tenantID, id string) (*models.Product, error) {
+		getByIDFunc: func(ctx context.Context, brandID, id string) (*models.Product, error) {
 			return nil, nil
 		},
 	}
 
-	service := NewService(repo, &mockTenantRepository{})
-	err := service.DeleteProduct(context.Background(), "tenant-1", "missing")
+	service := NewService(repo, &mockBrandRepository{})
+	err := service.DeleteProduct(context.Background(), "brand-1", "missing")
 
 	if !errors.Is(err, ErrProductNotFound) {
 		t.Errorf("se esperaba ErrProductNotFound, se obtuvo: %v", err)

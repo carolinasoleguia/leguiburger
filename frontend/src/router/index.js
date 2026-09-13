@@ -11,6 +11,8 @@ import AdminLandingView from '../views/admins/AdminLandingView.vue';
 import AdminHomeView from '../views/admins/AdminHomeView.vue';
 import AdminEmployeesView from '../views/admins/AdminEmployeesView.vue';
 import AdminProductionView from '../views/admins/AdminProductionView.vue';
+import AdminCatalogView from '../views/admins/AdminCatalogView.vue';
+import AdminCatalogTenantView from '../views/admins/AdminCatalogTenantView.vue';
 import EmployeeDashboard from '../views/employees/EmployeeDashboard.vue';
 import CatalogLandingView from '../views/buyers/CatalogLandingView.vue';
 import UnauthorizedView from '../views/shared/UnauthorizedView.vue';
@@ -78,6 +80,16 @@ const routes = [
         path: 'production',
         name: 'AdminProduction',
         component: AdminProductionView
+      },
+      {
+        path: 'catalog',
+        name: 'AdminCatalog',
+        component: AdminCatalogView
+      },
+      {
+        path: 'catalog/tenants',
+        name: 'AdminCatalogTenants',
+        component: AdminCatalogTenantView
       }
     ]
   },
