@@ -58,7 +58,13 @@ Crea un archivo .env en la raíz del proyecto con las siguientes variables:
 ```text
 PORT=8080
 DATABASE_URL="postgres://postgres.[TU_ID_PROYECTO]:[TU_CONTRASEÑA]@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
+JWT_SECRET="reemplazar-por-un-secreto-seguro"
+SUPABASE_URL="https://[TU_ID_PROYECTO].supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="[TU_SERVICE_ROLE_KEY]"
+SUPABASE_STORAGE_BUCKET="catalog_images"
 ```
+
+Las imagenes del catalogo se suben a Supabase Storage. Crea un bucket publico con el nombre configurado en `SUPABASE_STORAGE_BUCKET` o deja `catalog_images` como valor por defecto.
 
 ### 2. Levantar el Backend (Go)
 Abrí tu terminal en la raíz del proyecto.

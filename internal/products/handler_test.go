@@ -18,6 +18,15 @@ type mockService struct {
 	updateProductFunc func(ctx context.Context, brandID, id, name, description string, basePrice *float64, imageURL string, isActive *bool) (*models.Product, error)
 }
 
+type fakeImageStore struct {
+	imageURL string
+	err      error
+}
+
+func (f fakeImageStore) SaveProductImage(ctx context.Context, fileHeader *multipart.FileHeader) (string, error) {
+	return f.imageURL, f.err
+}
+
 func (m *mockService) CreateProduct(ctx context.Context, brandID, name, description string, basePrice float64, imageURL string) (*models.Product, error) {
 	return m.createProductFunc(ctx, brandID, name, description, basePrice, imageURL)
 }
@@ -57,7 +66,7 @@ func TestHandler_CreateProduct_Success(t *testing.T) {
 		},
 	}
 
-	handler := NewHandler(mockService)
+	handler := NewHandlerWithImageStore(mockService, fakeImageStore{imageURL: "https://example.supabase.co/storage/v1/object/public/product-images/products/burger.jpg"})
 
 	req := testutil.JSONRequest(t, http.MethodPost, "/api/products", map[string]interface{}{
 		"name":        "Doble Cheddar",
@@ -106,7 +115,7 @@ func TestHandler_CreateProduct_MultipartImageUpload(t *testing.T) {
 		},
 	}
 
-	handler := NewHandler(mockService)
+	handler := NewHandlerWithImageStore(mockService, fakeImageStore{imageURL: "https://example.supabase.co/storage/v1/object/public/product-images/products/burger.jpg"})
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	_ = writer.WriteField("name", "Doble Cheddar")
@@ -158,7 +167,7 @@ func TestHandler_UpdateProduct_MultipartImageUpload(t *testing.T) {
 		},
 	}
 
-	handler := NewHandler(mockService)
+	handler := NewHandlerWithImageStore(mockService, fakeImageStore{imageURL: "https://example.supabase.co/storage/v1/object/public/catalog_images/products/burger.jpg"})
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	_ = writer.WriteField("name", "Doble Cheddar")
