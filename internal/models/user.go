@@ -10,6 +10,7 @@ type User struct {
 	PasswordHash string    `gorm:"type:varchar(255);not null" json:"-"`
 	Role         string    `gorm:"type:varchar(50);not null" json:"role"`
 	BrandID      *string   `gorm:"type:uuid" json:"brand_id,omitempty"`
+	Brand        *Brand    `gorm:"foreignKey:BrandID" json:"brand,omitempty"`
 	IsActive     bool      `gorm:"type:boolean;not null;default:true" json:"is_active"`
 	CreatedAt    time.Time `gorm:"type:timestamp with time zone;default:now()" json:"created_at"`
 	UpdatedAt    time.Time `gorm:"type:timestamp with time zone;default:now()" json:"updated_at"`

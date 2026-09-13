@@ -182,6 +182,8 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_TENANT_STOCK", err.Error())
 	} else if errors.Is(err, ErrProductBrandMismatch) {
 		h.respondWithError(w, http.StatusBadRequest, "PRODUCT_BRAND_MISMATCH", err.Error())
+	} else if errors.Is(err, ErrInactiveBaseProduct) {
+		h.respondWithError(w, http.StatusBadRequest, "INACTIVE_BASE_PRODUCT", err.Error())
 	} else if errors.Is(err, ErrTenantNotFound) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_TENANT", err.Error())
 	} else {

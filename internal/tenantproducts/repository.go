@@ -15,7 +15,7 @@ type Repository interface {
 	FetchAll(ctx context.Context, tenantID string) ([]models.TenantProduct, error)
 	Update(ctx context.Context, tenantProduct *models.TenantProduct) error
 	Delete(ctx context.Context, tenantID, productID string) error
-	ProductBelongsToTenantBrand(ctx context.Context, tenantID, productID string) (bool, error)
+	GetProductForTenantBrand(ctx context.Context, tenantID, productID string) (*models.Product, error)
 }
 
 type repository struct{}
@@ -62,12 +62,18 @@ func (r *repository) Delete(ctx context.Context, tenantID, productID string) err
 		Delete(&models.TenantProduct{}).Error
 }
 
-func (r *repository) ProductBelongsToTenantBrand(ctx context.Context, tenantID, productID string) (bool, error) {
-	var count int64
+func (r *repository) GetProductForTenantBrand(ctx context.Context, tenantID, productID string) (*models.Product, error) {
+	var product models.Product
 	err := db.DB.WithContext(ctx).
 		Table("products").
 		Joins("JOIN tenants ON tenants.brand_id = products.brand_id").
 		Where("tenants.id = ? AND products.id = ?", tenantID, productID).
-		Count(&count).Error
-	return count > 0, err
+		First(&product).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &product, nil
 }

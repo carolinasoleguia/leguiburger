@@ -3,19 +3,31 @@
     <div class="section-header">
       <div class="section-title">
         <h2>Gestión de catálogo</h2>
-        <p>Administra el catálogo base de la marca y entra a la vista de tiendas cuando quieras asignar productos a una sucursal.</p>
+        <p>Definí la oferta base de la marca y ajustá disponibilidad o precios por sucursal cuando haga falta.</p>
       </div>
-      <div class="catalog-actions">
-        <button class="btn-secondary" @click="goToTenantCatalog">Tiendas</button>
+      <div v-if="!initializingCatalog" class="catalog-actions">
         <button class="btn-primary" @click="openProductModal">Nuevo producto</button>
       </div>
     </div>
 
-    <div class="card">
+    <div v-if="initializingCatalog" class="card centered-loading catalog-initial-loading">
+      <span class="spinner-large"></span>
+    </div>
+
+    <nav v-else class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
+      <router-link :to="{ name: 'AdminCatalog' }" class="catalog-tab" exact-active-class="catalog-tab--active">
+        {{ brandCatalogLabel }}
+      </router-link>
+      <router-link :to="{ name: 'AdminCatalogTenants' }" class="catalog-tab" active-class="catalog-tab--active">
+        Catálogo por sucursal
+      </router-link>
+    </nav>
+
+    <div v-if="!initializingCatalog" class="card">
       <div class="panel-heading">
         <div>
-          <h3>Catálogo de marca</h3>
-          <p>{{ products.length }} productos registrados</p>
+          <h3>{{ brandCatalogLabel }}</h3>
+          <p>{{ products.length }} productos registrados como oferta general de la marca</p>
         </div>
       </div>
 
@@ -38,10 +50,12 @@
           <tbody>
             <tr v-for="product in products" :key="productId(product)">
               <td class="product-cell">
-                <img v-if="productImage(product)" :src="productImage(product)" :alt="productName(product)" class="product-thumb" />
-                <div>
-                  <strong>{{ productName(product) }}</strong>
-                  <span>{{ productDescription(product) || '-' }}</span>
+                <div class="product-cell__content">
+                  <img v-if="productImage(product)" :src="productImage(product)" :alt="productName(product)" class="product-thumb" />
+                  <div>
+                    <strong>{{ productName(product) }}</strong>
+                    <span>{{ productDescription(product) || '-' }}</span>
+                  </div>
                 </div>
               </td>
               <td>{{ money(productBasePrice(product)) }}</td>
@@ -94,9 +108,17 @@
             <img :src="previewImageSrc" :alt="productForm.name || 'Vista previa del producto'" class="image-preview__img" />
           </div>
 
-          <div v-if="productForm.id" class="input-group checkbox-row">
-            <input id="product-active" v-model="productForm.is_active" type="checkbox" />
-            <label for="product-active">Producto activo</label>
+          <div v-if="productForm.id" class="product-status-toggle">
+            <div>
+              <span class="product-status-toggle__label">Estado del producto</span>
+              <strong>{{ productForm.is_active ? 'Activo' : 'Inactivo' }}</strong>
+            </div>
+            <label class="switch-control" for="product-active">
+              <input id="product-active" v-model="productForm.is_active" type="checkbox" />
+              <span class="switch-control__track">
+                <span class="switch-control__thumb"></span>
+              </span>
+            </label>
           </div>
 
           <div class="modal-actions">
@@ -124,13 +146,13 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { apiFetch, getJSON } from '../../services/api.js';
 import { useAuth } from '../../composables/useAuth.js';
 
-const router = useRouter();
 const auth = useAuth();
+const tenants = ref([]);
 const products = ref([]);
+const initializingCatalog = ref(true);
 const loadingProducts = ref(false);
 const productError = ref('');
 const actionLoading = ref(false);
@@ -141,11 +163,23 @@ const productForm = ref(emptyProductForm());
 const previewObjectUrl = ref('');
 
 const brandId = computed(() => auth.user.value?.brand_id || auth.user.value?.brandID || '');
+const brandName = computed(() => {
+  const user = auth.user.value || {};
+  const tenantWithBrand = tenants.value.find((tenant) => tenant.brand?.name || tenant.brand?.Name || tenant.brand_name || tenant.brandName);
+  return (
+    user.brand?.name ||
+    user.brand?.Name ||
+    user.brand_name ||
+    user.brandName ||
+    tenantWithBrand?.brand?.name ||
+    tenantWithBrand?.brand?.Name ||
+    tenantWithBrand?.brand_name ||
+    tenantWithBrand?.brandName ||
+    ''
+  );
+});
+const brandCatalogLabel = computed(() => (brandName.value ? `Catálogo de ${brandName.value}` : 'Catálogo de marca'));
 const previewImageSrc = computed(() => previewObjectUrl.value || productForm.value.image_url || '');
-
-function goToTenantCatalog() {
-  router.push({ name: 'AdminCatalogTenants' });
-}
 
 function emptyProductForm() {
   return {
@@ -191,6 +225,13 @@ function productActive(product) {
 
 function productHeaders() {
   return brandId.value ? { 'X-Brand-ID': brandId.value } : {};
+}
+
+async function loadTenants() {
+  if (!brandId.value) {
+    return;
+  }
+  tenants.value = await getJSON(`/tenants?brand_id=${brandId.value}`);
 }
 
 async function loadProducts() {
@@ -290,55 +331,29 @@ async function deleteProduct(product) {
 async function submitProduct() {
   actionLoading.value = true;
   try {
-    const hasNewImage = !!productForm.value.image_file;
     const endpoint = `/products${productForm.value.id ? `/${productForm.value.id}` : ''}`;
-    const headers = {
-      ...(localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {}),
-      ...productHeaders()
-    };
-
-    let response;
-    if (hasNewImage) {
-      const payload = new FormData();
-      payload.append('name', productForm.value.name);
-      payload.append('description', productForm.value.description);
-      payload.append('base_price', String(Number(productForm.value.base_price || 0)));
-      if (brandId.value) {
-        payload.append('brand_id', brandId.value);
-      }
-      if (productForm.value.id) {
-        payload.append('is_active', String(productForm.value.is_active));
-      }
-      payload.append('image_file', productForm.value.image_file);
-      if (productForm.value.image_url) {
-        payload.append('image_url', productForm.value.image_url);
-      }
-
-      response = await fetch(`/api${endpoint}`, {
-        method: productForm.value.id ? 'PUT' : 'POST',
-        headers,
-        body: payload
-      });
-    } else {
-      const payload = {
-        name: productForm.value.name,
-        description: productForm.value.description,
-        base_price: Number(productForm.value.base_price || 0),
-        image_url: productForm.value.image_url
-      };
-      if (brandId.value) {
-        payload.brand_id = brandId.value;
-      }
-      if (productForm.value.id) {
-        payload.is_active = productForm.value.is_active;
-      }
-
-      response = await apiFetch(endpoint, {
-        method: productForm.value.id ? 'PUT' : 'POST',
-        headers,
-        body: JSON.stringify(payload)
-      });
+    const payload = new FormData();
+    payload.append('name', productForm.value.name);
+    payload.append('description', productForm.value.description);
+    payload.append('base_price', String(Number(productForm.value.base_price || 0)));
+    if (brandId.value) {
+      payload.append('brand_id', brandId.value);
     }
+    if (productForm.value.id) {
+      payload.append('is_active', String(productForm.value.is_active));
+    }
+    if (productForm.value.image_file) {
+      payload.append('image_file', productForm.value.image_file);
+    }
+    if (productForm.value.image_url) {
+      payload.append('image_url', productForm.value.image_url);
+    }
+
+    const response = await apiFetch(endpoint, {
+      method: productForm.value.id ? 'PUT' : 'POST',
+      headers: productHeaders(),
+      body: payload
+    });
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => ({}));
       throw new Error(errorPayload.message || 'No se pudo guardar el producto.');
@@ -354,9 +369,12 @@ async function submitProduct() {
 
 onMounted(async () => {
   try {
+    await loadTenants();
     await loadProducts();
   } catch (err) {
     showAlert(err.message || 'No se pudo inicializar catálogo.');
+  } finally {
+    initializingCatalog.value = false;
   }
 });
 
@@ -374,6 +392,38 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.catalog-initial-loading {
+  min-height: 220px;
+}
+
+.catalog-tabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.catalog-tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.catalog-tab:hover,
+.catalog-tab--active {
+  background: rgba(59, 130, 246, 0.14);
+  color: var(--text);
 }
 
 .panel-heading {
@@ -432,10 +482,13 @@ onBeforeUnmount(() => {
 }
 
 .product-cell {
+  text-align: left !important;
+}
+
+.product-cell__content {
   display: flex;
   align-items: center;
   gap: 12px;
-  text-align: left !important;
 }
 
 .status-cell {
@@ -553,15 +606,84 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
-.checkbox-row {
+.product-status-toggle {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.product-status-toggle__label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.product-status-toggle strong {
   color: var(--text);
 }
 
-.checkbox-row input {
-  width: auto;
+.switch-control {
+  display: inline-flex;
+  align-items: center;
+  width: 54px;
+  height: 30px;
+  position: relative;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.switch-control input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch-control__track {
+  position: relative;
+  display: block;
+  width: 54px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.28);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.switch-control__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.28);
+  transition: transform 0.2s ease;
+}
+
+.switch-control input:checked + .switch-control__track {
+  background: rgba(16, 185, 129, 0.42);
+  border-color: rgba(110, 231, 183, 0.42);
+}
+
+.switch-control input:checked + .switch-control__track .switch-control__thumb {
+  transform: translateX(24px);
+}
+
+.switch-control input:focus-visible + .switch-control__track {
+  outline: 2px solid rgba(96, 165, 250, 0.8);
+  outline-offset: 3px;
 }
 
 @media (max-width: 1100px) {

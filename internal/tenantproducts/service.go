@@ -15,6 +15,7 @@ var (
 	ErrInvalidPriceOverride     = errors.New("el precio local no puede ser negativo")
 	ErrInvalidTenantStock       = errors.New("el stock local no puede ser negativo")
 	ErrProductBrandMismatch     = errors.New("el producto no pertenece a la marca de este comercio")
+	ErrInactiveBaseProduct      = errors.New("el producto está inactivo en el catálogo general")
 	ErrTenantNotFound           = errors.New("el comercio (tenant) especificado no existe")
 )
 
@@ -160,12 +161,15 @@ func (s *service) validateTenantAndProduct(ctx context.Context, tenantID, produc
 	if tenant == nil {
 		return ErrTenantNotFound
 	}
-	ok, err := s.repo.ProductBelongsToTenantBrand(ctx, tenantID, productID)
+	product, err := s.repo.GetProductForTenantBrand(ctx, tenantID, productID)
 	if err != nil {
 		return err
 	}
-	if !ok {
+	if product == nil {
 		return ErrProductBrandMismatch
+	}
+	if !product.IsActive {
+		return ErrInactiveBaseProduct
 	}
 	return nil
 }

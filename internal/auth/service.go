@@ -32,11 +32,13 @@ type LoginResponse struct {
 }
 
 type UserDTO struct {
-	ID       string  `json:"id"`
-	Email    string  `json:"email"`
-	Role     string  `json:"role"`
-	BrandID  *string `json:"brand_id,omitempty"`
-	IsActive bool    `json:"is_active"`
+	ID        string        `json:"id"`
+	Email     string        `json:"email"`
+	Role      string        `json:"role"`
+	BrandID   *string       `json:"brand_id,omitempty"`
+	Brand     *models.Brand `json:"brand,omitempty"`
+	BrandName string        `json:"brand_name,omitempty"`
+	IsActive  bool          `json:"is_active"`
 }
 
 type EmployeeDTO struct {
@@ -141,7 +143,7 @@ func (s *service) Login(ctx context.Context, tenantID, email, password string) (
 		return nil, err
 	}
 
-	userDTO := &UserDTO{ID: loginUser.user.ID, Email: loginUser.user.Email, Role: loginUser.user.Role, BrandID: loginUser.user.BrandID, IsActive: loginUser.user.IsActive}
+	userDTO := toUserDTO(loginUser.user)
 	return &LoginResponse{
 		Token: token,
 		User:  userDTO,
@@ -376,4 +378,19 @@ func toEmployeeDTO(employee *models.Employee) EmployeeDTO {
 		Role:      employee.Role,
 		IsActive:  employee.IsActive,
 	}
+}
+
+func toUserDTO(user *models.User) *UserDTO {
+	dto := &UserDTO{
+		ID:       user.ID,
+		Email:    user.Email,
+		Role:     user.Role,
+		BrandID:  user.BrandID,
+		IsActive: user.IsActive,
+	}
+	if user.Brand != nil {
+		dto.Brand = user.Brand
+		dto.BrandName = user.Brand.Name
+	}
+	return dto
 }

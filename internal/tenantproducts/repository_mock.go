@@ -6,12 +6,12 @@ import (
 )
 
 type mockRepository struct {
-	createFunc                      func(ctx context.Context, tenantProduct *models.TenantProduct) error
-	getByIDFunc                     func(ctx context.Context, tenantID, productID string) (*models.TenantProduct, error)
-	fetchAllFunc                    func(ctx context.Context, tenantID string) ([]models.TenantProduct, error)
-	updateFunc                      func(ctx context.Context, tenantProduct *models.TenantProduct) error
-	deleteFunc                      func(ctx context.Context, tenantID, productID string) error
-	productBelongsToTenantBrandFunc func(ctx context.Context, tenantID, productID string) (bool, error)
+	createFunc                   func(ctx context.Context, tenantProduct *models.TenantProduct) error
+	getByIDFunc                  func(ctx context.Context, tenantID, productID string) (*models.TenantProduct, error)
+	fetchAllFunc                 func(ctx context.Context, tenantID string) ([]models.TenantProduct, error)
+	updateFunc                   func(ctx context.Context, tenantProduct *models.TenantProduct) error
+	deleteFunc                   func(ctx context.Context, tenantID, productID string) error
+	getProductForTenantBrandFunc func(ctx context.Context, tenantID, productID string) (*models.Product, error)
 }
 
 func (m *mockRepository) Create(ctx context.Context, tenantProduct *models.TenantProduct) error {
@@ -49,9 +49,9 @@ func (m *mockRepository) Delete(ctx context.Context, tenantID, productID string)
 	return m.deleteFunc(ctx, tenantID, productID)
 }
 
-func (m *mockRepository) ProductBelongsToTenantBrand(ctx context.Context, tenantID, productID string) (bool, error) {
-	if m.productBelongsToTenantBrandFunc == nil {
-		return true, nil
+func (m *mockRepository) GetProductForTenantBrand(ctx context.Context, tenantID, productID string) (*models.Product, error) {
+	if m.getProductForTenantBrandFunc == nil {
+		return &models.Product{ID: productID, BrandID: "brand-1", IsActive: true}, nil
 	}
-	return m.productBelongsToTenantBrandFunc(ctx, tenantID, productID)
+	return m.getProductForTenantBrandFunc(ctx, tenantID, productID)
 }

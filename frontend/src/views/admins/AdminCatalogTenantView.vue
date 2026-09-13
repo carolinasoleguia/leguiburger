@@ -2,54 +2,58 @@
   <section class="admin-catalog-tenant">
     <div class="section-header">
       <div class="section-title">
-        <h2>Asignación por tienda</h2>
-        <p>Elegí una tienda, revisá el catálogo base de la marca y ajustá la configuración local de cada producto.</p>
-      </div>
-      <div class="catalog-actions">
-        <button class="btn-secondary" @click="goBack">Volver al catálogo</button>
+        <h2>Gestión de catálogo</h2>
+        <p>Definí el catalogo base de la marca o ajustá disponibilidad o precios por sucursal.</p>
       </div>
     </div>
 
-    <div class="card tenant-picker-card">
+    <div v-if="initializingCatalog" class="card centered-loading catalog-initial-loading">
+      <span class="spinner-large"></span>
+    </div>
+
+    <nav v-else class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
+      <router-link :to="{ name: 'AdminCatalog' }" class="catalog-tab" exact-active-class="catalog-tab--active">
+        {{ brandCatalogLabel }}
+      </router-link>
+      <router-link :to="{ name: 'AdminCatalogTenants' }" class="catalog-tab" active-class="catalog-tab--active">
+        Catálogo por sucursal
+      </router-link>
+    </nav>
+
+    <div v-if="!initializingCatalog" class="card tenant-picker-card">
       <div class="panel-heading">
         <div>
-          <h3>1. Seleccioná una tienda</h3>
-          <p>Primero elegí la sucursal sobre la que vas a trabajar.</p>
+          <h3>1. Seleccioná una sucursal</h3>
         </div>
       </div>
 
       <div class="controls-grid controls-grid--tenant">
         <div class="input-group">
-          <label>Tienda</label>
+          <label>Sucursal</label>
           <select v-model="selectedTenant">
-            <option value="">Seleccioná una tienda</option>
+            <option value="">Seleccioná una sucursal</option>
             <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
               {{ tenant.subdomain || tenant.id }}
             </option>
           </select>
         </div>
 
-        <div class="tenant-summary" v-if="selectedTenant">
-          <span class="tenant-summary__label">Tienda activa</span>
-          <strong>{{ selectedTenantLabel }}</strong>
-          <span class="tenant-summary__meta">{{ tenantProducts.length }} productos configurados</span>
-        </div>
       </div>
     </div>
 
-    <div v-if="!selectedTenant" class="card empty-state-card">
-      <h3>Seleccioná una tienda para continuar</h3>
+    <div v-if="!initializingCatalog && !selectedTenant" class="card empty-state-card">
+      <h3>Seleccioná una sucursal para continuar</h3>
       <p>Cuando elijas una sucursal vas a ver su catálogo actual y podrás abrir el listado base para sumar hamburguesas con un clic.</p>
     </div>
 
-    <div v-else class="card">
+    <div v-else-if="!initializingCatalog" class="card">
       <div class="panel-heading panel-heading--stacked">
         <div>
-          <h3>2. Catálogo de la tienda</h3>
+          <h3>2. Catálogo de la sucursal</h3>
           <p>{{ tenantProducts.length }} productos forman parte de esta sucursal</p>
         </div>
         <div class="panel-heading__actions">
-          <button class="btn-primary btn-fab" type="button" @click="openCatalogModal" aria-label="Agregar hamburguesas al catálogo de la tienda">+</button>
+          <button class="btn-primary btn-fab" type="button" @click="openCatalogModal" aria-label="Agregar hamburguesas al catálogo de la sucursal">+</button>
         </div>
       </div>
 
@@ -57,7 +61,7 @@
         <span class="spinner-large"></span>
       </div>
       <div v-else-if="tenantProductError" class="status-text error">{{ tenantProductError }}</div>
-      <div v-else-if="tenantProducts.length === 0" class="status-text">Esta tienda todavía no tiene productos asignados. Usá el botón `+` para agregar hamburguesas desde el catálogo base.</div>
+      <div v-else-if="tenantProducts.length === 0" class="status-text">Esta sucursal todavía no tiene productos asignados. Usá el botón `+` para agregar hamburguesas desde el catálogo base.</div>
       <div v-else class="tenant-product-grid">
         <article v-for="item in tenantProducts" :key="item.product_id" class="tenant-product-card">
           <div class="tenant-product-card__media">
@@ -99,7 +103,7 @@
     <div v-if="isCatalogModalOpen" class="modal-overlay" @click.self="closeCatalogModal">
       <div class="modal-card modal-card--catalog">
         <button type="button" class="modal-close" @click="closeCatalogModal">×</button>
-        <h3>Catálogo base de {{ brandLabel }}</h3>
+        <h3>{{ brandBaseCatalogLabel }}</h3>
         <p>Elegí una hamburguesa para agregarla a {{ selectedTenantLabel }}.</p>
 
         <div v-if="loadingProducts" class="centered-loading compact">
@@ -122,8 +126,11 @@
             </div>
 
             <div class="base-product-row__actions">
+              <span v-if="!productActive(product)" class="status-pill status-pill--muted">
+                Inactivo
+              </span>
               <button
-                v-if="!tenantProductById(productId(product))"
+                v-else-if="!tenantProductById(productId(product))"
                 class="btn-primary btn-action-label"
                 type="button"
                 @click="openAssignModal(product, tenantProductById(productId(product)))"
@@ -131,7 +138,7 @@
                 Agregar
               </button>
               <span v-else class="status-pill status-pill--success">
-                En tienda
+                En sucursal
               </span>
             </div>
           </article>
@@ -142,7 +149,7 @@
     <div v-if="isAssignModalOpen" class="modal-overlay" @click.self="closeAssignModal">
       <div class="modal-card modal-card--wide">
         <button type="button" class="modal-close" @click="closeAssignModal">×</button>
-        <h3>Configuración por tienda</h3>
+        <h3>Configuración por sucursal</h3>
         <p>{{ productName(assignProduct) }} en {{ selectedTenantLabel }}</p>
 
         <form @submit.prevent="submitTenantProduct">
@@ -186,7 +193,7 @@
             <button type="button" class="btn-secondary" @click="closeAssignModal" :disabled="actionLoading">Cancelar</button>
             <button type="submit" class="btn-primary" :disabled="actionLoading">
               <span v-if="actionLoading" class="spinner"></span>
-              {{ actionLoading ? 'Guardando...' : 'Agregar a tienda' }}
+              {{ actionLoading ? 'Guardando...' : 'Agregar a sucursal' }}
             </button>
           </div>
         </form>
@@ -207,16 +214,15 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import { apiFetch, getJSON } from '../../services/api.js';
 import { useAuth } from '../../composables/useAuth.js';
 
-const router = useRouter();
 const auth = useAuth();
 const tenants = ref([]);
 const products = ref([]);
 const tenantProducts = ref([]);
 const selectedTenant = ref('');
+const initializingCatalog = ref(true);
 const loadingProducts = ref(false);
 const loadingTenantProducts = ref(false);
 const productError = ref('');
@@ -232,12 +238,26 @@ const tenantProductForm = ref(emptyTenantProductForm());
 
 const brandId = computed(() => auth.user.value?.brand_id || auth.user.value?.brandID || '');
 const brandLabel = computed(() => {
-  const tenantWithBrand = tenants.value.find((item) => item.id === selectedTenant.value || item.brand?.name || item.brand_name || item.brandName);
-  return tenantWithBrand?.brand?.name || tenantWithBrand?.brand?.Name || tenantWithBrand?.brand_name || tenantWithBrand?.brandName || '';
+  const user = auth.user.value || {};
+  const selectedTenantWithBrand = tenants.value.find((item) => item.id === selectedTenant.value && (item.brand?.name || item.brand?.Name || item.brand_name || item.brandName));
+  const tenantWithBrand = selectedTenantWithBrand || tenants.value.find((item) => item.brand?.name || item.brand?.Name || item.brand_name || item.brandName);
+  return (
+    user.brand?.name ||
+    user.brand?.Name ||
+    user.brand_name ||
+    user.brandName ||
+    tenantWithBrand?.brand?.name ||
+    tenantWithBrand?.brand?.Name ||
+    tenantWithBrand?.brand_name ||
+    tenantWithBrand?.brandName ||
+    ''
+  );
 });
+const brandCatalogLabel = computed(() => (brandLabel.value ? `Catálogo de ${brandLabel.value}` : 'Catálogo de marca'));
+const brandBaseCatalogLabel = computed(() => (brandLabel.value ? `Catálogo base de ${brandLabel.value}` : 'Catálogo base de la marca'));
 const selectedTenantLabel = computed(() => {
   const tenant = tenants.value.find((item) => item.id === selectedTenant.value);
-  return tenant?.subdomain || tenant?.id || 'la tienda seleccionada';
+  return tenant?.subdomain || tenant?.id || 'la sucursal seleccionada';
 });
 
 const tenantProductMap = computed(() => new Map(tenantProducts.value.map((item) => [item.product_id, item])));
@@ -255,10 +275,6 @@ const orderedProducts = computed(() => {
 watch(selectedTenant, async () => {
   await loadTenantProducts();
 });
-
-function goBack() {
-  router.push({ name: 'AdminCatalog' });
-}
 
 function openCatalogModal() {
   isCatalogModalOpen.value = true;
@@ -370,11 +386,11 @@ async function loadTenantProducts() {
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.message || 'No se pudo cargar el catálogo de la tienda.');
+      throw new Error(payload.message || 'No se pudo cargar el catálogo de la sucursal.');
     }
     tenantProducts.value = await response.json();
   } catch (err) {
-    tenantProductError.value = err.message || 'No se pudo cargar el catálogo de la tienda.';
+    tenantProductError.value = err.message || 'No se pudo cargar el catálogo de la sucursal.';
     tenantProducts.value = [];
   } finally {
     loadingTenantProducts.value = false;
@@ -383,7 +399,11 @@ async function loadTenantProducts() {
 
 function openAssignModal(product, existing = null) {
   if (!selectedTenant.value) {
-    showAlert('Seleccioná una tienda antes de agregar productos.');
+    showAlert('Seleccioná una sucursal antes de agregar productos.');
+    return;
+  }
+  if (!existing && !productActive(product)) {
+    showAlert('Este producto está inactivo en el catálogo general y no se puede sumar a una sucursal.');
     return;
   }
   assignProduct.value = product;
@@ -457,7 +477,7 @@ async function submitTenantProduct() {
 }
 
 async function removeTenantProduct(item, fromModal = false) {
-  const confirmed = confirm(`¿Quitar ${item.product?.name || item.product_id} de esta tienda?`);
+  const confirmed = confirm(`¿Quitar ${item.product?.name || item.product_id} de esta sucursal?`);
   if (!confirmed) {
     return;
   }
@@ -492,6 +512,8 @@ onMounted(async () => {
     await loadProducts();
   } catch (err) {
     showAlert(err.message || 'No se pudo inicializar catálogo.');
+  } finally {
+    initializingCatalog.value = false;
   }
 });
 </script>
@@ -507,6 +529,38 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
+.catalog-initial-loading {
+  min-height: 220px;
+}
+
+.catalog-tabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.catalog-tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.catalog-tab:hover,
+.catalog-tab--active {
+  background: rgba(59, 130, 246, 0.14);
+  color: var(--text);
+}
+
 .panel-heading__actions {
   display: flex;
   align-items: center;
@@ -520,30 +574,16 @@ onMounted(async () => {
 
 .controls-grid--tenant {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.8fr);
+  grid-template-columns: minmax(240px, 420px);
   gap: 18px;
   align-items: stretch;
 }
 
-.tenant-summary {
-  display: grid;
-  gap: 4px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(96, 165, 250, 0.16);
-}
-
-.tenant-summary__label,
 .meta-label {
   font-size: 0.78rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-}
-
-.tenant-summary__meta {
-  color: var(--text-muted);
 }
 
 .empty-state-card {

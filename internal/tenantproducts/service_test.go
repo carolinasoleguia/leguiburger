@@ -57,11 +57,11 @@ func TestCreateTenantProduct_Success(t *testing.T) {
 	trackStock := false
 	isAvailable := true
 	repo := &mockRepository{
-		productBelongsToTenantBrandFunc: func(ctx context.Context, tenantID, productID string) (bool, error) {
+		getProductForTenantBrandFunc: func(ctx context.Context, tenantID, productID string) (*models.Product, error) {
 			if tenantID != "tenant-1" || productID != "product-1" {
 				t.Fatalf("ids inesperados: tenant=%s product=%s", tenantID, productID)
 			}
-			return true, nil
+			return &models.Product{ID: productID, BrandID: "brand-1", IsActive: true}, nil
 		},
 		getByIDFunc: func(ctx context.Context, tenantID, productID string) (*models.TenantProduct, error) {
 			return nil, nil
@@ -99,8 +99,8 @@ func TestCreateTenantProduct_Duplicate(t *testing.T) {
 
 func TestCreateTenantProduct_ProductBrandMismatch(t *testing.T) {
 	repo := &mockRepository{
-		productBelongsToTenantBrandFunc: func(ctx context.Context, tenantID, productID string) (bool, error) {
-			return false, nil
+		getProductForTenantBrandFunc: func(ctx context.Context, tenantID, productID string) (*models.Product, error) {
+			return nil, nil
 		},
 	}
 
@@ -109,6 +109,21 @@ func TestCreateTenantProduct_ProductBrandMismatch(t *testing.T) {
 
 	if !errors.Is(err, ErrProductBrandMismatch) {
 		t.Errorf("se esperaba ErrProductBrandMismatch, se obtuvo: %v", err)
+	}
+}
+
+func TestCreateTenantProduct_InactiveBaseProduct(t *testing.T) {
+	repo := &mockRepository{
+		getProductForTenantBrandFunc: func(ctx context.Context, tenantID, productID string) (*models.Product, error) {
+			return &models.Product{ID: productID, BrandID: "brand-1", IsActive: false}, nil
+		},
+	}
+
+	service := NewService(repo, &mockTenantRepository{})
+	_, err := service.CreateTenantProduct(context.Background(), "tenant-1", "product-inactive", nil, 0, nil, nil)
+
+	if !errors.Is(err, ErrInactiveBaseProduct) {
+		t.Errorf("se esperaba ErrInactiveBaseProduct, se obtuvo: %v", err)
 	}
 }
 

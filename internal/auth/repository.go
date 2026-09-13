@@ -70,6 +70,7 @@ func (r *repository) GetAllEmployeesByEmail(ctx context.Context, email string) (
 func (r *repository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	err := db.DB.WithContext(ctx).
+		Preload("Brand").
 		Where("LOWER(email) = LOWER(?) AND is_active = true", email).
 		First(&user).Error
 
@@ -85,6 +86,7 @@ func (r *repository) GetUserByEmail(ctx context.Context, email string) (*models.
 func (r *repository) GetAllUsersByEmail(ctx context.Context, email string) ([]models.User, error) {
 	var users []models.User
 	err := db.DB.WithContext(ctx).
+		Preload("Brand").
 		Where("LOWER(email) = LOWER(?) AND is_active = true", email).
 		Find(&users).Error
 
