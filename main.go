@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"leguiburger/internal/auth"
 	"leguiburger/internal/brands"
@@ -14,6 +15,7 @@ import (
 	"leguiburger/internal/db"
 	"leguiburger/internal/employees"
 	"leguiburger/internal/extras"
+	"leguiburger/internal/operations"
 	"leguiburger/internal/production"
 	"leguiburger/internal/products"
 	"leguiburger/internal/recipes"
@@ -35,6 +37,9 @@ func main() {
 	_ = godotenv.Load()
 
 	db.Connect()
+	if err := operations.VerifyDatabase(db.DB, os.Getenv("DATABASE_URL")); err != nil {
+		log.Fatal(err)
+	}
 
 	//----------------------------------------------------------------//
 
@@ -155,6 +160,8 @@ func main() {
 
 	registerRoute("/api/auth", authHandler.HandleAuthRoutes)
 
+	operations.RegisterRoutes(http.DefaultServeMux, db.DB)
+
 	//----------------------------------------------------------------//
 	// 📂 SERVIR EL FRONTEND ESTÁTICO EN LA RAIZ (/)
 	//----------------------------------------------------------------//
@@ -166,7 +173,8 @@ func main() {
 	}
 
 	fmt.Printf("Servidor corriendo exitosamente en http://localhost:%s\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	server := &http.Server{Addr: ":" + port, Handler: http.DefaultServeMux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
+	log.Fatal(server.ListenAndServe())
 }
 
 func spaHandler(distDir string) http.HandlerFunc {

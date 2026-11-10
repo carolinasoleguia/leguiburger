@@ -67,7 +67,7 @@ func ValidateToken(tokenString string) (*Claims, error) {
 			return nil, errors.New("metodo de firma no valido")
 		}
 		return jwtSecret, nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}), jwt.WithExpirationRequired())
 
 	if err != nil {
 		return nil, err

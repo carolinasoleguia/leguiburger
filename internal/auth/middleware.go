@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"leguiburger/internal/db"
 	"leguiburger/internal/models"
@@ -23,6 +24,10 @@ type ErrorResponse struct {
 }
 
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return AuthMiddlewareWithDB(db.DB, next)
+}
+
+func AuthMiddlewareWithDB(database *gorm.DB, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		authHeader := r.Header.Get("Authorization")
@@ -43,7 +48,19 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), ClaimsKey, claims)
+		ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
+		defer cancel()
+		principal, err := ResolveSessionPrincipal(ctx, database, claims)
+		if err != nil {
+			if errors.Is(err, ErrInvalidCredentials) {
+				RespondWithError(w, http.StatusUnauthorized, "SESSION_REVOKED", "La cuenta o sus permisos cambiaron; iniciá sesión nuevamente")
+			} else {
+				RespondWithError(w, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE", "No se pudo verificar la sesión")
+			}
+			return
+		}
+		ctx = context.WithValue(ctx, ClaimsKey, claims)
+		ctx = context.WithValue(ctx, PrincipalKey, principal)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }
@@ -70,7 +87,7 @@ var (
 func RequireOwnerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := GetClaimsFromContext(r.Context())
-		if !ok || claims.Role != "owner" {
+		if !ok || !isGlobalRole(claims.Role) {
 			RespondWithError(w, http.StatusForbidden, "FORBIDDEN", "Acceso denegado: Se requiere rol de Owner")
 			return
 		}
@@ -86,7 +103,7 @@ func TenantIDFromRequest(r *http.Request) (string, error) {
 	}
 
 	if tenantID == "" {
-		if claims.Role != RoleOwner {
+		if !isGlobalRole(claims.Role) {
 			tenantID = strings.TrimSpace(claims.TenantID)
 		}
 	}
@@ -95,7 +112,7 @@ func TenantIDFromRequest(r *http.Request) (string, error) {
 		return "", ErrMissingTenantID
 	}
 
-	if claims.Role == RoleOwner {
+	if isGlobalRole(claims.Role) {
 		return tenantID, nil
 	}
 

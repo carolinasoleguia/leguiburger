@@ -1,110 +1,46 @@
-# LeguiBurger SaaS 🍔
+# LeguiBurger 🍔
 
-¡Bienvenido a **LeguiBurger**! Un software como servicio (SaaS) moderno y de alto rendimiento diseñado para la gestión integral y el autopedido en comercios gastronómicos. 
+LeguiBurger organiza marcas, sucursales, catálogo, equipo, producción y operación de hamburgueserías. El frontend es Vue con Vite; el backend Go usa PostgreSQL en Supabase.
 
-A diferencia de las cartas QR digitales convencionales, LeguiBurger está concebido como un ERP híbrido con aislamiento multi-tenant estricto, cálculo automático del costo real de producción (BOM), control de stock inteligente basado en recetas y soporte para analíticas avanzadas.
+- `main.go`: servidor Go y registro de rutas.
+- `internal/`: autenticación y módulos de negocio.
+- `internal/operations`: pedidos, cobros, inventario, gastos, membresías y analítica.
+- `frontend/`: aplicación Vue.
+- `database/migrations/`: migraciones incrementales versionadas.
+- `cmd/migrate/`: ensayo, aplicación y verificación de migraciones.
 
----
+## Desarrollo local
 
-## 🛠️ Stack Tecnológico
+Usá la versión de Go indicada en `go.mod` y una versión de Node compatible con las dependencias de `frontend/package.json`. Configurá `.env` en la raíz a partir de `.env.example`. `DATABASE_URL` y `JWT_SECRET` son necesarios; la configuración de Supabase Storage se usa para imágenes del catálogo.
 
-El proyecto utiliza una arquitectura desacoplada moderna de alto rendimiento:
+Desde la raíz:
 
-* **Backend:** [Go (Golang)](https://go.dev/) utilizando el framework de enrutamiento estándar, aislamiento por capas (Handler -> Service -> Repository) y [GORM](https://gorm.io/) como ORM para la interacción de datos.
-* **Base de Datos:** [PostgreSQL](https://www.postgresql.org/) alojado en la nube mediante [Supabase](https://supabase.com/), con soporte nativo de UUIDs para mitigar riesgos de seguridad de ID secuenciales y asegurar el aislamiento multi-tenant.
-* **Frontend:** [Vue.js](https://vuejs.org/) para una interfaz reactiva, rápida y ligera pensada para dispositivos móviles.
-
----
-
-## 📁 Estructura del Proyecto
-
-El backend sigue las mejores prácticas de la comunidad de Go para mantener el código desacoplado, testeable y mantenible:
-
-```text
-leguiburger/
-├── cmd/
-│   └── api/
-│       └── main.go           # Punto de entrada de la aplicación
-├── internal/
-│   ├── db/
-│   │   └── db.go             # Inicialización de la conexión de GORM
-│   ├── models/
-│   │   └── tenant.go         # Modelos de datos compartidos (Structs de GORM)
-│   └── tenants/              # Módulo de ejemplo (Estructura por capas)
-│       ├── handler.go        # Capa de Presentación (Controladores HTTP)
-│       ├── handler_test.go   # Tests de Integración de Endpoints HTTP
-│       ├── repository.go     # Capa de Datos (Acceso directo a DB)
-│       ├── service.go        # Capa de Negocio (Reglas del SaaS)
-│       └── service_test.go   # Tests Unitarios de Lógica de Negocio
-├── frontend/                 # Código fuente del cliente en Vue.js
-├── .env                      # Variables de entorno locales (NO subir a GitHub)
-├── go.mod                    # Dependencias de Go
-└── README.md
-
-```
-
-## 🚀 Guía de Desarrollo Local
-📋 Prerrequisitos
-Asegurate de tener instalado en tu sistema operativo:
-
-* Go 1.20+
-
-* Node.js 18+ (para el Frontend)
-
-### 1. Configuración del Entorno (.env)
-
-Crea un archivo .env en la raíz del proyecto con las siguientes variables:
-
-```text
-PORT=8080
-DATABASE_URL="postgres://postgres.[TU_ID_PROYECTO]:[TU_CONTRASEÑA]@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
-JWT_SECRET="reemplazar-por-un-secreto-seguro"
-SUPABASE_URL="https://[TU_ID_PROYECTO].supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="[TU_SERVICE_ROLE_KEY]"
-SUPABASE_STORAGE_BUCKET="catalog_images"
-```
-
-Las imagenes del catalogo se suben a Supabase Storage. Crea un bucket publico con el nombre configurado en `SUPABASE_STORAGE_BUCKET` o deja `catalog_images` como valor por defecto.
-
-### 2. Levantar el Backend (Go)
-Abrí tu terminal en la raíz del proyecto.
-
-Descargá y sincronizá las dependencias necesarias de Go:
-
-```text
-go mod tidy
-```
-
-Ejecutá el servidor de desarrollo:
-
-```text
+```powershell
 go run main.go
 ```
 
-El servidor backend levantará exitosamente en http://localhost:8080.
+En otra terminal:
 
-### 3. Levantar el Frontend (Vue.js)
-Abrí una nueva pestaña de la terminal y navega al directorio del frontend:
-
-```text
-cd frontend
-npm install
-npm run dev
+```powershell
+npm --prefix frontend install
+npm --prefix frontend run dev
 ```
 
-La aplicación web se abrirá localmente (por lo general en http://localhost:5173).
+La interfaz queda normalmente en `http://127.0.0.1:5173/` y Vite reenvía `/api` a `http://localhost:8080`. El backend comprueba la identidad y las migraciones de la base antes de iniciar. Para servir la interfaz desde Go, generá `frontend/dist` con `npm --prefix frontend run build`.
 
-## 🧪 Ejecución de Pruebas (Tests)
-El sistema cuenta con una sólida cobertura de pruebas tanto para la lógica de negocio como para las respuestas de la API, sin requerir conexión activa a internet ni bases de datos externas mediante el uso de interfaces y mocks.
+## Base de datos
 
-Para ejecutar las pruebas del proyecto, utiliza la terminal en la raíz de la aplicación:
+La guía de [migraciones](database/README.md) explica el ensayo con rollback, la verificación de datos y la aplicación en el proyecto correcto. `resources/migration.slq` es un esquema histórico con comandos destructivos; no se usa para actualizar la base existente.
 
-Ejecutar todos los tests del proyecto:
+El seed de un administrador inicial requiere `SEED_OWNER_EMAIL` y `SEED_OWNER_PASSWORD` definidos explícitamente en el entorno. No se ejecuta al iniciar el backend ni al migrar.
 
-```text
-go test -v -cover ./...
-gotestsum --format short-verbose -- -cover ./...
+## API y pruebas
+
+La [API de operación y analítica](docs/api-operaciones.md) documenta roles, endpoints, DTOs y ejemplos. El [diagnóstico de analítica](docs/analitica-dashboards.md) conserva la comparación con Al Toque y el inventario previo a la migración.
+
+```powershell
+go test ./...
+go test ./internal/operations -run TestDatabaseIntegration -count=1 -v -args -db-integration
 ```
 
-Backend: Configurado y optimizado para ejecutarse en Render. Al hacer un git push a la rama principal, el pipeline compila el archivo cmd/api/main.go automáticamente.
-Base de datos: Sincronizada directamente en la nube mediante Supabase (PostgreSQL).
+La prueba de integración es explícita, verifica el proyecto esperado y revierte todos los datos temporales.
