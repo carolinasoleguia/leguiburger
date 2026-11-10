@@ -1,31 +1,5 @@
-<template>
-  <section class="dashboard-welcome">
-    <div class="card">
-      <div class="dashboard-header">
-        <div>
-          <h1>Hola Empleado!</h1>
-          <p>Bienvenido a tu panel.</p>
-          <p>Tenant: <strong>{{ tenantId }}</strong></p>
-        </div>
-        <button class="btn-logout" @click="logout">Cerrar sesión</button>
-      </div>
-      <div class="role-notice">Tu experiencia es distinta a la del administrador.</div>
-    </div>
-  </section>
-</template>
-
 <script setup>
-import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useAuth } from '../../composables/useAuth.js';
-
-const route = useRoute();
-const router = useRouter();
-const auth = useAuth();
-const tenantId = computed(() => route.params.tenantId);
-
-function logout() {
-  auth.logout();
-  router.push('/login');
-}
+import DashboardShell from '../../components/DashboardShell.vue';
+import AppIcon from '../../components/AppIcon.vue';
 </script>
+<template><DashboardShell role="employee"><section class="employee-panel"><p class="eyebrow">MI ESPACIO DE TRABAJO</p><h1>Listos para una buena jornada.</h1><p class="status-text">Este es tu espacio dentro del equipo de LeguiBurger.</p><div class="card"><div class="empty-state"><AppIcon name="flame" :size="40" /><h3>Tu lugar en la cocina.</h3><p>Tu acceso al equipo está activo. Las herramientas de trabajo para empleados estarán disponibles en este espacio.</p></div></div></section></DashboardShell></template>

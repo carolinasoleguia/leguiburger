@@ -249,7 +249,7 @@ onMounted(async () => {
 .data-table th,
 .data-table td {
   padding: 0.85rem 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--control-border);
   text-align: left;
 }
 .centered-loading {
@@ -260,16 +260,16 @@ onMounted(async () => {
 .status-text {
   padding: 1.5rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--field);
   margin-top: 1rem;
 }
 .status-text.error {
-  color: #f87171;
+  color: var(--danger);
 }
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.7);
+  background: var(--surface-strong);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuth } from '../composables/useAuth.js';
+import LandingView from '../views/public/LandingView.vue';
 import LoginView from '../views/auth/LoginView.vue';
 import OwnerDashboard from '../views/owner/OwnerDashboard.vue';
 import OwnerHomeView from '../views/owner/OwnerHomeView.vue';
@@ -21,7 +22,8 @@ import NotFoundView from '../views/shared/NotFoundView.vue';
 const routes = [
   {
     path: '/',
-    redirect: { name: 'Login' }
+    name: 'Landing',
+    component: LandingView
   },
   {
     path: '/login',
@@ -118,7 +120,12 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition;
+    if (to.hash) return { el: to.hash, top: 90 };
+    return { top: 0 };
+  }
 });
 
 router.beforeEach((to, from, next) => {

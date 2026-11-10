@@ -2,8 +2,8 @@
   <section>
     <div class="section-header">
       <div class="section-title">
-        <h2>Brands</h2>
-        <p>Gestiona las marcas asociadas a los tenants.</p>
+        <h2>Marcas</h2>
+        <p>La identidad de tus negocios y los locales que forman parte de cada marca.</p>
       </div>
       <button class="btn-primary" @click="openCreateModal">Nueva marca</button>
     </div>
@@ -13,13 +13,13 @@
         <span class="spinner-large"></span>
       </div>
       <div v-else-if="error" class="status-text error">{{ error }}</div>
-      <div v-else-if="brands.length === 0" class="status-text">No hay brands registrados.</div>
+      <div v-else-if="brands.length === 0" class="status-text">Todavía no hay marcas registradas.</div>
       <table v-else class="data-table">
         <thead>
           <tr>
             <th>#</th>
             <th>Nombre</th>
-            <th>Tax ID</th>
+            <th>CUIT</th>
             <th>Acciones</th>
           </tr>
         </thead>

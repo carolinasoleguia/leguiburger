@@ -404,8 +404,8 @@ onBeforeUnmount(() => {
   padding: 6px;
   margin-bottom: 20px;
   border-radius: 14px;
-  background: rgba(15, 23, 42, 0.76);
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: var(--surface-strong);
+  border: 1px solid var(--surface-raised);
 }
 
 .catalog-tab {
@@ -422,7 +422,7 @@ onBeforeUnmount(() => {
 
 .catalog-tab:hover,
 .catalog-tab--active {
-  background: rgba(59, 130, 246, 0.14);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -531,8 +531,8 @@ onBeforeUnmount(() => {
   max-height: 220px;
   object-fit: cover;
   border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--control-border);
+  background: var(--field);
 }
 
 .modal-card--product {
@@ -559,12 +559,12 @@ onBeforeUnmount(() => {
 }
 
 .status-pill--success {
-  background: rgba(16, 185, 129, 0.14);
-  color: #6ee7b7;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .status-pill--muted {
-  background: rgba(148, 163, 184, 0.14);
+  background: var(--surface-raised);
   color: var(--text-muted);
 }
 
@@ -573,7 +573,7 @@ onBeforeUnmount(() => {
   height: 48px;
   border-radius: 12px;
   object-fit: cover;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border);
 }
 
 .table-actions {
@@ -614,8 +614,8 @@ onBeforeUnmount(() => {
   margin-bottom: 0;
   padding: 14px 16px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: var(--field);
+  border: 1px solid var(--control-border);
 }
 
 .product-status-toggle__label {
@@ -655,8 +655,8 @@ onBeforeUnmount(() => {
   width: 54px;
   height: 30px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.28);
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: var(--surface-raised);
+  border: 1px solid var(--control-border);
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 
@@ -673,8 +673,8 @@ onBeforeUnmount(() => {
 }
 
 .switch-control input:checked + .switch-control__track {
-  background: rgba(16, 185, 129, 0.42);
-  border-color: rgba(110, 231, 183, 0.42);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .switch-control input:checked + .switch-control__track .switch-control__thumb {
@@ -682,7 +682,7 @@ onBeforeUnmount(() => {
 }
 
 .switch-control input:focus-visible + .switch-control__track {
-  outline: 2px solid rgba(96, 165, 250, 0.8);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 

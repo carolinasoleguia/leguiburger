@@ -539,8 +539,8 @@ onMounted(async () => {
   padding: 6px;
   margin-bottom: 20px;
   border-radius: 14px;
-  background: rgba(15, 23, 42, 0.76);
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: var(--surface-strong);
+  border: 1px solid var(--surface-raised);
 }
 
 .catalog-tab {
@@ -557,7 +557,7 @@ onMounted(async () => {
 
 .catalog-tab:hover,
 .catalog-tab--active {
-  background: rgba(59, 130, 246, 0.14);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -626,8 +626,8 @@ onMounted(async () => {
   gap: 18px;
   padding: 16px;
   border-radius: 18px;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow);
 }
 
@@ -644,7 +644,7 @@ onMounted(async () => {
 }
 
 .tenant-product-card__image--placeholder {
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.18), rgba(15, 23, 42, 0.18));
+  background: var(--hover);
 }
 
 .tenant-product-card__body {
@@ -731,8 +731,8 @@ onMounted(async () => {
   align-items: center;
   padding: 14px 16px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
 }
 
 .base-product-row__main {
@@ -757,7 +757,7 @@ onMounted(async () => {
 }
 
 .base-product-row__image--placeholder {
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.18), rgba(15, 23, 42, 0.18));
+  background: var(--hover);
 }
 
 .base-product-row__actions {
@@ -798,15 +798,15 @@ onMounted(async () => {
 .product-card {
   border-radius: 20px;
   overflow: hidden;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow);
   display: grid;
 }
 
 .product-card__media {
   aspect-ratio: 16 / 10;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-strong);
 }
 
 .product-card__image {
@@ -816,7 +816,7 @@ onMounted(async () => {
 }
 
 .product-card__image--placeholder {
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(15, 23, 42, 0.2));
+  background: var(--hover);
 }
 
 .product-card__body {
@@ -880,12 +880,12 @@ onMounted(async () => {
 }
 
 .status-pill--success {
-  background: rgba(16, 185, 129, 0.14);
-  color: #6ee7b7;
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .status-pill--muted {
-  background: rgba(148, 163, 184, 0.14);
+  background: var(--surface-raised);
   color: var(--text-muted);
 }
 
