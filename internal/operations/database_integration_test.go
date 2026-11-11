@@ -2,8 +2,10 @@ package operations
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
@@ -74,7 +76,18 @@ func TestDatabaseIntegration(t *testing.T) {
 	}
 	token := func(id, role string, tenant, brand *string) string {
 		t.Helper()
-		value, e := auth.GenerateToken(id, id+"@example.invalid", role, tenant, brand)
+		kind, tenantID, brandID := "user", "", ""
+		if tenant != nil {
+			tenantID = *tenant
+			kind = "employee"
+			brandID = b1
+		}
+		if brand != nil {
+			brandID = *brand
+		}
+		sid := uuid.NewString()
+		must(`INSERT INTO legui_private.auth_sessions(id,principal_kind,principal_id,role,brand_id,tenant_id,credential_digest,mfa_verified) VALUES(?,?,?,?,nullif(?,'')::uuid,nullif(?,'')::uuid,?,?)`, sid, kind, id, role, brandID, tenantID, fmt.Sprintf("%x", sha256.Sum256([]byte("fixture-not-a-password"))), role == "owner")
+		value, e := auth.SessionToken(auth.SessionPrincipal{ID: id, Kind: kind, Role: role, BrandID: brandID, TenantID: tenantID}, sid, role == "owner", "access")
 		if e != nil {
 			t.Fatal(e)
 		}

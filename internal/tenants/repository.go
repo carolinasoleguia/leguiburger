@@ -59,10 +59,10 @@ func (r *repository) Create(
 	ctx context.Context,
 	tenant *models.Tenant,
 ) error {
-	if err := db.DB.WithContext(ctx).Create(tenant).Error; err != nil {
+	if err := db.ForContext(ctx).Create(tenant).Error; err != nil {
 		return err
 	}
-	return db.DB.WithContext(ctx).Preload("Brand").First(tenant, "id = ?", tenant.ID).Error
+	return db.ForContext(ctx).Preload("Brand").First(tenant, "id = ?", tenant.ID).Error
 }
 
 // LIST
@@ -73,8 +73,7 @@ func (r *repository) GetAll(
 
 	var tenants []models.Tenant
 
-	err := db.DB.
-		WithContext(ctx).
+	err := db.ForContext(ctx).
 		Preload("Brand").
 		Order("created_at DESC").
 		Find(&tenants).
@@ -94,8 +93,7 @@ func (r *repository) GetByBrandID(
 
 	var tenants []models.Tenant
 
-	err := db.DB.
-		WithContext(ctx).
+	err := db.ForContext(ctx).
 		Preload("Brand").
 		Where("brand_id = ?", brandID).
 		Order("created_at DESC").
@@ -118,8 +116,7 @@ func (r *repository) GetByID(
 
 	var tenant models.Tenant
 
-	err := db.DB.
-		WithContext(ctx).
+	err := db.ForContext(ctx).
 		Preload("Brand").
 		First(
 			&tenant,
@@ -149,8 +146,7 @@ func (r *repository) GetByBrandAndSubdomain(
 
 	var tenant models.Tenant
 
-	err := db.DB.
-		WithContext(ctx).
+	err := db.ForContext(ctx).
 		Where(
 			"brand_id = ? AND subdomain = ?",
 			brandID,
@@ -177,8 +173,7 @@ func (r *repository) Update(
 	tenant *models.Tenant,
 ) error {
 
-	return db.DB.
-		WithContext(ctx).
+	return db.ForContext(ctx).
 		Save(tenant).
 		Error
 }
@@ -190,8 +185,7 @@ func (r *repository) Delete(
 	id string,
 ) error {
 
-	return db.DB.
-		WithContext(ctx).
+	return db.ForContext(ctx).
 		Model(&models.Tenant{}).
 		Where(
 			"id = ?",

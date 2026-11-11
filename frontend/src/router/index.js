@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuth } from '../composables/useAuth.js';
+import { bootstrapSession } from '../services/session.js';
 import LandingView from '../views/public/LandingView.vue';
 import LoginView from '../views/auth/LoginView.vue';
 import OwnerDashboard from '../views/owner/OwnerDashboard.vue';
@@ -20,6 +21,12 @@ import UnauthorizedView from '../views/shared/UnauthorizedView.vue';
 import NotFoundView from '../views/shared/NotFoundView.vue';
 
 const routes = [
+  { path: '/forgot-password', component: () => import('../views/auth/RecoveryView.vue'), meta: { authAction: 'forgot' } },
+  { path: '/reset-password', component: () => import('../views/auth/RecoveryView.vue'), meta: { authAction: 'reset' } },
+  { path: '/accept-invitation', component: () => import('../views/auth/RecoveryView.vue'), meta: { authAction: 'invite' } },
+  { path: '/account/security', component: () => import('../views/shared/SecurityView.vue'), meta: { requiresAuth: true } },
+  { path: '/team/invitations', component: () => import('../views/shared/InvitationsView.vue'), meta: { requiresAuth: true, roles: ['owner', 'super_admin', 'admin'] } },
+  { path: '/audit', component: () => import('../views/shared/AuditView.vue'), meta: { requiresAuth: true, roles: ['owner', 'super_admin', 'admin'] } },
   {
     path: '/',
     name: 'Landing',
@@ -33,7 +40,7 @@ const routes = [
   {
     path: '/owner',
     component: OwnerDashboard,
-    meta: { requiresAuth: true, roles: ['owner'] },
+    meta: { requiresAuth: true, roles: ['owner', 'super_admin'] },
     children: [
       {
         path: '',
@@ -99,7 +106,7 @@ const routes = [
     path: '/tenant/:tenantId/employee',
     name: 'TenantEmployeeDashboard',
     component: EmployeeDashboard,
-    meta: { requiresAuth: true, roles: ['employee'], tenantMatch: true }
+    meta: { requiresAuth: true, roles: ['employee', 'cashier', 'kitchen'], tenantMatch: true }
   },
   {
     path: '/catalogo',
@@ -128,7 +135,8 @@ const router = createRouter({
   }
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
+  await bootstrapSession();
   const auth = useAuth();
 
   if (to.meta.requiresAuth && !auth.isLoggedIn.value) {
@@ -137,13 +145,13 @@ router.beforeEach((to, from, next) => {
 
   if (to.name === 'Login' && auth.isLoggedIn.value) {
     const role = auth.userRole.value;
-    if (role === 'owner') {
+    if (role === 'owner' || role === 'super_admin') {
       return next({ path: '/owner' });
     }
     if (role === 'admin') {
       return next({ path: '/admin' });
     }
-    if (role === 'employee') {
+    if (['employee', 'cashier', 'kitchen'].includes(role)) {
       return next({ path: `/tenant/${auth.tenantId.value}/employee` });
     }
   }

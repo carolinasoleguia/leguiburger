@@ -25,12 +25,12 @@ func NewRepository() Repository {
 }
 
 func (r *repository) Create(ctx context.Context, tenantProduct *models.TenantProduct) error {
-	return db.DB.WithContext(ctx).Create(tenantProduct).Error
+	return db.ForContext(ctx).Create(tenantProduct).Error
 }
 
 func (r *repository) GetByID(ctx context.Context, tenantID, productID string) (*models.TenantProduct, error) {
 	var tenantProduct models.TenantProduct
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Preload("Product").
 		Where("tenant_id = ? AND product_id = ?", tenantID, productID).
 		First(&tenantProduct).Error
@@ -45,7 +45,7 @@ func (r *repository) GetByID(ctx context.Context, tenantID, productID string) (*
 
 func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.TenantProduct, error) {
 	var tenantProducts []models.TenantProduct
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Preload("Product").
 		Where("tenant_id = ?", tenantID).
 		Find(&tenantProducts).Error
@@ -53,18 +53,18 @@ func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.Te
 }
 
 func (r *repository) Update(ctx context.Context, tenantProduct *models.TenantProduct) error {
-	return db.DB.WithContext(ctx).Save(tenantProduct).Error
+	return db.ForContext(ctx).Save(tenantProduct).Error
 }
 
 func (r *repository) Delete(ctx context.Context, tenantID, productID string) error {
-	return db.DB.WithContext(ctx).
+	return db.ForContext(ctx).
 		Where("tenant_id = ? AND product_id = ?", tenantID, productID).
 		Delete(&models.TenantProduct{}).Error
 }
 
 func (r *repository) GetProductForTenantBrand(ctx context.Context, tenantID, productID string) (*models.Product, error) {
 	var product models.Product
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Table("products").
 		Joins("JOIN tenants ON tenants.brand_id = products.brand_id").
 		Where("tenants.id = ? AND products.id = ?", tenantID, productID).

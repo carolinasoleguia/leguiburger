@@ -142,14 +142,14 @@ func TestCreateEmployee_Success(t *testing.T) {
 	rawPassword := "PasswordSegura123!"
 
 	res, err := service.CreateEmployee(
-		context.Background(),
+		ownerTestContext(),
 		"tenant-1",
 		" Ana ",
 		" Eguia ",
 		" ADMIN@EMAIL.COM ",
 		rawPassword,
 		" 2215555555 ",
-		"ADMIN",
+		"CASHIER",
 	)
 
 	if err != nil {
@@ -184,7 +184,7 @@ func TestCreateEmployee_Success(t *testing.T) {
 		res.LastName != "Eguia" ||
 		res.Email != "admin@email.com" ||
 		res.Phone != "2215555555" ||
-		res.Role != "admin" ||
+		res.Role != "cashier" ||
 		!res.IsActive {
 
 		t.Errorf(
@@ -234,7 +234,7 @@ func TestCreateEmployee_AdminSameBrand_Success(t *testing.T) {
 	service := NewService(repo, tenantRepo)
 
 	brandID := "brand-1"
-	ctx := context.WithValue(context.Background(), auth.ClaimsKey, &auth.Claims{
+	ctx := context.WithValue(ownerTestContext(), auth.ClaimsKey, &auth.Claims{
 		Role:     "admin",
 		BrandID:  &brandID,
 		TenantID: "",
@@ -260,65 +260,12 @@ func TestCreateEmployee_AdminSameBrand_Success(t *testing.T) {
 	}
 }
 
-func TestCreateEmployee_Owner_Success(t *testing.T) {
-
-	repo := &mockRepository{
-
-		getByEmailFunc: func(
-			ctx context.Context,
-			tenantID, email string,
-		) (*models.Employee, error) {
-
-			return nil, nil
-		},
-
-		createFunc: func(
-			ctx context.Context,
-			employee *models.Employee,
-		) error {
-
-			employee.ID = "owner-id"
-
-			return nil
-		},
+func TestCreateEmployee_RejectsPlatformRole(t *testing.T) {
+	svc := NewService(&mockRepository{}, &mockTenantRepository{})
+	_, err := svc.CreateEmployee(ownerTestContext(), "tenant-a", "First", "Last", "owner@example.invalid", "LongPassword123!", "", "owner")
+	if !errors.Is(err, ErrInvalidEmployeeRole) {
+		t.Fatalf("expected invalid collaborator role, got %v", err)
 	}
-
-	service := NewService(
-		repo,
-		&mockTenantRepository{},
-	)
-
-	res, err := service.CreateEmployee(
-		context.Background(),
-		"",
-		"Carolina",
-		"Eguia",
-		"owner@admin.com",
-		"Password123!",
-		"2214347305",
-		"owner",
-	)
-
-	if err != nil {
-		t.Fatalf(
-			"error inesperado %v",
-			err,
-		)
-	}
-
-	if res.TenantID != nil {
-		t.Error(
-			"owner no debe tener tenant",
-		)
-	}
-
-	if res.Role != "owner" {
-		t.Errorf(
-			"rol incorrecto %s",
-			res.Role,
-		)
-	}
-
 }
 
 // Los siguientes tests no requieren cambios,
@@ -333,7 +280,7 @@ func TestCreateEmployee_NormalUser_RequiresTenantID(t *testing.T) {
 	)
 
 	_, err := service.CreateEmployee(
-		context.Background(),
+		context.WithValue(context.Background(), auth.ClaimsKey, &auth.Claims{Role: "admin", BrandID: stringPtr("brand-a")}),
 		"",
 		"Ana",
 		"Eguia",
@@ -373,12 +320,12 @@ func TestCreateEmployee_AdminCanUseTenantInSameBrand(t *testing.T) {
 			if id == "tenant-2" {
 				return &models.Tenant{ID: id, BrandID: "brand-id"}, nil
 			}
-		return &models.Tenant{ID: id, BrandID: "other-brand"}, nil
+			return &models.Tenant{ID: id, BrandID: "other-brand"}, nil
 		},
 	}
 
 	service := NewService(repo, tenantRepo)
-	ctx := context.WithValue(context.Background(), auth.ClaimsKey, &auth.Claims{Role: "admin", TenantID: "tenant-2"})
+	ctx := context.WithValue(ownerTestContext(), auth.ClaimsKey, &auth.Claims{Role: "admin", TenantID: "tenant-2"})
 
 	_, err := service.CreateEmployee(ctx, "tenant-1", "Ana", "Eguia", "ana@email.com", "Password123!", "", "employee")
 	if err != nil {
@@ -400,7 +347,7 @@ func TestListEmployees_AdminBrandListsAllEmployees(t *testing.T) {
 	}
 
 	service := NewService(repo, &mockTenantRepository{})
-	ctx := context.WithValue(context.Background(), auth.ClaimsKey, &auth.Claims{Role: "admin", BrandID: stringPtr("brand-1")})
+	ctx := context.WithValue(ownerTestContext(), auth.ClaimsKey, &auth.Claims{Role: "admin", BrandID: stringPtr("brand-1")})
 
 	employees, err := service.ListEmployees(ctx, "")
 	if err != nil {
@@ -436,7 +383,7 @@ func TestUpdateEmployee_AdminCanDeactivateSameBrandEmployee(t *testing.T) {
 	}
 
 	service := NewService(repo, tenantRepo)
-	ctx := context.WithValue(context.Background(), auth.ClaimsKey, &auth.Claims{Role: "admin", BrandID: stringPtr("brand-1")})
+	ctx := context.WithValue(ownerTestContext(), auth.ClaimsKey, &auth.Claims{Role: "admin", BrandID: stringPtr("brand-1")})
 
 	updated, err := service.UpdateEmployee(ctx, "", "employee-1", "", "", "", "", "", "", &isActive)
 	if err != nil {
@@ -456,7 +403,7 @@ func TestCreateEmployee_InvalidData(t *testing.T) {
 	)
 
 	_, err := service.CreateEmployee(
-		context.Background(),
+		ownerTestContext(),
 		"tenant-1",
 		"",
 		"Eguia",
@@ -473,4 +420,8 @@ func TestCreateEmployee_InvalidData(t *testing.T) {
 		)
 	}
 
+}
+
+func ownerTestContext() context.Context {
+	return context.WithValue(context.Background(), auth.ClaimsKey, &auth.Claims{Role: "owner", UserID: "owner-fixture"})
 }

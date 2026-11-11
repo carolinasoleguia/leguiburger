@@ -1,11 +1,12 @@
 const BASE_API = '/api';
+import { session, refreshSession, clearSession } from './session.js';
 
 function isFormDataBody(body) {
   return typeof FormData !== 'undefined' && !!body && (body instanceof FormData || body.constructor?.name === 'FormData');
 }
 
 function buildHeaders(customHeaders = {}, body = null) {
-  const token = localStorage.getItem('token');
+  const token = session.token;
   const headers = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...customHeaders
@@ -19,10 +20,20 @@ function buildHeaders(customHeaders = {}, body = null) {
 }
 
 export async function apiFetch(path, options = {}) {
-  const response = await fetch(`${BASE_API}${path}`, {
+  let response = await fetch(`${BASE_API}${path}`, {
     ...options,
     headers: buildHeaders(options.headers, options.body),
   });
+
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    try {
+      await refreshSession();
+      response = await fetch(`${BASE_API}${path}`, { ...options, headers: buildHeaders(options.headers, options.body) });
+    } catch {
+      clearSession();
+      window.dispatchEvent(new CustomEvent('legui:logout', { detail: 'expired' }));
+    }
+  }
 
   return response;
 }

@@ -231,49 +231,33 @@ func (h *Handler) GetTenants(w http.ResponseWriter, r *http.Request) {
 	brandIDQuery := strings.TrimSpace(r.URL.Query().Get("brand_id"))
 	var tenants []models.Tenant
 	var err error
-
-	if brandIDQuery != "" {
-		if claims.Role != auth.RoleOwner && (claims.BrandID == nil || strings.TrimSpace(*claims.BrandID) != brandIDQuery) {
-			h.respondWithError(
-				w,
-				http.StatusForbidden,
-				"FORBIDDEN",
-				"Acceso denegado: no puedes listar tenants de otra marca",
-				nil,
-			)
-			return
+	if claims.Role == auth.RoleOwner || claims.Role == auth.RoleSuperAdmin {
+		if brandIDQuery != "" {
+			tenants, err = h.service.GetTenantsByBrandID(r.Context(), brandIDQuery)
+		} else {
+			tenants, err = h.service.GetAllTenants(r.Context())
 		}
-
-		tenants, err = h.service.GetTenantsByBrandID(r.Context(), brandIDQuery)
 	} else {
-		tenants, err = h.service.GetAllTenants(r.Context())
-
-		if err != nil {
-			h.respondWithError(
-				w,
-				http.StatusInternalServerError,
-				"INTERNAL_SERVER_ERROR",
-				"Error al obtener los comercios",
-				nil,
-			)
-
+		p, exists := auth.PrincipalFromContext(r.Context())
+		brand := ""
+		if exists {
+			brand = p.BrandID
+		} else if claims.BrandID != nil {
+			brand = strings.TrimSpace(*claims.BrandID)
+		}
+		if brand == "" || brandIDQuery != "" && brandIDQuery != brand {
+			h.respondWithError(w, 403, "FORBIDDEN", "No podés consultar otra marca", nil)
 			return
 		}
-
-		if claims.Role == "admin" {
-			brandID := ""
-			if claims.BrandID != nil {
-				brandID = strings.TrimSpace(*claims.BrandID)
-			}
-			if brandID != "" {
-				filtered := make([]models.Tenant, 0, len(tenants))
-				for _, tenant := range tenants {
-					if tenant.Brand.ID == brandID || tenant.BrandID == brandID {
-						filtered = append(filtered, tenant)
-					}
+		tenants, err = h.service.GetTenantsByBrandID(r.Context(), brand)
+		if claims.Role != "admin" {
+			filtered := make([]models.Tenant, 0, 1)
+			for _, tenant := range tenants {
+				if tenant.ID == claims.TenantID {
+					filtered = append(filtered, tenant)
 				}
-				tenants = filtered
 			}
+			tenants = filtered
 		}
 	}
 

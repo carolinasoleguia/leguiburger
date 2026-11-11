@@ -36,6 +36,9 @@ El seed de un administrador inicial requiere `SEED_OWNER_EMAIL` y `SEED_OWNER_PA
 
 ## API y pruebas
 
+La guía de [seguridad y sesiones](docs/seguridad-y-sesiones.md) explica permisos,
+MFA, recuperación, invitaciones, auditoría y configuración del correo SMTP.
+
 La [API de operación y analítica](docs/api-operaciones.md) documenta roles, endpoints, DTOs y ejemplos. El [diagnóstico de analítica](docs/analitica-dashboards.md) conserva la comparación con Al Toque y el inventario previo a la migración.
 
 ```powershell

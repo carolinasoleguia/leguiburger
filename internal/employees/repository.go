@@ -27,12 +27,12 @@ func NewRepository() Repository {
 }
 
 func (r *repository) Create(ctx context.Context, employee *models.Employee) error {
-	return db.DB.WithContext(ctx).Create(employee).Error
+	return db.ForContext(ctx).Create(employee).Error
 }
 
 func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.Employee, error) {
 	var employee models.Employee
-	query := db.DB.WithContext(ctx).
+	query := db.ForContext(ctx).
 		Preload("Tenant").
 		Preload("Tenant.Brand").
 		Where("id = ?", id)
@@ -51,7 +51,7 @@ func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.
 
 func (r *repository) GetByEmail(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 	var employee models.Employee
-	query := db.DB.WithContext(ctx).Where("email = ?", email)
+	query := db.ForContext(ctx).Where("email = ?", email)
 	if tenantID == "" {
 		query = query.Where("tenant_id IS NULL")
 	} else {
@@ -69,7 +69,7 @@ func (r *repository) GetByEmail(ctx context.Context, tenantID, email string) (*m
 
 func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.Employee, error) {
 	var employees []models.Employee
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Preload("Tenant").
 		Preload("Tenant.Brand").
 		Where("tenant_id = ?", tenantID).
@@ -81,7 +81,7 @@ func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.Em
 func (r *repository) FetchByBrandID(ctx context.Context, brandID string) ([]models.Employee, error) {
 	var employees []models.Employee
 
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Model(&models.Employee{}).
 		Preload("Tenant", func(tx *gorm.DB) *gorm.DB {
 			return tx.Select("id", "subdomain", "brand_id")
@@ -98,7 +98,7 @@ func (r *repository) FetchByBrandID(ctx context.Context, brandID string) ([]mode
 func (r *repository) GetAll(ctx context.Context) ([]models.Employee, error) {
 	var employees []models.Employee
 
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Preload("Tenant").
 		Preload("Tenant.Brand").
 		Where("tenant_id IS NOT NULL").
@@ -112,11 +112,11 @@ func (r *repository) GetAll(ctx context.Context) ([]models.Employee, error) {
 }
 
 func (r *repository) Update(ctx context.Context, employee *models.Employee) error {
-	return db.DB.WithContext(ctx).Save(employee).Error
+	return db.ForContext(ctx).Save(employee).Error
 }
 
 func (r *repository) Delete(ctx context.Context, tenantID, id string) error {
-	query := db.DB.WithContext(ctx).Model(&models.Employee{}).Where("id = ?", id)
+	query := db.ForContext(ctx).Model(&models.Employee{}).Where("id = ?", id)
 	if tenantID != "" {
 		query = query.Where("tenant_id = ?", tenantID)
 	}

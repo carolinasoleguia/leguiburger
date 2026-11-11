@@ -5,3 +5,7 @@ import App from './App.vue'
 import router from './router/index.js'
 
 createApp(App).use(router).mount('#app')
+
+window.addEventListener('legui:logout', event => {
+  if (router.currentRoute.value.meta.requiresAuth) router.replace({ path: '/login', query: event.detail ? { reason: event.detail } : {} });
+});

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"gorm.io/gorm"
+	"leguiburger/internal/auth"
 	"net/http"
 	"regexp"
 	"strings"
@@ -31,6 +32,9 @@ func (h *Handler) mutate(r *http.Request, p Principal, scope Scope, name string,
 		}
 		if err := tx.Exec(`SET LOCAL statement_timeout='15s'`).Error; err != nil {
 			return err
+		}
+		if err := auth.LockSession(r.Context(), tx); err != nil {
+			return unauthorized()
 		}
 		if err := lockPrincipal(tx, p, scope); err != nil {
 			return err

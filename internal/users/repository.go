@@ -25,12 +25,12 @@ func NewRepository() Repository {
 }
 
 func (r *repository) Create(ctx context.Context, user *models.User) error {
-	return db.DB.WithContext(ctx).Create(user).Error
+	return db.ForContext(ctx).Create(user).Error
 }
 
 func (r *repository) GetByID(ctx context.Context, id string) (*models.User, error) {
 	var user models.User
-	err := db.DB.WithContext(ctx).First(&user, "id = ?", id).Error
+	err := db.ForContext(ctx).First(&user, "id = ?", id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -42,7 +42,7 @@ func (r *repository) GetByID(ctx context.Context, id string) (*models.User, erro
 
 func (r *repository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
-	err := db.DB.WithContext(ctx).Where("LOWER(email) = LOWER(?)", email).First(&user).Error
+	err := db.ForContext(ctx).Where("LOWER(email) = LOWER(?)", email).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -54,7 +54,7 @@ func (r *repository) GetByEmail(ctx context.Context, email string) (*models.User
 
 func (r *repository) GetAll(ctx context.Context) ([]models.User, error) {
 	var users []models.User
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Where("LOWER(role) = ?", "admin").
 		Order("created_at DESC").
 		Find(&users).Error
@@ -65,9 +65,9 @@ func (r *repository) GetAll(ctx context.Context) ([]models.User, error) {
 }
 
 func (r *repository) Update(ctx context.Context, user *models.User) error {
-	return db.DB.WithContext(ctx).Save(user).Error
+	return db.ForContext(ctx).Save(user).Error
 }
 
 func (r *repository) Delete(ctx context.Context, id string) error {
-	return db.DB.WithContext(ctx).Model(&models.User{}).Where("id = ?", id).Update("is_active", false).Error
+	return db.ForContext(ctx).Model(&models.User{}).Where("id = ?", id).Update("is_active", false).Error
 }

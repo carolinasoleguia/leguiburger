@@ -26,12 +26,12 @@ func NewRepository() Repository {
 }
 
 func (r *repository) Create(ctx context.Context, supply *models.Supply) error {
-	return db.DB.WithContext(ctx).Create(supply).Error
+	return db.ForContext(ctx).Create(supply).Error
 }
 
 func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.Supply, error) {
 	var supply models.Supply
-	err := db.DB.WithContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).First(&supply).Error
+	err := db.ForContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).First(&supply).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -43,7 +43,7 @@ func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.
 
 func (r *repository) GetByName(ctx context.Context, tenantID, name string) (*models.Supply, error) {
 	var supply models.Supply
-	err := db.DB.WithContext(ctx).Where("tenant_id = ? AND name = ?", tenantID, name).First(&supply).Error
+	err := db.ForContext(ctx).Where("tenant_id = ? AND name = ?", tenantID, name).First(&supply).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -55,14 +55,14 @@ func (r *repository) GetByName(ctx context.Context, tenantID, name string) (*mod
 
 func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.Supply, error) {
 	var supplies []models.Supply
-	err := db.DB.WithContext(ctx).Where("tenant_id = ?", tenantID).Find(&supplies).Error
+	err := db.ForContext(ctx).Where("tenant_id = ?", tenantID).Find(&supplies).Error
 	return supplies, err
 }
 
 func (r *repository) Update(ctx context.Context, supply *models.Supply) error {
-	return db.DB.WithContext(ctx).Save(supply).Error
+	return db.ForContext(ctx).Save(supply).Error
 }
 
 func (r *repository) Delete(ctx context.Context, tenantID, id string) error {
-	return db.DB.WithContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).Delete(&models.Supply{}).Error
+	return db.ForContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).Delete(&models.Supply{}).Error
 }

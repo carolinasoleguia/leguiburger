@@ -96,6 +96,27 @@ func RequireOwnerMiddleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func TenantIDFromRequest(r *http.Request) (string, error) {
+	if p, ok := PrincipalFromContext(r.Context()); ok {
+		id := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+		if id == "" {
+			id = p.TenantID
+		}
+		if id == "" {
+			return "", ErrMissingTenantID
+		}
+		if !p.Platform() && !p.Manager() && id != p.TenantID {
+			return "", ErrForbiddenTenant
+		}
+		var brand string
+		result := db.ForContext(r.Context()).Raw(`SELECT brand_id::text FROM public.tenants WHERE id=? AND active`, id).Scan(&brand)
+		if result.Error != nil || result.RowsAffected != 1 {
+			return "", ErrForbiddenTenant
+		}
+		if !p.Platform() && brand != p.BrandID {
+			return "", ErrForbiddenTenant
+		}
+		return id, nil
+	}
 	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
 	claims, ok := GetClaimsFromContext(r.Context())
 	if !ok {
@@ -122,7 +143,7 @@ func TenantIDFromRequest(r *http.Request) (string, error) {
 		}
 
 		var tenant models.Tenant
-		err := db.DB.WithContext(r.Context()).First(&tenant, "id = ?", tenantID).Error
+		err := db.ForContext(r.Context()).First(&tenant, "id = ?", tenantID).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return "", ErrForbiddenTenant

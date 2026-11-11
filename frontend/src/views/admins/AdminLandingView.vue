@@ -75,9 +75,8 @@ async function loadTenants() {
   }
 }
 
-function logout() {
-  auth.logout();
-  router.push('/login');
+async function logout() {
+  try { await auth.logout(); } finally { router.push('/login'); }
 }
 
 function selectTenant(tenantId) {

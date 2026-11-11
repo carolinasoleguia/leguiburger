@@ -24,7 +24,7 @@ func Connect() {
 		DSN:                  dsn,
 		PreferSimpleProtocol: true,
 	}), &gorm.Config{
-		Logger:      logger.Default.LogMode(logger.Info),
+		Logger:      logger.New(log.New(os.Stdout, "", log.LstdFlags), logger.Config{LogLevel: logger.Warn, ParameterizedQueries: true}),
 		PrepareStmt: false,
 	})
 

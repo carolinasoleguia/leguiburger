@@ -26,7 +26,7 @@ func NewRepository() Repository {
 
 func (r *repository) GetEmployeeByEmailAndTenant(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 	var emp models.Employee
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Where("tenant_id = ? AND LOWER(email) = LOWER(?) AND is_active = true", tenantID, email).
 		First(&emp).Error
 
@@ -42,7 +42,7 @@ func (r *repository) GetEmployeeByEmailAndTenant(ctx context.Context, tenantID, 
 // GetByEmail busca un usuario en toda la base sin filtrar por tenant_id.
 func (r *repository) GetEmployeeByEmail(ctx context.Context, email string) (*models.Employee, error) {
 	var emp models.Employee
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Where("LOWER(email) = LOWER(?) AND is_active = true", email).
 		First(&emp).Error
 
@@ -57,7 +57,7 @@ func (r *repository) GetEmployeeByEmail(ctx context.Context, email string) (*mod
 
 func (r *repository) GetAllEmployeesByEmail(ctx context.Context, email string) ([]models.Employee, error) {
 	var employees []models.Employee
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Where("LOWER(email) = LOWER(?) AND is_active = true", email).
 		Find(&employees).Error
 
@@ -69,7 +69,7 @@ func (r *repository) GetAllEmployeesByEmail(ctx context.Context, email string) (
 
 func (r *repository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Preload("Brand").
 		Where("LOWER(email) = LOWER(?) AND is_active = true", email).
 		First(&user).Error
@@ -85,7 +85,7 @@ func (r *repository) GetUserByEmail(ctx context.Context, email string) (*models.
 
 func (r *repository) GetAllUsersByEmail(ctx context.Context, email string) ([]models.User, error) {
 	var users []models.User
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Preload("Brand").
 		Where("LOWER(email) = LOWER(?) AND is_active = true", email).
 		Find(&users).Error

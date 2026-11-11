@@ -26,12 +26,12 @@ func NewRepository() Repository {
 }
 
 func (r *repository) Create(ctx context.Context, recipe *models.Recipe) error {
-	return db.DB.WithContext(ctx).Create(recipe).Error
+	return db.ForContext(ctx).Create(recipe).Error
 }
 
 func (r *repository) GetByID(ctx context.Context, tenantID, productID, supplyID string) (*models.Recipe, error) {
 	var recipe models.Recipe
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Table("recipes").
 		Select("recipes.*").
 		Joins("JOIN products ON products.id = recipes.product_id").
@@ -50,7 +50,7 @@ func (r *repository) GetByID(ctx context.Context, tenantID, productID, supplyID 
 
 func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.Recipe, error) {
 	var recipes []models.Recipe
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Table("recipes").
 		Select("recipes.*").
 		Joins("JOIN products ON products.id = recipes.product_id").
@@ -62,18 +62,18 @@ func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.Re
 }
 
 func (r *repository) Update(ctx context.Context, recipe *models.Recipe) error {
-	return db.DB.WithContext(ctx).Save(recipe).Error
+	return db.ForContext(ctx).Save(recipe).Error
 }
 
 func (r *repository) Delete(ctx context.Context, tenantID, productID, supplyID string) error {
-	return db.DB.WithContext(ctx).
+	return db.ForContext(ctx).
 		Where("product_id = ? AND supply_id = ?", productID, supplyID).
 		Delete(&models.Recipe{}).Error
 }
 
 func (r *repository) ProductExistsForTenant(ctx context.Context, tenantID, productID string) (bool, error) {
 	var count int64
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Table("products").
 		Joins("JOIN tenants ON tenants.brand_id = products.brand_id").
 		Where("tenants.id = ? AND products.id = ?", tenantID, productID).
@@ -83,7 +83,7 @@ func (r *repository) ProductExistsForTenant(ctx context.Context, tenantID, produ
 
 func (r *repository) SupplyExistsForTenant(ctx context.Context, tenantID, supplyID string) (bool, error) {
 	var count int64
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Model(&models.Supply{}).
 		Where("tenant_id = ? AND id = ?", tenantID, supplyID).
 		Count(&count).Error

@@ -11,11 +11,14 @@ import (
 var jwtSecret []byte
 
 type Claims struct {
-	UserID   string  `json:"user_id"`
-	Email    string  `json:"email"`
-	Role     string  `json:"role"`
-	TenantID string  `json:"tenant_id,omitempty"`
-	BrandID  *string `json:"brand_id,omitempty"`
+	SessionID string  `json:"session_id,omitempty"`
+	Purpose   string  `json:"purpose,omitempty"`
+	MFA       bool    `json:"mfa,omitempty"`
+	UserID    string  `json:"user_id"`
+	Email     string  `json:"email"`
+	Role      string  `json:"role"`
+	TenantID  string  `json:"tenant_id,omitempty"`
+	BrandID   *string `json:"brand_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -29,7 +32,8 @@ func ConfigureJWTSecret(secret string) error {
 	return nil
 }
 
-// GenerateToken firma un JWT valido por 24 horas.
+// GenerateToken is a short-lived credential result. It cannot authorize API calls
+// until the login handler attaches a persisted session through SessionToken.
 func GenerateToken(userID, email, role string, tenantID *string, brandID *string) (string, error) {
 	if len(jwtSecret) == 0 {
 		return "", ErrJWTSecretRequired
@@ -47,7 +51,10 @@ func GenerateToken(userID, email, role string, tenantID *string, brandID *string
 		TenantID: tID,
 		BrandID:  brandID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			Issuer:    "leguiburger",
+			Audience:  jwt.ClaimStrings{"leguiburger-api"},
+			Subject:   userID,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
@@ -67,7 +74,7 @@ func ValidateToken(tokenString string) (*Claims, error) {
 			return nil, errors.New("metodo de firma no valido")
 		}
 		return jwtSecret, nil
-	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}), jwt.WithExpirationRequired())
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}), jwt.WithExpirationRequired(), jwt.WithIssuer("leguiburger"), jwt.WithAudience("leguiburger-api"), jwt.WithIssuedAt())
 
 	if err != nil {
 		return nil, err
@@ -79,4 +86,18 @@ func ValidateToken(tokenString string) (*Claims, error) {
 	}
 
 	return claims, nil
+}
+
+func SessionToken(p SessionPrincipal, sessionID string, mfa bool, purpose string) (string, error) {
+	lifetime := 15 * time.Minute
+	if purpose == "mfa" {
+		lifetime = 5 * time.Minute
+	}
+	var brand *string
+	if p.BrandID != "" {
+		brand = &p.BrandID
+	}
+	c := Claims{UserID: p.ID, Role: p.Role, BrandID: brand, TenantID: p.TenantID, SessionID: sessionID, MFA: mfa, Purpose: purpose,
+		RegisteredClaims: jwt.RegisteredClaims{Subject: p.ID, Issuer: "leguiburger", Audience: jwt.ClaimStrings{"leguiburger-api"}, IssuedAt: jwt.NewNumericDate(time.Now()), ExpiresAt: jwt.NewNumericDate(time.Now().Add(lifetime))}}
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(jwtSecret)
 }

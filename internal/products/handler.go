@@ -159,15 +159,14 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request, id string) 
 }
 
 func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request, id string) {
-	input, uploadedImageURL, err := h.decodeUpdateInput(r)
-	if err != nil {
-		h.handleDecodeError(w, err)
-		return
-	}
-
 	brandID, err := h.brandIDFromRequest(r, r.URL.Query().Get("brand_id"))
 	if err != nil {
 		h.handleBrandRequestError(w, err)
+		return
+	}
+	input, uploadedImageURL, err := h.decodeUpdateInput(r)
+	if err != nil {
+		h.handleDecodeError(w, err)
 		return
 	}
 
@@ -220,6 +219,10 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 }
 
 func (h *Handler) handleDecodeError(w http.ResponseWriter, err error) {
+	if errors.Is(err, auth.ErrForbiddenTenant) || errors.Is(err, auth.ErrUnauthorized) || errors.Is(err, ErrBrandNotFoundForProduct) {
+		h.handleBrandRequestError(w, err)
+		return
+	}
 	if errors.Is(err, ErrProductImageUploadFailed) {
 		log.Printf("product image upload failed: %v", err)
 		h.respondWithError(w, http.StatusBadRequest, "IMAGE_UPLOAD_FAILED", "No se pudo subir la imagen del producto")
@@ -230,26 +233,11 @@ func (h *Handler) handleDecodeError(w http.ResponseWriter, err error) {
 }
 
 func (h *Handler) brandIDFromRequest(r *http.Request, explicitBrandID string) (string, error) {
-	claims, ok := auth.GetClaimsFromContext(r.Context())
-	if !ok {
-		return "", errors.New("UNAUTHORIZED")
-	}
-
-	brandID := strings.TrimSpace(explicitBrandID)
-	if brandID == "" {
-		brandID = strings.TrimSpace(r.Header.Get("X-Brand-ID"))
-	}
-	if brandID == "" && claims.BrandID != nil {
-		brandID = strings.TrimSpace(*claims.BrandID)
-	}
-	if brandID == "" {
+	brand, err := auth.BrandIDFromRequest(r, explicitBrandID)
+	if errors.Is(err, auth.ErrMissingTenantID) {
 		return "", ErrBrandNotFoundForProduct
 	}
-	if claims.Role != auth.RoleOwner && claims.BrandID != nil && brandID != strings.TrimSpace(*claims.BrandID) {
-		return "", auth.ErrForbiddenTenant
-	}
-
-	return brandID, nil
+	return brand, err
 }
 
 func (h *Handler) handleBrandRequestError(w http.ResponseWriter, err error) {
@@ -300,6 +288,9 @@ func (h *Handler) decodeCreateInput(r *http.Request) (CreateInput, string, error
 			return CreateInput{}, "", err
 		}
 		if fileHeader != nil {
+			if _, err = h.brandIDFromRequest(r, input.BrandID); err != nil {
+				return CreateInput{}, "", err
+			}
 			imageURL, err := h.storeProductImage(r, fileHeader)
 			if err != nil {
 				return CreateInput{}, "", fmt.Errorf("%w: %v", ErrProductImageUploadFailed, err)
