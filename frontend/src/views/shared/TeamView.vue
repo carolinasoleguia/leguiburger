@@ -117,7 +117,7 @@ function page(n) {
       :disabled="w.busy.value"
       @change="page"
     />
-    <form v-if="selected" class="card operation-form" @submit.prevent="save">
+    <form v-form-care v-if="selected" class="card operation-form" @submit.prevent="save">
       <h2>{{ selected.email }}</h2>
       <div class="form-row">
         <label>Nombre<input v-model="first" maxlength="50" required /></label

@@ -5,14 +5,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gorm.io/gorm"
+	"image"
+	"image/jpeg"
+	"image/png"
 	"io"
-	"mime"
+	"leguiburger/internal/db"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,9 +31,6 @@ type ProductImageStore interface {
 func NewProductImageStoreFromEnv() ProductImageStore {
 	supabaseURL := strings.TrimRight(strings.TrimSpace(os.Getenv("SUPABASE_URL")), "/")
 	supabaseKey := strings.TrimSpace(os.Getenv("SUPABASE_SERVICE_ROLE_KEY"))
-	if supabaseKey == "" {
-		supabaseKey = strings.TrimSpace(os.Getenv("SUPABASE_ANON_KEY"))
-	}
 	bucket := strings.TrimSpace(os.Getenv("SUPABASE_STORAGE_BUCKET"))
 	if bucket == "" {
 		bucket = defaultProductImagesBucket
@@ -42,6 +42,7 @@ func NewProductImageStoreFromEnv() ProductImageStore {
 			APIKey:     supabaseKey,
 			Bucket:     bucket,
 			HTTPClient: &http.Client{Timeout: 20 * time.Second},
+			Journal:    db.DB,
 		}
 	}
 
@@ -49,6 +50,7 @@ func NewProductImageStoreFromEnv() ProductImageStore {
 }
 
 type SupabaseProductImageStore struct {
+	Journal    *gorm.DB
 	BaseURL    string
 	APIKey     string
 	Bucket     string
@@ -66,12 +68,53 @@ func (s *SupabaseProductImageStore) SaveProductImage(ctx context.Context, fileHe
 	}
 	defer file.Close()
 
-	body, err := io.ReadAll(file)
+	body, err := io.ReadAll(io.LimitReader(file, (5<<20)+1))
 	if err != nil {
 		return "", err
 	}
 
-	objectPath := path.Join("products", newProductImageFileName(fileHeader.Filename))
+	if len(body) > 5<<20 {
+		return "", errors.New("La imagen supera los 5 MB")
+	}
+	config, format, err := image.DecodeConfig(bytes.NewReader(body))
+	if err != nil || (format != "jpeg" && format != "png") {
+		return "", errors.New("Usá una imagen JPEG o PNG válida")
+	}
+	if config.Width < 1 || config.Height < 1 || config.Width > 4096 || config.Height > 4096 || int64(config.Width)*int64(config.Height) > 8000000 {
+		return "", errors.New("La imagen supera las dimensiones permitidas (4096 px, 8 megapíxeles)")
+	}
+	decoded, _, err := image.Decode(bytes.NewReader(body))
+	if err != nil {
+		return "", errors.New("La imagen está dañada")
+	}
+	var clean bytes.Buffer
+	ext, mimeType := ".png", "image/png"
+	if format == "jpeg" {
+		ext, mimeType = ".jpg", "image/jpeg"
+		err = jpeg.Encode(&clean, decoded, &jpeg.Options{Quality: 85})
+	} else {
+		err = png.Encode(&clean, decoded)
+	}
+	if err != nil {
+		return "", err
+	}
+	body = clean.Bytes()
+	brand, _ := ctx.Value(imageBrandKey{}).(string)
+	if _, err := uuid.Parse(brand); err != nil {
+		return "", errors.New("No se pudo verificar el restaurante de la imagen")
+	}
+	objectPath := path.Join("products", brand, uuid.NewString()+ext)
+	publicURL, err := publicSupabaseObjectURL(s.BaseURL, s.Bucket, objectPath)
+	if err != nil {
+		return "", err
+	}
+	// The upload journal commits independently of the product transaction. A failed
+	// save or an unknown network result can therefore be cleaned up later.
+	if s.Journal != nil {
+		if err = s.Journal.WithContext(ctx).Exec(`INSERT INTO legui_private.staged_product_images(object_path,public_url,brand_id) VALUES(?,?,?)`, objectPath, publicURL, brand).Error; err != nil {
+			return "", err
+		}
+	}
 	uploadURL, err := url.JoinPath(s.BaseURL, "storage/v1/object", s.Bucket, objectPath)
 	if err != nil {
 		return "", err
@@ -83,47 +126,34 @@ func (s *SupabaseProductImageStore) SaveProductImage(ctx context.Context, fileHe
 	}
 	req.Header.Set("Authorization", "Bearer "+s.APIKey)
 	req.Header.Set("apikey", s.APIKey)
-	req.Header.Set("Content-Type", contentTypeForFile(fileHeader))
-	req.Header.Set("x-upsert", "true")
+	req.Header.Set("Content-Type", mimeType)
+	req.Header.Set("x-upsert", "false")
 
 	client := s.HTTPClient
 	if client == nil {
-		client = http.DefaultClient
+		client = &http.Client{}
 	}
+	bounded := *client
+	bounded.Timeout = 20 * time.Second
+	bounded.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 
-	resp, err := client.Do(req)
+	resp, err := bounded.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		responseBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return "", fmt.Errorf("supabase storage upload failed: status %d: %s", resp.StatusCode, strings.TrimSpace(string(responseBody)))
+		return "", fmt.Errorf("No se pudo guardar la imagen (estado %d)", resp.StatusCode)
 	}
 
-	return publicSupabaseObjectURL(s.BaseURL, s.Bucket, objectPath)
+	return publicURL, nil
 }
 
-func newProductImageFileName(originalName string) string {
-	ext := strings.ToLower(filepath.Ext(originalName))
-	if ext == "" {
-		ext = ".jpg"
-	}
-	return uuid.NewString() + ext
-}
+type imageBrandKey struct{}
 
-func contentTypeForFile(fileHeader *multipart.FileHeader) string {
-	contentType := strings.TrimSpace(fileHeader.Header.Get("Content-Type"))
-	if contentType != "" && contentType != "application/octet-stream" {
-		return contentType
-	}
-
-	if byExtension := mime.TypeByExtension(strings.ToLower(filepath.Ext(fileHeader.Filename))); byExtension != "" {
-		return byExtension
-	}
-
-	return "application/octet-stream"
+func withImageBrand(ctx context.Context, brand string) context.Context {
+	return context.WithValue(ctx, imageBrandKey{}, brand)
 }
 
 func publicSupabaseObjectURL(baseURL, bucket, objectPath string) (string, error) {

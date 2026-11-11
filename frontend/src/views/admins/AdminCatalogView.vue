@@ -1,18 +1,12 @@
 <template>
   <section class="admin-catalog">
-    <div class="section-header">
-      <div class="section-title">
-        <h2>Gestión de catálogo</h2>
-        <p>Definí la oferta base de la marca y ajustá disponibilidad o precios por sucursal cuando haga falta.</p>
-      </div>
+    <PageHeading title="Gestión de catálogo" description="Definí la oferta base de la marca y ajustá disponibilidad o precios por sucursal cuando haga falta.">
       <div v-if="!initializingCatalog" class="catalog-actions">
         <button class="btn-primary" @click="openProductModal">Nuevo producto</button>
       </div>
-    </div>
+    </PageHeading>
 
-    <div v-if="initializingCatalog" class="card centered-loading catalog-initial-loading">
-      <span class="spinner-large"></span>
-    </div>
+    <StatePanel v-if="initializingCatalog" kind="loading" />
 
     <nav v-else class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
       <router-link :to="{ name: 'AdminCatalog' }" class="catalog-tab" exact-active-class="catalog-tab--active">
@@ -31,10 +25,8 @@
         </div>
       </div>
 
-      <div v-if="loadingProducts" class="centered-loading compact">
-        <span class="spinner-large"></span>
-      </div>
-      <div v-else-if="productError" class="status-text error">{{ productError }}</div>
+      <StatePanel v-if="loadingProducts" kind="loading" />
+      <div v-else-if="productError" class="status-text error" role="alert">{{ productError }}</div>
       <div v-else-if="products.length === 0" class="status-text">Todavía no hay productos en el catálogo.</div>
 
       <div v-else class="table-shell">
@@ -77,12 +69,12 @@
     </div>
 
     <div v-if="isProductModalOpen" class="modal-overlay" @click.self="closeProductModal">
-      <div class="modal-card modal-card--product">
+      <div v-dialog-care class="modal-card modal-card--product">
         <button type="button" class="modal-close" @click="closeProductModal">×</button>
         <h3>{{ productForm.id ? 'Editar producto' : 'Nuevo producto' }}</h3>
         <p>Estos datos pertenecen al catálogo general de la marca.</p>
 
-        <form class="product-modal-form" @submit.prevent="submitProduct">
+        <form v-form-care class="product-modal-form" @submit.prevent="submitProduct">
           <div class="input-group">
             <label>Nombre</label>
             <input v-model="productForm.name" type="text" required />
@@ -98,7 +90,7 @@
             </div>
             <div class="input-group">
               <label>Imagen</label>
-              <input type="file" accept="image/*" @change="handleImageChange" />
+              <input type="file" accept="image/png,image/jpeg" @change="handleImageChange" />
               <span class="file-hint">{{ productForm.image_name || 'No se eligió ningún archivo' }}</span>
             </div>
           </div>
@@ -145,6 +137,9 @@
 </template>
 
 <script setup>
+import PageHeading from "../../components/PageHeading.vue";
+import StatePanel from "../../components/StatePanel.vue";
+import { confirmAction } from "../../services/confirmation.js";
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { apiFetch, getJSON } from '../../services/api.js';
 import { useAuth } from '../../composables/useAuth.js';
@@ -305,7 +300,7 @@ function closeAlert() {
 }
 
 async function deleteProduct(product) {
-  const confirmed = confirm(`¿Eliminar ${productName(product)} del catálogo base?`);
+  const confirmed = await confirmAction(`¿Eliminar ${productName(product)} del catálogo base?`);
   if (!confirmed) {
     return;
   }

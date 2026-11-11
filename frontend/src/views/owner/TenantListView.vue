@@ -44,12 +44,12 @@
     </div>
 
     <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeCreateModal" aria-label="Cerrar modal">×</button>
         <h3>Nuevo tenant</h3>
         <p>Registra un nuevo tenant asociándolo a una marca existente.</p>
 
-        <form @submit.prevent="submitCreate">
+        <form v-form-care @submit.prevent="submitCreate">
           <div class="input-group">
             <label>Marca</label>
             <select v-model="createForm.brand_id" required>
@@ -79,12 +79,12 @@
     </div>
 
     <div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeEditModal" aria-label="Cerrar modal">×</button>
         <h3>Editar Tenant</h3>
         <p>Actualiza el subdominio para el comercio <strong>{{ editingTenant.brand?.name || editingTenant.subdomain }}</strong>.</p>
 
-        <form @submit.prevent="submitEdit">
+        <form v-form-care @submit.prevent="submitEdit">
           <div class="input-group">
             <label>Marca</label>
             <select v-model="editForm.brand_id" required>
@@ -114,7 +114,7 @@
     </div>
 
     <div v-if="isDeleteModalOpen" class="modal-overlay" @click.self="closeDeleteModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeDeleteModal" aria-label="Cerrar modal">×</button>
         <h3>{{ deletingTenant.active ? 'Confirmar eliminación' : 'Confirmar reactivación' }}</h3>
         <p>

@@ -86,7 +86,7 @@ async function submit() {
         ><p v-if="mode !== 'forgot' && !token" role="alert">
           Este enlace no es válido. Pedí uno nuevo.
         </p>
-        <form v-else @submit.prevent="submit">
+        <form v-form-care v-else @submit.prevent="submit">
           <div v-if="mode === 'forgot'" class="input-group">
             <label for="recovery-email">Correo electrónico</label
             ><input

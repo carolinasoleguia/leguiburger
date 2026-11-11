@@ -1,18 +1,14 @@
 <template>
   <section class="admin-production">
-    <div class="section-header">
-      <div>
-        <h2>Gestión de producción</h2>
-        <p>Seleccioná un tenant para ver y cargar reportes de producción.</p>
-      </div>
-    </div>
+    <PageHeading title="Gestión de producción" description="Seleccioná un local para ver y cargar reportes de producción.">
+    </PageHeading>
 
     <div class="card">
       <div class="controls-grid">
         <div class="input-group">
-          <label>Tenant</label>
-          <select v-model="selectedTenant">
-            <option value="">-- Seleccionar tenant --</option>
+          <label for="production-location">Local</label>
+          <select id="production-location" v-model="selectedTenant">
+            <option value="">-- Seleccionar local --</option>
             <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
               {{ tenant.subdomain || tenant.id }}
             </option>
@@ -25,14 +21,12 @@
         </div>
       </div>
 
-      <div v-if="loading" class="centered-loading">
-        <span class="spinner-large"></span>
-      </div>
-      <div v-else-if="error" class="status-text error">{{ error }}</div>
-      <div v-else-if="!selectedTenant" class="status-text">Seleccioná un tenant para ver los reportes de producción.</div>
-      <div v-else-if="reports.length === 0" class="status-text">No se encontraron reportes de producción para el tenant seleccionado.</div>
+      <StatePanel v-if="loading" kind="loading" />
+      <div v-else-if="error" class="status-text error" role="alert">{{ error }}</div>
+      <div v-else-if="!selectedTenant" class="status-text">Seleccioná un local para ver los reportes de producción.</div>
+      <div v-else-if="reports.length === 0" class="status-text">No se encontraron reportes de producción para el local seleccionado.</div>
 
-      <table v-else class="data-table">
+      <div v-else class="table-scroll"><table class="data-table">
         <thead>
           <tr>
             <th>#</th>
@@ -53,16 +47,16 @@
             <td>{{ report.created_at }}</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
     </div>
 
     <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeCreateModal">×</button>
         <h3>Nuevo reporte de producción</h3>
-        <p>Agregá un reporte de producción para el tenant seleccionado.</p>
+        <p>Agregá un reporte de producción para el local seleccionado.</p>
 
-        <form @submit.prevent="submitCreateReport">
+        <form v-form-care @submit.prevent="submitCreateReport">
           <div class="input-grid">
             <div class="input-group">
               <label>Fecha de producción</label>
@@ -99,6 +93,8 @@
 </template>
 
 <script setup>
+import PageHeading from "../../components/PageHeading.vue";
+import StatePanel from "../../components/StatePanel.vue";
 import { ref, onMounted, watch } from 'vue';
 import { apiFetch, getJSON } from '../../services/api.js';
 import { useAuth } from '../../composables/useAuth.js';

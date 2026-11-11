@@ -189,7 +189,7 @@ function page(n) {
       @change="page"
     />
     <template v-if="selected"
-      ><form class="card operation-form" @submit.prevent="movement">
+      ><form v-form-care class="card operation-form" @submit.prevent="movement">
         <h2>{{ selected.name }}</h2>
         <p>
           Stock actual: {{ selected.current_stock }}. Para una salida, ingresá
@@ -221,7 +221,7 @@ function page(n) {
           </button>
         </div>
       </form>
-      <form class="card operation-form" @submit.prevent="settings">
+      <form v-form-care class="card operation-form" @submit.prevent="settings">
         <h3>Mínimo y costo</h3>
         <div class="form-row">
           <label

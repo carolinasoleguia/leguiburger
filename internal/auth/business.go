@@ -182,7 +182,7 @@ func (h *SecurityHandler) businesses(w http.ResponseWriter, r *http.Request) err
 	}
 	var payload string
 	e = h.database.WithContext(r.Context()).Raw(`SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text FROM(
- SELECT b.id,b.name,b.tax_id,b.primary_owner_id,u.email owner_email,b.suspended_at,b.suspension_reason,b.base_location_limit,b.base_collaborator_limit,c.locations maximum_locations,c.collaborators maximum_collaborators,c.source capacity_source,
+ SELECT b.id,b.name,b.tax_id,b.primary_owner_id,u.email owner_email,b.closed_at,b.suspended_at,b.suspension_reason,b.base_location_limit,b.base_collaborator_limit,c.locations maximum_locations,c.collaborators maximum_collaborators,c.source capacity_source,
  (SELECT count(*) FROM public.tenants WHERE brand_id=b.id AND active) locations,
  (SELECT count(*) FROM public.employees e JOIN public.tenants t ON t.id=e.tenant_id WHERE t.brand_id=b.id AND e.is_active) collaborators,
  coalesce((SELECT jsonb_agg(jsonb_build_object('id',x.id,'email',x.email,'purpose',x.purpose,'expires_at',x.expires_at)) FROM legui_private.business_invitations x WHERE x.brand_id=b.id AND x.used_at IS NULL AND x.revoked_at IS NULL AND x.expires_at>now()),'[]'::jsonb) invitations
@@ -391,7 +391,7 @@ func (h *SecurityHandler) acceptBusinessInvitation(w http.ResponseWriter, r *htt
 // A suspended owner retains access only to account security, membership and the
 // business status. Provider webhooks/workers continue reconciling existing money.
 func BusinessPathAllowed(path string) bool {
-	return strings.HasPrefix(path, "/api/auth/") || path == "/api/business" || path == "/api/tenants" || strings.HasPrefix(path, "/api/billing/") || path == "/api/payments/mercadopago/config"
+	return strings.HasPrefix(path, "/api/auth/") || strings.HasPrefix(path,"/api/care/") || path == "/api/business" || path == "/api/tenants" || strings.HasPrefix(path, "/api/billing/") || path == "/api/payments/mercadopago/config"
 }
 func businessAvailable(ctx context.Context, database *gorm.DB, p SessionPrincipal) (bool, error) {
 	if p.Platform() || p.BrandID == "" {

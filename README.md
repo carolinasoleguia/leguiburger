@@ -36,6 +36,8 @@ El seed de un administrador inicial requiere `SEED_OWNER_EMAIL` y `SEED_OWNER_PA
 
 ## API y pruebas
 
+La guía de [soporte y continuidad](docs/soporte-y-continuidad.md) documenta soporte con historial, respaldos cifrados y verificados, cierre de restaurante/cuenta, imágenes seguras, monitoreo y consistencia de pantallas.
+
 La [jerarquía de restaurantes](docs/jerarquia-y-restaurantes.md) cubre alta unificada,
 invitación y transferencia del dueño, sucursales, equipo con varios locales, cupos
 de planes y suspensión administrativa con acceso a membresía.

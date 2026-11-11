@@ -62,7 +62,7 @@ function page(n) {
     :workspace="w"
     title="Clientes"
     description="La gente que vuelve por tus hamburguesas, en un mismo lugar."
-    ><form
+    ><form v-form-care
       class="workspace-filters"
       @submit.prevent="
         offset = 0;
@@ -111,7 +111,7 @@ function page(n) {
       :disabled="w.busy.value"
       @change="page"
     />
-    <form class="card operation-form" @submit.prevent="save">
+    <form v-form-care class="card operation-form" @submit.prevent="save">
       <h2>{{ editing ? "Editar cliente" : "Nuevo cliente" }}</h2>
       <div class="form-row">
         <label>Nombre<input v-model="first" maxlength="50" required /></label

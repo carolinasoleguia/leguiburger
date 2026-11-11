@@ -137,7 +137,7 @@ function save() {
         </tbody>
       </table>
     </div>
-    <form class="card operation-form" @submit.prevent="save">
+    <form v-form-care class="card operation-form" @submit.prevent="save">
       <h2>{{ editing ? "Editar local" : "Nuevo local" }}</h2>
       <div class="form-row">
         <label

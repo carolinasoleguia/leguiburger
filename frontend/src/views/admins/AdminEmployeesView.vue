@@ -62,12 +62,12 @@
     </div>
 
     <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeCreateModal">×</button>
         <h3>Nuevo empleado</h3>
         <p>Registra un empleado con el rol adecuado para el tenant.</p>
 
-        <form @submit.prevent="submitCreate">
+        <form v-form-care @submit.prevent="submitCreate">
           <div class="input-grid">
             <div class="input-group">
               <label>Nombre</label>
@@ -130,12 +130,12 @@
     </div>
 
     <div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeEditModal">×</button>
         <h3>Editar empleado</h3>
         <p>Actualiza los datos del empleado seleccionado.</p>
 
-        <form @submit.prevent="submitEdit">
+        <form v-form-care @submit.prevent="submitEdit">
           <div class="input-grid">
             <div class="input-group">
               <label>Nombre</label>
@@ -198,7 +198,7 @@
     </div>
 
     <div v-if="isConfirmModalOpen" class="modal-overlay" @click.self="closeConfirmModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeConfirmModal">×</button>
         <h3>Confirmar acción</h3>
         <p>¿Estás seguro/a que querés {{ confirmAction }} al empleado <strong>{{ editForm.first_name }} {{ editForm.last_name }}</strong>?</p>

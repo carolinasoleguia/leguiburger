@@ -530,7 +530,7 @@ onMounted(async () => {
             </tbody>
           </table>
         </div>
-        <form
+        <form v-form-care
           v-if="refundPayment"
           class="card action-form"
           @submit.prevent="refund"
@@ -563,7 +563,7 @@ onMounted(async () => {
         </form></template
       >
       <template v-if="tab === 'checkouts'"
-        ><form class="card action-form" @submit.prevent="createOrderCheckout">
+        ><form v-form-care class="card action-form" @submit.prevent="createOrderCheckout">
           <h3>Cobrar un pedido</h3>
           <div class="input-group">
             <label for="checkout-order">Pedido con saldo pendiente</label
@@ -689,7 +689,7 @@ onMounted(async () => {
         </div></template
       >
       <template v-if="tab === 'membership' && isManager"
-        ><form class="card action-form" @submit.prevent="startSubscription">
+        ><form v-form-care class="card action-form" @submit.prevent="startSubscription">
           <h3>Elegí tu membresía</h3>
           <p>La membresía se activa cuando Mercado Pago confirma el cobro.</p>
           <div class="input-group">
@@ -793,7 +793,7 @@ onMounted(async () => {
           </table>
         </div>
         <template v-if="isPlatform"
-          ><form class="card action-form" @submit.prevent="createPlan">
+          ><form v-form-care class="card action-form" @submit.prevent="createPlan">
             <h3>Publicar planes de LeguiBurger</h3>
             <div class="input-group">
               <label for="new-plan-name">Nombre del nuevo plan</label
@@ -807,7 +807,7 @@ onMounted(async () => {
             </div>
             <button class="btn-primary" :disabled="busy">Crear plan</button>
           </form>
-          <form class="card action-form" @submit.prevent="publishPrice">
+          <form v-form-care class="card action-form" @submit.prevent="publishPrice">
             <h3>Agregar un precio</h3>
             <p>
               Cada precio nuevo conserva intactos los contratos ya vendidos.
@@ -916,7 +916,7 @@ onMounted(async () => {
             </tbody>
           </table>
         </div>
-        <form
+        <form v-form-care
           v-if="reviewSelection"
           class="card action-form"
           @submit.prevent="resolveReview"

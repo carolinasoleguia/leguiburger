@@ -26,6 +26,7 @@ const sessionPayload = role => ({ token: `fixture-memory-token-${++tokenIndex}`,
 const errors = [];
 try {
   const page = await browser.newPage();
+  page.on("dialog", dialog => dialog.accept());
   page.on('pageerror', error => errors.push(error.message));
   await page.setRequestInterception(true);
   page.on('request', request => {

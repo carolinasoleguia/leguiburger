@@ -63,7 +63,7 @@ function page(n) {
     :workspace="w"
     title="Gastos del local"
     description="Conocé cuánto cuesta sostener el servicio y conservá el historial."
-    ><form class="card operation-form" @submit.prevent="create">
+    ><form v-form-care class="card operation-form" @submit.prevent="create">
       <h2>Registrar un gasto</h2>
       <div class="form-row">
         <label
@@ -131,7 +131,7 @@ function page(n) {
       :disabled="w.busy.value"
       @change="page"
     />
-    <form v-if="selected" class="card operation-form" @submit.prevent="cancel">
+    <form v-form-care v-if="selected" class="card operation-form" @submit.prevent="cancel">
       <h3>Anular {{ money(selected.amount, selected.currency) }}</h3>
       <label
         >Motivo<input

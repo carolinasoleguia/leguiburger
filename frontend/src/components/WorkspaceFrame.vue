@@ -1,5 +1,7 @@
 <script setup>
 import DashboardShell from "./DashboardShell.vue";
+import PageHeading from "./PageHeading.vue";
+import StatePanel from "./StatePanel.vue";
 defineProps({
   workspace: Object,
   title: String,
@@ -10,12 +12,7 @@ defineProps({
 <template>
   <DashboardShell :role="workspace.shellRole.value"
     ><section class="operations-page">
-      <header class="section-header">
-        <div>
-          <p class="eyebrow">TU NEGOCIO, A PUNTO</p>
-          <h1>{{ title }}</h1>
-          <p>{{ description }}</p>
-        </div>
+      <PageHeading :title="title" :description="description">
         <button
           class="btn-secondary"
           :disabled="workspace.loading.value || workspace.busy.value"
@@ -23,7 +20,7 @@ defineProps({
         >
           Actualizar
         </button>
-      </header>
+      </PageHeading>
       <div v-if="local && workspace.manager.value" class="workspace-filters">
         <label
           >Local<select
@@ -55,9 +52,9 @@ defineProps({
       <p v-if="workspace.notice.value" class="status-notice" role="status">
         {{ workspace.notice.value }}
       </p>
-      <p v-if="workspace.loading.value" class="load-state" role="status">
-        Preparando tu espacio…
-      </p>
-      <div v-else :aria-busy="workspace.busy.value"><slot /></div></section
+      <StatePanel v-if="workspace.loading.value" kind="loading" />
+      <div v-show="!workspace.loading.value" :aria-busy="workspace.busy.value">
+        <slot />
+      </div></section
   ></DashboardShell>
 </template>

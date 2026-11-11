@@ -103,6 +103,7 @@ const session = () => ({
 });
 try {
   page = await browser.newPage();
+  page.on("dialog", dialog => dialog.accept());
   page.on("pageerror", (e) => errors.push(e.message));
   await page.setRequestInterception(true);
   page.on("request", (request) => {

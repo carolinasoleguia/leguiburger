@@ -47,12 +47,12 @@
     </div>
 
     <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeCreateModal" aria-label="Cerrar modal">×</button>
         <h3>Nuevo administrador</h3>
         <p>Registra un administrador asociado a una marca.</p>
 
-        <form @submit.prevent="submitCreate">
+        <form v-form-care @submit.prevent="submitCreate">
           <div class="input-group">
             <label>Marca</label>
             <select v-model="createForm.brand_id">
@@ -100,12 +100,12 @@
     </div>
 
     <div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeEditModal" aria-label="Cerrar modal">×</button>
         <h3>Editar administrador</h3>
         <p>Actualiza los datos del administrador seleccionado.</p>
 
-        <form @submit.prevent="submitEdit">
+        <form v-form-care @submit.prevent="submitEdit">
           <div class="input-group">
             <label>Nombre</label>
             <input type="text" v-model="editForm.first_name" required />
@@ -143,7 +143,7 @@
     </div>
 
     <div v-if="isDeleteModalOpen" class="modal-overlay" @click.self="closeDeleteModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeDeleteModal" aria-label="Cerrar modal">×</button>
         <h3>{{ deletingAdmin.is_active ? 'Confirmar eliminación' : 'Confirmar reactivación' }}</h3>
         <p>

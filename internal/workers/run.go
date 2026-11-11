@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"leguiburger/internal/auth"
+	"leguiburger/internal/businesscare"
 	"leguiburger/internal/mercadopago"
 	"leguiburger/internal/operations"
 	"log"
@@ -15,6 +16,7 @@ import (
 // Disable the embedded worker when deploying cmd/worker independently.
 func Run(ctx context.Context, db *gorm.DB) {
 	auth.StartMailWorker(ctx, db)
+	businesscare.StartWorker(ctx, db)
 	mp := mercadopago.NewHandler(db, mercadopago.LoadConfig(), nil)
 	mp.StartWorker(ctx)
 	instance := uuid.NewString()

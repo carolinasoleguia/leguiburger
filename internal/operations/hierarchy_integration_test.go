@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/logger"
 	"leguiburger/internal/auth"
 	"leguiburger/internal/brands"
+	"leguiburger/internal/businesscare"
 	"leguiburger/internal/db"
 	"leguiburger/internal/mercadopago"
 	"leguiburger/internal/tenants"
@@ -70,6 +71,7 @@ func TestBusinessHierarchyIntegration(t *testing.T) {
 	mux := http.NewServeMux()
 	auth.RegisterSecurityRoutes(mux, tx, svc)
 	RegisterRoutes(mux, tx)
+	businesscare.Register(mux, tx)
 	mercadopago.NewHandler(tx, mercadopago.Config{Environment: "sandbox"}, nil).Register(mux)
 	uh := users.NewHandler(users.NewService(users.NewRepository(), brands.NewRepository()))
 	mux.HandleFunc("/api/users", auth.AuthMiddlewareWithDB(tx, auth.AuthorizeLegacy(uh.HandleUserRoutes)))
@@ -217,5 +219,54 @@ func TestBusinessHierarchyIntegration(t *testing.T) {
 	request("POST", "/api/business/locations", successor, "hierarchy-upgraded-local", locationBody, 200)
 	locationBody["subdomain"] = "h-" + uuid.NewString()[:18]
 	request("POST", "/api/business/locations", successor, "hierarchy-contracted-limit", locationBody, 400)
-	t.Log("Hierarchy integration passed: atomic onboarding/replay, owner invitation/transfer, locations, quotas including reservations, multi-location context, role/brand boundaries, suspension/billing exception and revoked access; all fixtures roll back")
+	// Care endpoints share the same live session and resource boundaries.
+	request("GET", "/api/care/support", "", "", nil, 401)
+	request("GET", "/api/care/errors", successor, "", nil, 403)
+	request("POST", "/api/care/errors", successor, "", map[string]any{"code": "render", "url": "private-fragment"}, 400)
+	request("POST", "/api/care/errors", successor, "", map[string]any{"code": "render"}, 200)
+	ticketBody := map[string]any{"subject": "Fixture support", "body": "Please inspect this fixture"}
+	ticket := obj(request("POST", "/api/care/support", successor, "care-ticket", ticketBody, 200))["id"].(string)
+	if replay := obj(request("POST", "/api/care/support", successor, "care-ticket", ticketBody, 200)); replay["id"] != ticket {
+		t.Fatal("support retry duplicated ticket")
+	}
+	request("GET", "/api/care/support/"+uuid.NewString(), successor, "", nil, 403)
+	request("GET", "/api/care/support/"+ticket, platformToken, "", nil, 200)
+	platformTicket := obj(request("POST", "/api/care/support", platformToken, "care-platform-ticket", ticketBody, 200))["id"].(string)
+	request("GET", "/api/care/support/"+platformTicket, successor, "", nil, 403)
+	request("POST", "/api/care/support/"+ticket+"/messages", platformToken, "care-reply", map[string]any{"body": "We are reviewing your request"}, 200)
+	request("POST", "/api/care/support/"+ticket+"/close", successor, "care-resolve", map[string]any{}, 200)
+	t.Setenv("BACKUP_ENCRYPTION_KEY", "care-integration-private-key-at-least-32-bytes")
+	backup := obj(request("POST", "/api/care/backups", successor, "care-backup", map[string]any{}, 200))
+	if backup["state"] != "pending" || backup["report"].(map[string]any)["verified"] != true {
+		t.Fatal("backup bypassed restore validation")
+	}
+	request("GET", "/api/care/backups/"+backup["id"].(string)+"/download", successor, "", nil, 403)
+	var cleartext bool
+	must(`SELECT EXISTS(SELECT 1 FROM legui_private.business_backups WHERE id=? AND position('fixture'::bytea IN payload_cipher)>0)`, backup["id"])
+	tx.Raw(`SELECT position('fixture'::bytea IN payload_cipher)>0 FROM legui_private.business_backups WHERE id=?`, backup["id"]).Scan(&cleartext)
+	if cleartext {
+		t.Fatal("backup contains plaintext")
+	}
+	closeBody := map[string]any{"password": "wrong", "confirmation": "CERRAR RESTAURANTE", "reason": "Fixture closure"}
+	request("POST", "/api/care/closure", successor, "care-wrong-password", closeBody, 403)
+	closeBody["password"] = password
+	request("POST", "/api/care/closure", successor, "care-close", closeBody, 200)
+	request("GET", "/api/care/closure", successor, "", nil, 200)
+	request("GET", "/api/care/backups", successor, "", nil, 200)
+	request("GET", "/api/business/locations", successor, "", nil, 403)
+	var closed, noRenewal bool
+	tx.Raw(`SELECT closed_at IS NOT NULL FROM public.brands WHERE id=?`, brand).Scan(&closed)
+	tx.Raw(`SELECT bool_and(s.cancel_at_period_end) FROM legui_private.subscriptions s JOIN legui_private.billing_accounts a ON a.id=s.account_id WHERE a.brand_id=?`, brand).Scan(&noRenewal)
+	if !closed || !noRenewal {
+		t.Fatal("closure did not stop local renewals")
+	}
+	// The primary account can deactivate only after archiving/transferring.
+	request("POST", "/api/care/account-close", successor, "care-account-close", map[string]any{"password": password, "confirmation": "CERRAR CUENTA"}, 200)
+	request("GET", "/api/auth/me", successor, "", nil, 401)
+	var primaryGone bool
+	tx.Raw(`SELECT primary_owner_id IS NULL FROM public.brands WHERE id=?`, brand).Scan(&primaryGone)
+	if !primaryGone {
+		t.Fatal("archived primary responsibility was not released")
+	}
+	t.Log("Hierarchy and care integration passed: onboarding, transfers, quotas, context, support/reply/replay, sanitized monitoring, encrypted verified snapshot, reauthenticated archival and retained history; all fixtures roll back")
 }

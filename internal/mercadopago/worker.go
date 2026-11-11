@@ -153,7 +153,8 @@ func (h *Handler) Tick(ctx context.Context) error {
 	a := h.reconcileOneCheckout(ctx, "")
 	b := h.scanOne(ctx, "")
 	c := h.reconcileOperation(ctx)
-	return errors.Join(a, b, c)
+	d := h.submitClosureCancellation(ctx)
+	return errors.Join(a, b, c, d)
 }
 func (h *Handler) processInbox(ctx context.Context) (bool, error) {
 	var job struct {

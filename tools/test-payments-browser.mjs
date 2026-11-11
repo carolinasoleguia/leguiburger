@@ -20,7 +20,8 @@ let debugPage;const requestLog=[],consoleLog=[];
 const errors = [];
 const session = () => ({ token: 'fixture-memory-token', user: { id: 'fixture-admin', role: 'admin', email: 'admin@example.invalid', brand_id: 'brand-1' } });
 try {
-  const page = await browser.newPage(); await page.setViewport({width:1440,height:960}); page.on('pageerror', error => errors.push(error.message));
+  const page = await browser.newPage();
+  page.on("dialog", dialog => dialog.accept()); await page.setViewport({width:1440,height:960}); page.on('pageerror', error => errors.push(error.message));
   debugPage=page;page.on('console',message=>{if(message.type()==='error'||message.type()==='warn')consoleLog.push(message.text())});
   await page.setRequestInterception(true);
   page.on('request', request => {

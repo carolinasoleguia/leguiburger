@@ -9,7 +9,7 @@ import { authRequest } from '../../services/session.js';
 const router = useRouter(), route = useRoute(), auth = useAuth();
 const email = ref(''), password = ref(''), showPassword = ref(false), loading = ref(false), errorMessage = ref('');
 const challenge = ref(''), secret = ref(''), code = ref(''), recovery = ref(false), recoveryCodes = ref([]);
-const notice = route.query.reason === 'idle' ? 'Cerramos tu sesión por inactividad.' : route.query.reason === 'expired' ? 'Tu sesión venció. Ingresá nuevamente.' : '';
+const notice = route.query.reason === 'idle' ? 'Cerramos tu sesión por inactividad.' : route.query.reason === 'account-closed' ? 'Tu cuenta fue desactivada y tus sesiones fueron cerradas.' : route.query.reason === 'expired' ? 'Tu sesión venció. Ingresá nuevamente.' : '';
 function navigate() {
   const role = auth.userRole.value;
   router.push(['owner', 'super_admin'].includes(role) ? '/owner' : role === 'admin' ? '/admin' : `/tenant/${auth.tenantId.value}/employee`);
@@ -46,7 +46,7 @@ function downloadCodes() {
         <template v-else>
           <div class="brand-header"><p class="eyebrow">TU ESPACIO DE TRABAJO</p><h2>{{ challenge ? 'Protegé tu acceso.' : 'Qué bueno verte.' }}</h2><p>{{ challenge ? 'La administración de la app requiere un segundo factor.' : 'Ingresá con tu cuenta para seguir con tu negocio.' }}</p></div>
           <p v-if="notice && !challenge" role="status">{{ notice }}</p>
-          <form @submit.prevent="submit">
+          <form v-form-care @submit.prevent="submit">
             <template v-if="!challenge"><div class="input-group"><label for="email">Correo electrónico</label><input id="email" v-model="email" type="email" required autocomplete="username" :disabled="loading" /></div><div class="input-group"><label for="password">Contraseña</label><div class="password-field"><input id="password" v-model="password" :type="showPassword ? 'text' : 'password'" required autocomplete="current-password" :disabled="loading" /><button type="button" class="icon-button" @click="showPassword = !showPassword" :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"><AppIcon name="eye" :size="18" /></button></div></div><router-link to="/forgot-password">Olvidé mi contraseña</router-link></template>
             <template v-else><div v-if="secret" class="mfa-setup"><p>Agregá una cuenta en tu aplicación de autenticación e ingresá esta clave:</p><code>{{ secret }}</code><p>Elegí códigos por tiempo, de 6 dígitos. Después ingresá el código que muestra tu aplicación.</p></div><div class="input-group"><label for="mfa-code">{{ recovery ? 'Código de recuperación' : 'Código del autenticador' }}</label><input id="mfa-code" v-model="code" :inputmode="recovery ? 'text' : 'numeric'" :maxlength="recovery ? 100 : 6" autocomplete="one-time-code" required :disabled="loading" /></div><button v-if="!secret" class="btn-secondary" type="button" @click="recovery = !recovery; code = ''">{{ recovery ? 'Usar autenticador' : 'Usar un código de recuperación' }}</button></template>
             <p v-if="errorMessage" class="error-msg" role="alert">{{ errorMessage }}</p><button class="btn-submit" :disabled="loading">{{ loading ? 'Verificando…' : challenge ? 'Verificar y continuar' : 'Ingresar a mi negocio' }}</button>

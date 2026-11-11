@@ -109,7 +109,7 @@ const baseNavigation = computed(() =>
         ],
 );
 const navigation = computed(() => {
-  const shared = [{ label: "Novedades", to: "/notifications", icon: "clock" }];
+  const shared = [{ label: "Novedades", to: "/notifications", icon: "clock" }, { label: "Soporte y continuidad", to: "/care", icon: "store" }];
   const operational = [
     ...(["owner", "super_admin", "admin", "cashier"].includes(
       auth.userRole.value,

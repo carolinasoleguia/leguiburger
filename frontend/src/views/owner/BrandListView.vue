@@ -1,20 +1,14 @@
 <template>
   <section>
-    <div class="section-header">
-      <div class="section-title">
-        <h2>Marcas</h2>
-        <p>La identidad de tus negocios y los locales que forman parte de cada marca.</p>
-      </div>
+    <PageHeading title="Marcas" description="La identidad de tus negocios y los locales que forman parte de cada marca.">
       <button class="btn-primary" @click="openCreateModal">Nueva marca</button>
-    </div>
+    </PageHeading>
 
     <div class="card">
-      <div v-if="loading" class="centered-loading">
-        <span class="spinner-large"></span>
-      </div>
-      <div v-else-if="error" class="status-text error">{{ error }}</div>
+      <StatePanel v-if="loading" kind="loading" />
+      <div v-else-if="error" class="status-text error" role="alert">{{ error }}</div>
       <div v-else-if="brands.length === 0" class="status-text">Todavía no hay marcas registradas.</div>
-      <table v-else class="data-table">
+      <div v-else class="table-scroll"><table class="data-table">
         <thead>
           <tr>
             <th>#</th>
@@ -34,16 +28,16 @@
             </td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
     </div>
 
     <div v-if="isCreateModalOpen || isEditModalOpen" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-card">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeModal" aria-label="Cerrar modal">×</button>
         <h3>{{ isEditModalOpen ? 'Editar marca' : 'Nueva marca' }}</h3>
         <p>{{ isEditModalOpen ? 'Actualiza los datos de la marca.' : 'Registra una marca para asociarla a tenants.' }}</p>
 
-        <form @submit.prevent="isEditModalOpen ? submitEdit() : submitCreate()">
+        <form v-form-care @submit.prevent="isEditModalOpen ? submitEdit() : submitCreate()">
           <div class="input-group">
             <label>Nombre</label>
             <input type="text" v-model="activeForm.name" required />
@@ -78,6 +72,9 @@
 </template>
 
 <script setup>
+import PageHeading from "../../components/PageHeading.vue";
+import StatePanel from "../../components/StatePanel.vue";
+import { confirmAction } from "../../services/confirmation.js";
 import { ref, onMounted, computed } from 'vue';
 import { getJSON, postJSON, putJSON, deleteJSON } from '../../services/api.js';
 
@@ -168,7 +165,7 @@ async function submitEdit() {
 }
 
 async function deleteBrand(id) {
-  const confirmed = confirm('¿Seguro que querés eliminar esta brand?');
+  const confirmed = await confirmAction('¿Seguro que querés eliminar esta marca?');
   if (!confirmed) return;
   try {
     await deleteJSON(`/brands/${id}`);

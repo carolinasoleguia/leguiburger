@@ -3,6 +3,8 @@ package products
 import (
 	"bytes"
 	"context"
+	"image"
+	"image/png"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -33,7 +35,11 @@ func TestSupabaseProductImageStore_SaveProductImage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fileHeader := multipartFileHeader(t, "burger.png", "fake-image-bytes")
+	var pngBody bytes.Buffer
+	if err := png.Encode(&pngBody, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+		t.Fatal(err)
+	}
+	fileHeader := multipartFileHeader(t, "burger.svg", pngBody.String()+"<script>private metadata</script>")
 	store := &SupabaseProductImageStore{
 		BaseURL:    server.URL,
 		APIKey:     "service-key",
@@ -41,7 +47,7 @@ func TestSupabaseProductImageStore_SaveProductImage(t *testing.T) {
 		HTTPClient: server.Client(),
 	}
 
-	imageURL, err := store.SaveProductImage(context.Background(), fileHeader)
+	imageURL, err := store.SaveProductImage(withImageBrand(context.Background(), "00000000-0000-4000-8000-000000000001"), fileHeader)
 	if err != nil {
 		t.Fatalf("no se esperaba error al subir imagen: %v", err)
 	}
@@ -52,17 +58,57 @@ func TestSupabaseProductImageStore_SaveProductImage(t *testing.T) {
 	if receivedAuth != "Bearer service-key" || receivedAPIKey != "service-key" {
 		t.Fatalf("headers de autenticacion inesperados: auth=%q apikey=%q", receivedAuth, receivedAPIKey)
 	}
-	if receivedUpsert != "true" {
-		t.Fatalf("se esperaba x-upsert=true, se obtuvo %q", receivedUpsert)
+	if receivedUpsert != "false" {
+		t.Fatalf("se esperaba x-upsert=false, se obtuvo %q", receivedUpsert)
 	}
 	if receivedContentType != "image/png" {
 		t.Fatalf("content-type inesperado: %s", receivedContentType)
 	}
-	if receivedBody != "fake-image-bytes" {
-		t.Fatalf("body inesperado: %s", receivedBody)
+	if strings.Contains(receivedBody, "script") {
+		t.Fatal("untrusted trailing content was not stripped")
+	}
+	if _, err := png.Decode(strings.NewReader(receivedBody)); err != nil {
+		t.Fatal("invalid rewritten image")
 	}
 	if !strings.HasPrefix(imageURL, server.URL+"/storage/v1/object/public/product-images/products/") || !strings.HasSuffix(imageURL, ".png") {
 		t.Fatalf("URL publica inesperada: %s", imageURL)
+	}
+}
+
+func TestImagesRejectInvalidContentAndRedirects(t *testing.T) {
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		http.Redirect(w, r, "https://example.invalid/steal", 307)
+	}))
+	defer server.Close()
+	store := &SupabaseProductImageStore{BaseURL: server.URL, APIKey: "private-fixture", Bucket: "images", HTTPClient: server.Client()}
+	ctx := withImageBrand(context.Background(), "00000000-0000-4000-8000-000000000001")
+	for _, body := range []string{"<svg onload='alert(1)'/>", "not an image", strings.Repeat("x", (5<<20)+1)} {
+		if _, err := store.SaveProductImage(ctx, multipartFileHeader(t, "burger.png", body)); err == nil {
+			t.Fatal("accepted invalid content")
+		}
+	}
+	var huge bytes.Buffer
+	if err := png.Encode(&huge, image.NewGray(image.Rect(0, 0, 4097, 1))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.SaveProductImage(ctx, multipartFileHeader(t, "huge.png", huge.String())); err == nil {
+		t.Fatal("accepted oversized dimensions")
+	}
+	if calls != 0 {
+		t.Fatal("invalid image reached storage")
+	}
+	var valid bytes.Buffer
+	_ = png.Encode(&valid, image.NewGray(image.Rect(0, 0, 1, 1)))
+	if _, err := store.SaveProductImage(context.Background(), multipartFileHeader(t, "ok.png", valid.String())); err == nil {
+		t.Fatal("missing restaurant accepted")
+	}
+	if _, err := store.SaveProductImage(ctx, multipartFileHeader(t, "ok.png", valid.String())); err == nil || strings.Contains(err.Error(), "steal") {
+		t.Fatal("redirect accepted or provider body leaked")
+	}
+	if calls != 1 {
+		t.Fatal("unexpected storage calls")
 	}
 }
 

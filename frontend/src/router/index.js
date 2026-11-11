@@ -31,6 +31,7 @@ const workspaceViews = {
   HealthView: () => import("../views/shared/HealthView.vue"),
 };
 const routes = [
+  { path: "/care", component: () => import("../views/shared/CareView.vue"), meta: { requiresAuth: true } },
   {
     path: "/restaurants",
     component: () => import("../views/shared/RestaurantsView.vue"),

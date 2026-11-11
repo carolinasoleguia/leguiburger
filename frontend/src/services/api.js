@@ -1,5 +1,6 @@
 const BASE_API = "/api";
 import { session, refreshSession, clearSession } from "./session.js";
+import { formRequest, formSaved } from "../plugins/formCare.js";
 
 function isFormDataBody(body) {
   return (
@@ -24,6 +25,8 @@ function buildHeaders(customHeaders = {}, body = null) {
 }
 
 export async function apiFetch(path, options = {}) {
+  const mutation = options.method && !['GET','HEAD'].includes(options.method.toUpperCase());
+  const draft = mutation ? formRequest(document.activeElement?.closest('form')) : null;
   let response = await fetch(`${BASE_API}${path}`, {
     ...options,
     headers: buildHeaders(options.headers, options.body),
@@ -44,6 +47,7 @@ export async function apiFetch(path, options = {}) {
     }
   }
 
+  if (response.ok && mutation) formSaved(draft);
   return response;
 }
 

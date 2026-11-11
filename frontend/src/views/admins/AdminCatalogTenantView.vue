@@ -1,15 +1,9 @@
 <template>
   <section class="admin-catalog-tenant">
-    <div class="section-header">
-      <div class="section-title">
-        <h2>Gestión de catálogo</h2>
-        <p>Definí el catalogo base de la marca o ajustá disponibilidad o precios por sucursal.</p>
-      </div>
-    </div>
+    <PageHeading title="Gestión de catálogo" description="Definí el catalogo base de la marca o ajustá disponibilidad o precios por sucursal.">
+    </PageHeading>
 
-    <div v-if="initializingCatalog" class="card centered-loading catalog-initial-loading">
-      <span class="spinner-large"></span>
-    </div>
+    <StatePanel v-if="initializingCatalog" kind="loading" />
 
     <nav v-else class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
       <router-link :to="{ name: 'AdminCatalog' }" class="catalog-tab" exact-active-class="catalog-tab--active">
@@ -29,8 +23,8 @@
 
       <div class="controls-grid controls-grid--tenant">
         <div class="input-group">
-          <label>Sucursal</label>
-          <select v-model="selectedTenant">
+          <label for="catalog-location">Sucursal</label>
+          <select id="catalog-location" v-model="selectedTenant">
             <option value="">Seleccioná una sucursal</option>
             <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
               {{ tenant.subdomain || tenant.id }}
@@ -57,10 +51,8 @@
         </div>
       </div>
 
-      <div v-if="loadingTenantProducts" class="centered-loading compact">
-        <span class="spinner-large"></span>
-      </div>
-      <div v-else-if="tenantProductError" class="status-text error">{{ tenantProductError }}</div>
+      <StatePanel v-if="loadingTenantProducts" kind="loading" />
+      <div v-else-if="tenantProductError" class="status-text error" role="alert">{{ tenantProductError }}</div>
       <div v-else-if="tenantProducts.length === 0" class="status-text">Esta sucursal todavía no tiene productos asignados. Usá el botón `+` para agregar hamburguesas desde el catálogo base.</div>
       <div v-else class="tenant-product-grid">
         <article v-for="item in tenantProducts" :key="item.product_id" class="tenant-product-card">
@@ -101,15 +93,13 @@
     </div>
 
     <div v-if="isCatalogModalOpen" class="modal-overlay" @click.self="closeCatalogModal">
-      <div class="modal-card modal-card--catalog">
+      <div v-dialog-care class="modal-card modal-card--catalog">
         <button type="button" class="modal-close" @click="closeCatalogModal">×</button>
         <h3>{{ brandBaseCatalogLabel }}</h3>
         <p>Elegí una hamburguesa para agregarla a {{ selectedTenantLabel }}.</p>
 
-        <div v-if="loadingProducts" class="centered-loading compact">
-          <span class="spinner-large"></span>
-        </div>
-        <div v-else-if="productError" class="status-text error">{{ productError }}</div>
+        <StatePanel v-if="loadingProducts" kind="loading" />
+        <div v-else-if="productError" class="status-text error" role="alert">{{ productError }}</div>
         <div v-else-if="products.length === 0" class="status-text">Todavía no hay productos en el catálogo de la marca.</div>
         <div v-else class="base-product-list">
           <article v-for="product in orderedProducts" :key="productId(product)" class="base-product-row">
@@ -147,12 +137,12 @@
     </div>
 
     <div v-if="isAssignModalOpen" class="modal-overlay" @click.self="closeAssignModal">
-      <div class="modal-card modal-card--wide">
+      <div v-dialog-care class="modal-card modal-card--wide">
         <button type="button" class="modal-close" @click="closeAssignModal">×</button>
         <h3>Configuración por sucursal</h3>
         <p>{{ productName(assignProduct) }} en {{ selectedTenantLabel }}</p>
 
-        <form @submit.prevent="submitTenantProduct">
+        <form v-form-care @submit.prevent="submitTenantProduct">
           <div class="input-grid">
             <div class="input-group">
               <label>Precio local</label>
@@ -213,6 +203,9 @@
 </template>
 
 <script setup>
+import PageHeading from "../../components/PageHeading.vue";
+import StatePanel from "../../components/StatePanel.vue";
+import { confirmAction } from "../../services/confirmation.js";
 import { computed, onMounted, ref, watch } from 'vue';
 import { apiFetch, getJSON } from '../../services/api.js';
 import { useAuth } from '../../composables/useAuth.js';
@@ -477,7 +470,7 @@ async function submitTenantProduct() {
 }
 
 async function removeTenantProduct(item, fromModal = false) {
-  const confirmed = confirm(`¿Quitar ${item.product?.name || item.product_id} de esta sucursal?`);
+  const confirmed = await confirmAction(`¿Quitar ${item.product?.name || item.product_id} de esta sucursal?`);
   if (!confirmed) {
     return;
   }

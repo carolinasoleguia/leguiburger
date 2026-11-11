@@ -91,6 +91,7 @@ func TestDatabaseIntegration(t *testing.T) {
 	mandates := map[string]map[string]any{}
 	refunds := map[string][]any{}
 	creates := 0
+	cancelWrites := 0
 	ambiguousNext := false
 	providerCounter := 0
 	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -159,6 +160,7 @@ func TestDatabaseIntegration(t *testing.T) {
 				return
 			}
 			if r.Method == "PUT" {
+				cancelWrites++
 				m["status"] = body["status"]
 				m["last_modified"] = time.Now().UTC().Add(time.Second).Format(time.RFC3339Nano)
 			}
@@ -385,5 +387,23 @@ func TestDatabaseIntegration(t *testing.T) {
 	}
 	// Authentication and browser roles do not grant direct access to provider state.
 	count(`SELECT CASE WHEN has_table_privilege('anon','legui_private.mp_connections','SELECT') OR has_table_privilege('authenticated','legui_private.mp_provider_payments','SELECT') THEN 1 ELSE 0 END`, 0)
-	t.Log("Mercado Pago integration passed: OAuth encryption, ownership, durable checkout/replay, signed inbox, verified charge, refunds, reviews, membership settlement/cancellation and role boundaries. All DB fixtures roll back; upstream is simulated.")
+	// An archived business submits only prepared cancellation commands through
+	// the normal journal. Re-running a worker cannot send the command again.
+	must(`INSERT INTO legui_private.business_closures(brand_id,actor_id,reason) VALUES(?,?,'Fixture closure worker')`, brand, admin)
+	must(`UPDATE public.brands SET closed_at=now(),suspended_at=now(),suspension_reason='Fixture closure' WHERE id=?`, brand)
+	closureOperation := uuid.NewString()
+	must(`INSERT INTO legui_private.mp_operations(id,connection_id,kind,target_id,resource_id,operation_key,request_digest,actor_kind,actor_id) VALUES(?,?,'cancel_subscription',?,?,?,?,'user',?)`, closureOperation, sub.ConnectionID, subscriptionID, sub.RemoteID, "closure:"+subscriptionID, hash("cancel:"+subscriptionID), admin)
+	beforeCancel := cancelWrites
+	if e := h.submitClosureCancellation(context.Background()); e != nil {
+		t.Fatal(e)
+	}
+	count(`SELECT count(*) FROM legui_private.mp_operations WHERE id=? AND state='completed'`, 1, closureOperation)
+	if e := h.submitClosureCancellation(context.Background()); e != nil {
+		t.Fatal(e)
+	}
+	if cancelWrites != beforeCancel+1 {
+		t.Fatal("closure cancellation was lost or submitted twice")
+	}
+	count(`SELECT count(*) FROM legui_private.subscriptions WHERE id=? AND status='active' AND cancel_at_period_end`, 1, subscriptionID)
+	t.Log("Mercado Pago integration passed: OAuth encryption, ownership, durable checkout/replay, signed inbox, verified charge, refunds, reviews, membership settlement/cancellation, closure worker replay and role boundaries. All DB fixtures roll back; upstream is simulated.")
 }

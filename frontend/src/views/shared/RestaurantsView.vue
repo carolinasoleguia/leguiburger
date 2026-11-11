@@ -99,7 +99,7 @@ function page(n) {
         SMTP está configurado.
       </p>
     </div>
-    <form
+    <form v-form-care
       v-if="w.platform.value"
       class="card operation-form"
       @submit.prevent="create"
@@ -150,7 +150,8 @@ function page(n) {
         Responsable principal:
         <strong>{{ item.owner_email || "Pendiente de aceptación" }}</strong>
       </p>
-      <p v-if="item.suspended_at" class="error-msg">
+      <p v-if="item.closed_at" class="status-notice" role="status">Restaurante archivado desde {{ when(item.closed_at) }}. El historial se conserva en Soporte y continuidad.</p>
+      <p v-else-if="item.suspended_at" class="error-msg">
         Restaurante suspendido desde {{ when(item.suspended_at) }}.
         {{ item.suspension_reason }}
         <router-link to="/payments">Consultar membresía</router-link>
@@ -179,7 +180,7 @@ function page(n) {
             : "acceso base"
         }}. Las invitaciones pendientes reservan cupo de colaborador.
       </p>
-      <div v-if="w.platform.value" class="form-row">
+      <div v-if="w.platform.value && !item.closed_at" class="form-row">
         <label
           >Estado<select v-model="item._suspended">
             <option :value="false">Activo</option>
@@ -241,7 +242,7 @@ function page(n) {
         }}
       </button>
     </article>
-    <form v-if="selected" class="card operation-form" @submit.prevent="invite">
+    <form v-form-care v-if="selected" class="card operation-form" @submit.prevent="invite">
       <h2>
         {{
           selected.primary_owner_id ? "Transferir restaurante" : "Invitar dueño"

@@ -14,6 +14,7 @@ import (
 
 	"leguiburger/internal/auth"
 	"leguiburger/internal/brands"
+	"leguiburger/internal/businesscare"
 	"leguiburger/internal/customers"
 	"leguiburger/internal/db"
 	"leguiburger/internal/employees"
@@ -110,7 +111,7 @@ func main() {
 	productRepo := products.NewRepository()
 	productService := products.NewService(productRepo, brandRepo)
 	productHandler := products.NewHandler(productService)
-	productHandlerWithAuth := auth.AuthMiddleware(auth.AuthorizeLegacy(productHandler.HandleProductRoutes))
+	productHandlerWithAuth := auth.AuthMiddleware(products.LimitImageUploads(auth.AuthorizeLegacy(productHandler.HandleProductRoutes)))
 
 	registerRoute("/api/products", productHandlerWithAuth)
 
@@ -167,6 +168,8 @@ func main() {
 	auth.RegisterSecurityRoutes(http.DefaultServeMux, db.DB, authSvc)
 
 	operations.RegisterRoutes(http.DefaultServeMux, db.DB)
+	businesscare.Register(http.DefaultServeMux, db.DB)
+	observability.Report = func(ctx context.Context, code, id string) { _ = businesscare.Record(ctx, db.DB, "api", code, id) }
 	mp := mercadopago.NewHandler(db.DB, mercadopago.LoadConfig(), nil)
 	mp.Register(http.DefaultServeMux)
 	if os.Getenv("WORKER_MODE") != "external" {

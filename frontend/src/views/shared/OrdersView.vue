@@ -181,7 +181,7 @@ function menuPage(n) {
     :workspace="w"
     title="Caja y pedidos"
     description="Tomá pedidos, registrá cobros y acompañá cada entrega."
-    ><form class="card operation-form" @submit.prevent="create">
+    ><form v-form-care class="card operation-form" @submit.prevent="create">
       <h2>Nuevo pedido de mostrador</h2>
       <div class="form-row">
         <label
@@ -322,7 +322,7 @@ function menuPage(n) {
           {{ statusLabels[next] }}
         </button>
       </div>
-      <form
+      <form v-form-care
         v-if="!['canceled', 'rejected'].includes(detail.status)"
         class="operation-form"
         @submit.prevent="pay"
@@ -359,7 +359,7 @@ function menuPage(n) {
           {{ p.status }}</span
         ><strong>{{ money(p.amount, p.currency) }}</strong>
       </div>
-      <form
+      <form v-form-care
         v-if="
           payments.some(
             (x) =>

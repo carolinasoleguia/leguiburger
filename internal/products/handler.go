@@ -97,6 +97,11 @@ func (h *Handler) HandleProductRoutes(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll()
+		}
+	}()
 	input, uploadedImageURL, err := h.decodeCreateInput(r)
 	if err != nil {
 		h.handleDecodeError(w, err)
@@ -159,11 +164,17 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request, id string) 
 }
 
 func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request, id string) {
+	defer func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll()
+		}
+	}()
 	brandID, err := h.brandIDFromRequest(r, r.URL.Query().Get("brand_id"))
 	if err != nil {
 		h.handleBrandRequestError(w, err)
 		return
 	}
+	r = r.WithContext(withImageBrand(r.Context(), brandID))
 	input, uploadedImageURL, err := h.decodeUpdateInput(r)
 	if err != nil {
 		h.handleDecodeError(w, err)
@@ -288,9 +299,11 @@ func (h *Handler) decodeCreateInput(r *http.Request) (CreateInput, string, error
 			return CreateInput{}, "", err
 		}
 		if fileHeader != nil {
-			if _, err = h.brandIDFromRequest(r, input.BrandID); err != nil {
-				return CreateInput{}, "", err
+			brand, brandErr := h.brandIDFromRequest(r, input.BrandID)
+			if brandErr != nil {
+				return CreateInput{}, "", brandErr
 			}
+			r = r.WithContext(withImageBrand(r.Context(), brand))
 			imageURL, err := h.storeProductImage(r, fileHeader)
 			if err != nil {
 				return CreateInput{}, "", fmt.Errorf("%w: %v", ErrProductImageUploadFailed, err)
@@ -366,7 +379,15 @@ func (h *Handler) storeProductImage(r *http.Request, fileHeader *multipart.FileH
 		return "", nil
 	}
 
-	return h.imageStore.SaveProductImage(r.Context(), fileHeader)
+	ctx := r.Context()
+	if _, ok := ctx.Value(imageBrandKey{}).(string); !ok {
+		brand, err := h.brandIDFromRequest(r, "")
+		if err != nil {
+			return "", err
+		}
+		ctx = withImageBrand(ctx, brand)
+	}
+	return h.imageStore.SaveProductImage(ctx, fileHeader)
 }
 
 func parseOptionalFloat(value string) (float64, error) {

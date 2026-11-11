@@ -140,7 +140,7 @@ onMounted(load);
         <section class="card">
           <h3>Cambiar contraseña</h3>
           <p>Este cambio cierra todas tus sesiones.</p>
-          <form @submit.prevent="changePassword">
+          <form v-form-care @submit.prevent="changePassword">
             <div class="input-group">
               <label for="current-password">Contraseña actual</label
               ><input
@@ -186,7 +186,7 @@ onMounted(load);
           se cierran todas tus sesiones.
         </p>
         <p v-if="emailNotice" role="status">{{ emailNotice }}</p>
-        <form @submit.prevent="changeEmail">
+        <form v-form-care @submit.prevent="changeEmail">
           <div class="input-group">
             <label for="new-access-email">Nuevo correo</label
             ><input

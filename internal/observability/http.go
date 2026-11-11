@@ -1,11 +1,15 @@
 package observability
 
 import (
+	"context"
 	"github.com/google/uuid"
 	"log/slog"
 	"net/http"
 	"time"
 )
+
+// Set once during startup. Events contain only a fixed category and request ID.
+var Report func(context.Context, string, string)
 
 type statusWriter struct {
 	http.ResponseWriter
@@ -34,7 +38,9 @@ func HTTP(next http.Handler) http.Handler {
 		started := time.Now()
 		out := &statusWriter{ResponseWriter: w}
 		defer func() {
+			panicSeen := false
 			if recover() != nil {
+				panicSeen = true
 				if out.status == 0 {
 					http.Error(out, "No se pudo completar la solicitud", 500)
 				}
@@ -43,6 +49,15 @@ func HTTP(next http.Handler) http.Handler {
 			code := out.status
 			if code == 0 {
 				code = 200
+			}
+			if Report != nil && (panicSeen || code >= 500) {
+				category := "server_error"
+				if panicSeen {
+					category = "panic"
+				}
+				ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), time.Second)
+				Report(ctx, category, id)
+				cancel()
 			}
 			slog.Info("http request", "request_id", id, "method", r.Method, "route", r.Pattern, "status", code, "duration_ms", time.Since(started).Milliseconds())
 		}()

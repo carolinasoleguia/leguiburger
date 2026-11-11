@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const requiredMigration = "202611110006_contracted_business_capacity"
+const requiredMigration = "202611110008_private_backup_storage_policy"
 
 // VerifyDatabase refuses to start the new API against an old or different project.
 func VerifyDatabase(database *gorm.DB, dsn string) error {
