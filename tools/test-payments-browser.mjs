@@ -16,14 +16,17 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH, args: ['--disable-gpu', ...(process.env.CI ? ['--no-sandbox'] : [])] });
 await mkdir('.cache/payments-browser', { recursive: true });
 let active = false, enabled = true, captured = [], refunded = false;
+let debugPage;const requestLog=[],consoleLog=[];
 const errors = [];
 const session = () => ({ token: 'fixture-memory-token', user: { id: 'fixture-admin', role: 'admin', email: 'admin@example.invalid', brand_id: 'brand-1' } });
 try {
   const page = await browser.newPage(); await page.setViewport({width:1440,height:960}); page.on('pageerror', error => errors.push(error.message));
+  debugPage=page;page.on('console',message=>{if(message.type()==='error'||message.type()==='warn')consoleLog.push(message.text())});
   await page.setRequestInterception(true);
   page.on('request', request => {
     const path = new URL(request.url()).pathname;
     if (!path.startsWith('/api/')) return request.continue();
+    requestLog.push({path,method:request.method()});
     const body = JSON.parse(request.postData() || '{}'); let result = {}, status = 200;
     if (path === '/api/auth/refresh') { if (active) result = session(); else status = 401; }
     else if (path === '/api/auth/login') { active = true; result = session(); }
@@ -44,7 +47,10 @@ try {
     else result = [];
     request.respond({ status, contentType: 'application/json', body: JSON.stringify(result) });
   });
-  const clickText = async text => { await page.evaluate(text => { const button = [...document.querySelectorAll('button')].find(item => item.textContent.trim() === text); if (!button) throw new Error(`Missing button: ${text}`); button.click(); }, text); };
+  const clickText = async text => {
+    await page.waitForFunction(text=>{const button=[...document.querySelectorAll('button')].find(item=>item.textContent.trim()===text);return button&&!button.disabled;},{},text);
+    await page.evaluate(text => { const button = [...document.querySelectorAll('button')].find(item => item.textContent.trim() === text); if (!button) throw new Error(`Missing button: ${text}`); button.click(); }, text);
+  };
   await page.goto(origin + '/login', { waitUntil: 'networkidle0' });
   await page.waitForSelector('#email');
   await page.evaluate(()=>document.fonts.ready);
@@ -78,5 +84,5 @@ try {
   assert(await page.$eval('main', element => element.textContent.includes('no confirma por sí solo')));
   assert.deepEqual(errors, []);
   console.log('Payments browser checks passed: transactions/unknown costs, exact decimal inputs, partial checkout, refund, membership, reviews, disabled setup and honest return screen at 1440px/390px.');
-} catch (error) { console.error('Browser runtime errors:', errors); throw error; }
+} catch (error) { console.error('Browser runtime errors:', errors,consoleLog,'Requests:',requestLog,'Active:',active,'URL:',debugPage?.url());console.error(await debugPage?.evaluate(()=>document.body.innerText));throw error; }
 finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
