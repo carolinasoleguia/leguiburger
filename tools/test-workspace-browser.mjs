@@ -280,6 +280,8 @@ try {
   });
   const goto = async (path) => {
     await page.goto(origin + path, { waitUntil: "networkidle0" });
+    await page.waitForFunction(()=>document.querySelector('#app')?.childElementCount>0);
+    await page.waitForNetworkIdle({idleTime:100,timeout:10000});
   };
   const click = async (text) =>
     page.evaluate((text) => {

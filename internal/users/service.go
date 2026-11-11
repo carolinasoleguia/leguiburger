@@ -53,7 +53,7 @@ func (s *service) CreateUser(ctx context.Context, firstName, lastName, brandID, 
 	if cleanFirstName == "" || cleanLastName == "" || cleanEmail == "" || cleanPassword == "" || cleanBrandID == "" {
 		return nil, ErrInvalidUserData
 	}
-	if !isValidRole(cleanRole) {
+	if !isValidRole(cleanRole) || cleanRole != "admin" {
 		return nil, ErrInvalidUserRole
 	}
 
@@ -102,6 +102,9 @@ func (s *service) GetUser(ctx context.Context, id string) (*models.User, error) 
 	if user == nil {
 		return nil, ErrUserNotFound
 	}
+	if user.Role != "admin" {
+		return nil, ErrUnauthorizedAction
+	}
 	return user, nil
 }
 
@@ -123,7 +126,7 @@ func (s *service) ListUsers(ctx context.Context) ([]models.User, error) {
 
 func (s *service) UpdateUser(ctx context.Context, id, firstName, lastName, email, password, role string, brandID *string, isActive *bool) (*models.User, error) {
 	claims, ok := auth.GetClaimsFromContext(ctx)
-	if ok && strings.ToLower(strings.TrimSpace(claims.Role)) != auth.RoleOwner {
+	if ok && !auth.IsPlatformRole(claims.Role) {
 		return nil, ErrUnauthorizedAction
 	}
 
@@ -133,6 +136,9 @@ func (s *service) UpdateUser(ctx context.Context, id, firstName, lastName, email
 	}
 	if user == nil {
 		return nil, ErrUserNotFound
+	}
+	if user.Role != "admin" {
+		return nil, ErrUnauthorizedAction
 	}
 
 	if firstName != "" {
@@ -170,7 +176,7 @@ func (s *service) UpdateUser(ctx context.Context, id, firstName, lastName, email
 
 	if role != "" {
 		cleanRole := normalizeRole(role)
-		if !isValidRole(cleanRole) {
+		if !isValidRole(cleanRole) || cleanRole != "admin" {
 			return nil, ErrInvalidUserRole
 		}
 		user.Role = cleanRole
@@ -202,7 +208,17 @@ func (s *service) UpdateUser(ctx context.Context, id, firstName, lastName, email
 
 func (s *service) DeleteUser(ctx context.Context, id string) error {
 	claims, ok := auth.GetClaimsFromContext(ctx)
-	if ok && strings.ToLower(strings.TrimSpace(claims.Role)) != auth.RoleOwner {
+	if ok && !auth.IsPlatformRole(claims.Role) {
+		return ErrUnauthorizedAction
+	}
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return ErrUserNotFound
+	}
+	if user.Role != "admin" {
 		return ErrUnauthorizedAction
 	}
 	return s.repo.Delete(ctx, id)

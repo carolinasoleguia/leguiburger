@@ -124,7 +124,7 @@ func (h *Handler) HandleTenantRoutes(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CreateTenant(w http.ResponseWriter, r *http.Request) {
 
 	claims, ok := auth.GetClaimsFromContext(r.Context())
-	if !ok || claims.Role != auth.RoleOwner {
+	if !ok || !auth.IsPlatformRole(claims.Role) {
 		h.respondWithError(
 			w,
 			http.StatusForbidden,

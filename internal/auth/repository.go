@@ -27,7 +27,7 @@ func NewRepository() Repository {
 func (r *repository) GetEmployeeByEmailAndTenant(ctx context.Context, tenantID, email string) (*models.Employee, error) {
 	var emp models.Employee
 	err := db.ForContext(ctx).
-		Where("tenant_id = ? AND LOWER(email) = LOWER(?) AND is_active = true", tenantID, email).
+		Where("EXISTS(SELECT 1 FROM legui_private.employee_locations a WHERE a.employee_id=employees.id AND a.tenant_id=?) AND LOWER(email) = LOWER(?) AND is_active = true", tenantID, email).
 		First(&emp).Error
 
 	if err != nil {
@@ -36,6 +36,7 @@ func (r *repository) GetEmployeeByEmailAndTenant(ctx context.Context, tenantID, 
 		}
 		return nil, err
 	}
+	emp.TenantID = &tenantID
 	return &emp, nil
 }
 

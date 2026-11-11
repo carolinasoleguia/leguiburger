@@ -61,6 +61,17 @@ func AuthMiddlewareWithDB(database *gorm.DB, next http.HandlerFunc) http.Handler
 		}
 		ctx = context.WithValue(ctx, ClaimsKey, claims)
 		ctx = context.WithValue(ctx, PrincipalKey, principal)
+		allowed := principal.Kind == "user" && principal.Role == "admin" && BusinessPathAllowed(r.URL.Path)
+		available, businessErr := businessAvailable(ctx, database, principal)
+		if businessErr != nil {
+			RespondWithError(w, 503, "AUTH_UNAVAILABLE", "No se pudo verificar el estado del restaurante")
+			return
+		}
+		if !allowed && !available {
+			RespondWithError(w, 403, "BUSINESS_SUSPENDED", "El restaurante está suspendido. Su dueño puede consultar la membresía y contactar a la administración.")
+			return
+		}
+		ctx = context.WithValue(ctx, suspensionAccessKey, allowed)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }

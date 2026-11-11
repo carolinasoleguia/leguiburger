@@ -85,7 +85,7 @@ func (h *Handler) onboarding(r *http.Request, p Principal) (Result, error) {
 
 const onboardingSQL = `WITH b AS(SELECT id,name FROM public.brands WHERE id=?), checks AS(SELECT b.id,
  jsonb_build_array(jsonb_build_object('key','brand','title','La identidad de tu hamburguesería','done',length(trim(b.name))>0,'to','/admin/catalog'),
- jsonb_build_object('key','location','title','Un local activo','done',EXISTS(SELECT 1 FROM public.tenants WHERE brand_id=b.id AND active),'to','/admin/catalog/tenants'),
+ jsonb_build_object('key','location','title','Un local activo','done',EXISTS(SELECT 1 FROM public.tenants WHERE brand_id=b.id AND active),'to','/locations'),
  jsonb_build_object('key','menu','title','La carta disponible en tu local','done',EXISTS(SELECT 1 FROM public.products p JOIN public.tenant_products tp ON tp.product_id=p.id JOIN public.tenants t ON t.id=tp.tenant_id WHERE p.brand_id=b.id AND p.is_active AND tp.is_active AND tp.is_available AND t.active),'to','/admin/catalog'),
  jsonb_build_object('key','team','title','Tu equipo de trabajo','done',EXISTS(SELECT 1 FROM public.employees e JOIN public.tenants t ON t.id=e.tenant_id WHERE t.brand_id=b.id AND e.is_active),'to','/team/invitations'),
  jsonb_build_object('key','payments','title','Tu cuenta para cobrar online (opcional)','optional',true,'done',EXISTS(SELECT 1 FROM legui_private.mp_connections WHERE brand_id=b.id AND scope='business' AND state='connected' AND environment='production'),'to','/payments')) steps FROM b)
@@ -167,7 +167,7 @@ func (h *Handler) publicOrder(w http.ResponseWriter, r *http.Request) {
 		writeError(w, notFound())
 		return
 	}
-	data, e := h.repo.JSON(r.Context(), `SELECT jsonb_build_object('status',s.code,'created_at',o.created_at,'currency',o.currency,'total_due',o.total_due,'total_paid',o.total_paid,'environment',o.payment_environment,'business',b.name,'items',coalesce((SELECT jsonb_agg(jsonb_build_object('name',d.product_name,'quantity',d.quantity)) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb))::text payload FROM legui_private.order_links l JOIN public.orders o ON o.id=l.order_id AND o.tenant_id=l.tenant_id JOIN public.tenants t ON t.id=o.tenant_id AND t.active JOIN public.brands b ON b.id=t.brand_id JOIN public.order_statuses_lookup s ON s.id=o.order_status_id WHERE l.digest=? AND l.expires_at>clock_timestamp() AND l.revoked_at IS NULL`, capabilityDigest(raw))
+	data, e := h.repo.JSON(r.Context(), `SELECT jsonb_build_object('status',s.code,'created_at',o.created_at,'currency',o.currency,'total_due',o.total_due,'total_paid',o.total_paid,'environment',o.payment_environment,'business',b.name,'items',coalesce((SELECT jsonb_agg(jsonb_build_object('name',d.product_name,'quantity',d.quantity)) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb))::text payload FROM legui_private.order_links l JOIN public.orders o ON o.id=l.order_id AND o.tenant_id=l.tenant_id JOIN public.tenants t ON t.id=o.tenant_id AND t.active JOIN public.brands b ON b.id=t.brand_id AND b.suspended_at IS NULL JOIN public.order_statuses_lookup s ON s.id=o.order_status_id WHERE l.digest=? AND l.expires_at>clock_timestamp() AND l.revoked_at IS NULL`, capabilityDigest(raw))
 	if e != nil {
 		writeError(w, e)
 		return

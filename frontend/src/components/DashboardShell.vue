@@ -1,10 +1,61 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuth } from "../composables/useAuth.js";
 import AppIcon from "./AppIcon.vue";
 import BrandLogo from "./BrandLogo.vue";
 import ThemeToggle from "./ThemeToggle.vue";
+import { getJSON } from "../services/api.js";
+import {
+  authRequest,
+  setSession,
+  announceContext,
+} from "../services/session.js";
+const assignedLocations = ref([]),
+  switching = ref(false),
+  contextError = ref("");
+onMounted(async () => {
+  if (
+    auth.userRole.value &&
+    !["owner", "super_admin", "admin"].includes(auth.userRole.value)
+  ) {
+    try {
+      assignedLocations.value =
+        (await getJSON("/business/locations")).items || [];
+    } catch {
+      contextError.value = "No pudimos consultar tus locales.";
+    }
+  }
+});
+async function changeLocation(event) {
+  const targetTenant = event.target.value;
+  switching.value = true;
+  contextError.value = "";
+  try {
+    const change = () =>
+      authRequest("location", { tenant_id: targetTenant }, auth.state.token);
+    const data = await (navigator.locks
+      ? navigator.locks.request("legui-auth-cookie", change)
+      : change());
+    setSession(data);
+    announceContext();
+    window.location.assign(
+      data.user.role === "cashier" ? "/orders" : "/kitchen",
+    );
+  } catch (e) {
+    contextError.value = e.message;
+    event.target.value = auth.tenantId.value;
+  } finally {
+    switching.value = false;
+  }
+}
 const props = defineProps({ role: { type: String, default: "owner" } });
 const route = useRoute(),
   router = useRouter(),
@@ -15,8 +66,8 @@ const mobileOpen = ref(false),
 const roleLabel = computed(
   () =>
     ({
-      owner: "Administración general",
-      admin: "Gestión de la marca",
+      owner: "Plataforma LeguiBurger",
+      admin: "Mi restaurante",
       employee: "Mi espacio de trabajo",
     })[props.role],
 );
@@ -24,9 +75,9 @@ const baseNavigation = computed(() =>
   props.role === "owner"
     ? [
         { label: "Resumen", to: "/owner", icon: "grid" },
-        { label: "Marcas", to: "/owner/brands", icon: "burger" },
-        { label: "Locales", to: "/owner/tenants", icon: "store" },
-        { label: "Administradores", to: "/owner/admins", icon: "users" },
+        { label: "Restaurantes", to: "/restaurants", icon: "burger" },
+        { label: "Locales", to: "/locations", icon: "store" },
+
         { label: "Cobros", to: "/payments", icon: "grid" },
         { label: "Invitaciones", to: "/team/invitations", icon: "users" },
         { label: "Actividad", to: "/audit", icon: "grid" },
@@ -35,7 +86,9 @@ const baseNavigation = computed(() =>
     : props.role === "admin"
       ? [
           { label: "Resumen", to: "/admin", icon: "grid" },
-          { label: "Equipo", to: "/admin/employees", icon: "users" },
+          { label: "Equipo", to: "/team", icon: "users" },
+          { label: "Mi restaurante", to: "/restaurants", icon: "burger" },
+          { label: "Locales", to: "/locations", icon: "store" },
           { label: "Producción", to: "/admin/production", icon: "flame" },
           { label: "Catálogo", to: "/admin/catalog", icon: "burger" },
           { label: "Cobros", to: "/payments", icon: "grid" },
@@ -180,6 +233,22 @@ async function logout() {
         <span class="live-dot" />{{ roleLabel }}
       </div>
       <span class="nav-heading">ESPACIO DE TRABAJO</span>
+      <label v-if="assignedLocations.length > 1" class="input-group"
+        >Local de trabajo<select
+          :value="auth.tenantId.value"
+          :disabled="switching"
+          @change="changeLocation"
+        >
+          <option
+            v-for="item in assignedLocations"
+            :key="item.id"
+            :value="item.id"
+          >
+            {{ item.display_name || item.subdomain }}
+          </option>
+        </select></label
+      >
+      <p v-if="contextError" role="alert">{{ contextError }}</p>
       <nav aria-label="Secciones del sistema">
         <router-link
           v-for="item in navigation"

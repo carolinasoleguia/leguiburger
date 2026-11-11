@@ -158,7 +158,7 @@ func lockPrincipal(tx *gorm.DB, p Principal, scope Scope) error {
 			}
 		}
 		if p.Kind == "employee" {
-			if err := tx.Raw(`SELECT tenant_id=?::uuid FROM public.employees WHERE id=?`, scope.TenantID, p.ID).Scan(&allowed).Error; err != nil {
+			if err := tx.Raw(`SELECT EXISTS(SELECT 1 FROM legui_private.employee_locations WHERE tenant_id=? AND employee_id=?)`, scope.TenantID, p.ID).Scan(&allowed).Error; err != nil {
 				return err
 			}
 		}

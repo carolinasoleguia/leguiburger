@@ -41,8 +41,9 @@ func unauthorizedAction() error {
 func RegisterSecurityRoutes(mux *http.ServeMux, database *gorm.DB, credentials Service) {
 	h := &SecurityHandler{database: database, credentials: credentials}
 	public := map[string]func(http.ResponseWriter, *http.Request) error{
-		"POST /api/auth/email/confirm": h.confirmEmail,
-		"POST /api/auth/login":         h.login, "POST /api/auth/refresh": h.refresh, "POST /api/auth/logout": h.logout,
+		"POST /api/auth/business-invitations/accept": h.acceptBusinessInvitation,
+		"POST /api/auth/email/confirm":               h.confirmEmail,
+		"POST /api/auth/login":                       h.login, "POST /api/auth/refresh": h.refresh, "POST /api/auth/logout": h.logout,
 		"POST /api/auth/password/forgot": h.forgotPassword, "POST /api/auth/password/reset": h.resetPassword,
 		"POST /api/auth/mfa/enroll": h.enrollMFA, "POST /api/auth/mfa/verify": h.verifyMFA,
 		"POST /api/auth/invitations/accept": h.acceptInvitation,
@@ -51,6 +52,14 @@ func RegisterSecurityRoutes(mux *http.ServeMux, database *gorm.DB, credentials S
 		mux.HandleFunc(pattern, h.handle(fn))
 	}
 	protected := map[string]func(http.ResponseWriter, *http.Request) error{
+		"GET /api/business": h.businesses, "GET /api/platform/restaurants": h.businesses,
+		"POST /api/platform/restaurants":              h.createRestaurant,
+		"POST /api/business/{id}/owner-invitation":    h.businessInvitation,
+		"DELETE /api/business/{id}/owner-invitation":  h.revokeBusinessInvitation,
+		"PATCH /api/platform/restaurants/{id}/status": h.businessStatus,
+		"GET /api/business/locations":                 h.locations, "POST /api/business/locations": h.saveLocation, "PATCH /api/business/locations/{id}": h.saveLocation,
+		"GET /api/business/team": h.teamDirectory, "PATCH /api/business/team/{id}": h.updateTeamMember,
+		"POST /api/auth/location":     h.switchLocation,
 		"POST /api/auth/email/change": h.changeEmail,
 		"GET /api/auth/me":            h.me, "GET /api/auth/sessions": h.sessions, "DELETE /api/auth/sessions/{id}": h.revokeSession,
 		"POST /api/auth/logout-all": h.logoutAll, "POST /api/auth/password/change": h.changePassword,
@@ -75,6 +84,7 @@ func (h *SecurityHandler) handle(fn func(http.ResponseWriter, *http.Request) err
 		if err == nil {
 			return
 		}
+		err = businessError(err)
 		var api *securityError
 		if errors.As(err, &api) {
 			RespondWithError(w, api.status, api.code, api.message)
@@ -193,6 +203,16 @@ func (h *SecurityHandler) login(w http.ResponseWriter, r *http.Request) error {
 		}
 		if bcrypt.CompareHashAndPassword([]byte(i.PasswordHash), []byte(strings.TrimSpace(input.Password))) != nil {
 			return ErrInvalidCredentials
+		}
+		if i.Kind == "employee" && input.TenantID != "" {
+			var allowed bool
+			if e = tx.Raw(`SELECT EXISTS(SELECT 1 FROM legui_private.employee_locations a JOIN public.tenants t ON t.id=a.tenant_id AND t.active WHERE a.employee_id=? AND a.tenant_id=? AND t.brand_id=?)`, i.ID, input.TenantID, i.BrandID).Scan(&allowed).Error; e != nil {
+				return e
+			}
+			if !allowed {
+				return ErrInvalidCredentials
+			}
+			i.TenantID = input.TenantID
 		}
 		sid := uuid.NewString()
 		platform := i.principal().Platform() && PlatformMFARequired()

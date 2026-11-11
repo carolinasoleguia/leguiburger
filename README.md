@@ -36,6 +36,10 @@ El seed de un administrador inicial requiere `SEED_OWNER_EMAIL` y `SEED_OWNER_PA
 
 ## API y pruebas
 
+La [jerarquía de restaurantes](docs/jerarquia-y-restaurantes.md) cubre alta unificada,
+invitación y transferencia del dueño, sucursales, equipo con varios locales, cupos
+de planes y suspensión administrativa con acceso a membresía.
+
 El [espacio operativo](docs/espacio-operativo.md) documenta dashboard real, caja,
 cocina, stock/costos, gastos, clientes, seguimiento privado, notificaciones,
 onboarding y procesos de segundo plano. El ingreso actual usa usuario y contraseña;

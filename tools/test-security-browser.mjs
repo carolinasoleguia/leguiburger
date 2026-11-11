@@ -51,7 +51,7 @@ try {
     else result = [];
     request.respond({ status, headers, contentType: 'application/json', body: JSON.stringify(result) });
   });
-  const goto = path => page.goto(origin + path, { waitUntil: 'networkidle0' });
+  const goto = async path => {await page.goto(origin + path, { waitUntil: 'networkidle0' });await page.waitForFunction(()=>document.querySelector('#app')?.childElementCount>0);};
   const submit = async (email) => { await page.type('#email', email); await page.type('#password', 'fixture-password-123'); await page.click('form button.btn-submit'); };
   await goto('/login'); await submit('owner@example.invalid');
   await page.waitForSelector('#mfa-code'); assert(await page.$('.mfa-setup'));

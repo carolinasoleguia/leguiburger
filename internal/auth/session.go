@@ -41,7 +41,9 @@ func (i identity) principal() SessionPrincipal {
 }
 
 const identitySQL = `SELECT u.id::text,'user' kind,u.role,coalesce(u.brand_id::text,'') brand_id,'' tenant_id,u.email,u.password_hash,u.first_name,u.last_name FROM public.users u WHERE u.id=? AND u.is_active
- UNION ALL SELECT e.id::text,'employee',e.role,coalesce(t.brand_id::text,''),coalesce(e.tenant_id::text,''),e.email,e.password_hash,e.first_name,e.last_name FROM public.employees e JOIN public.tenants t ON t.id=e.tenant_id AND t.active WHERE e.id=? AND e.is_active AND e.role IN ('employee','cashier','kitchen') LIMIT 1`
+ UNION ALL SELECT e.id::text,'employee',e.role,t.brand_id::text,t.id::text,e.email,e.password_hash,e.first_name,e.last_name FROM public.employees e
+ JOIN LATERAL(SELECT t.id,t.brand_id FROM legui_private.employee_locations a JOIN public.tenants t ON t.id=a.tenant_id AND t.active JOIN public.brands b ON b.id=t.brand_id AND b.suspended_at IS NULL WHERE a.employee_id=e.id ORDER BY (t.id=e.tenant_id) DESC,t.id LIMIT 1)t ON true
+ WHERE e.id=? AND e.is_active AND e.role IN ('employee','cashier','kitchen') LIMIT 1`
 
 func loadIdentity(ctx context.Context, database *gorm.DB, id string) (identity, error) {
 	var i identity
@@ -96,6 +98,16 @@ func sessionIdentity(ctx context.Context, database *gorm.DB, s authSession) (ide
 	if err != nil {
 		return i, err
 	}
+	if i.Kind == "employee" {
+		var assigned bool
+		if err = database.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM legui_private.employee_locations a JOIN public.tenants t ON t.id=a.tenant_id AND t.active WHERE a.employee_id=? AND a.tenant_id=? AND t.brand_id=?)`, i.ID, s.TenantID, i.BrandID).Scan(&assigned).Error; err != nil {
+			return identity{}, err
+		}
+		if !assigned {
+			return identity{}, ErrInvalidCredentials
+		}
+		i.TenantID = s.TenantID
+	}
 	if i.Kind != s.PrincipalKind || i.Role != s.Role || i.BrandID != s.BrandID || i.TenantID != s.TenantID || digest(i.PasswordHash) != s.CredentialDigest {
 		return identity{}, ErrInvalidCredentials
 	}
@@ -139,6 +151,28 @@ func LockSession(ctx context.Context, tx *gorm.DB) error {
 	c, ok := GetClaimsFromContext(ctx)
 	if !ok || c.SessionID == "" {
 		return ErrInvalidCredentials
+	}
+	p, exists := PrincipalFromContext(ctx)
+	if exists && !p.Platform() && p.BrandID != "" {
+		var active bool
+		q := tx.WithContext(ctx).Raw(`SELECT suspended_at IS NULL FROM public.brands WHERE id=? FOR SHARE`, p.BrandID).Scan(&active)
+		if q.Error != nil {
+			return q.Error
+		}
+		allowed, _ := ctx.Value(suspensionAccessKey).(bool)
+		if q.RowsAffected != 1 || !active && !allowed {
+			return ErrInvalidCredentials
+		}
+		if p.Kind == "employee" {
+			var tenant string
+			q = tx.WithContext(ctx).Raw(`SELECT a.tenant_id::text FROM legui_private.employee_locations a JOIN public.tenants t ON t.id=a.tenant_id AND t.active WHERE a.employee_id=? AND a.tenant_id=? FOR SHARE OF a,t`, p.ID, p.TenantID).Scan(&tenant)
+			if q.Error != nil {
+				return q.Error
+			}
+			if q.RowsAffected != 1 {
+				return ErrInvalidCredentials
+			}
+		}
 	}
 	var id string
 	result := tx.WithContext(ctx).Raw(`SELECT id::text FROM legui_private.auth_sessions WHERE id=? AND principal_id=? AND revoked_at IS NULL AND expires_at>clock_timestamp() AND last_seen_at>clock_timestamp()-interval '30 minutes' FOR SHARE`, c.SessionID, c.UserID).Scan(&id)

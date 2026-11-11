@@ -89,7 +89,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	claims, ok := auth.GetClaimsFromContext(r.Context())
-	if !ok || strings.ToLower(strings.TrimSpace(claims.Role)) != auth.RoleOwner {
+	if !ok || !auth.IsPlatformRole(claims.Role) {
 		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No autorizado")
 		return
 	}
@@ -105,7 +105,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.GetClaimsFromContext(r.Context())
-	if !ok || strings.ToLower(strings.TrimSpace(claims.Role)) != auth.RoleOwner {
+	if !ok || !auth.IsPlatformRole(claims.Role) {
 		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No autorizado")
 		return
 	}
@@ -121,7 +121,7 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request, id string) {
 	claims, ok := auth.GetClaimsFromContext(r.Context())
-	if !ok || strings.ToLower(strings.TrimSpace(claims.Role)) != auth.RoleOwner {
+	if !ok || !auth.IsPlatformRole(claims.Role) {
 		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No autorizado")
 		return
 	}
@@ -143,7 +143,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request, id string) 
 	}
 
 	claims, ok := auth.GetClaimsFromContext(r.Context())
-	if !ok || strings.ToLower(strings.TrimSpace(claims.Role)) != auth.RoleOwner {
+	if !ok || !auth.IsPlatformRole(claims.Role) {
 		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No autorizado")
 		return
 	}
@@ -159,7 +159,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request, id string) 
 
 func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request, id string) {
 	claims, ok := auth.GetClaimsFromContext(r.Context())
-	if !ok || strings.ToLower(strings.TrimSpace(claims.Role)) != auth.RoleOwner {
+	if !ok || !auth.IsPlatformRole(claims.Role) {
 		h.respondWithError(w, http.StatusForbidden, "FORBIDDEN", "No autorizado")
 		return
 	}

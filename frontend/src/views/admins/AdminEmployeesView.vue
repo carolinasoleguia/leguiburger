@@ -106,7 +106,7 @@
                 <option value="employee">employee</option>
                 <option value="cashier">cashier</option>
                 <option value="kitchen">kitchen</option>
-                <option value="admin">admin</option>
+
               </select>
             </div>
           </div>
@@ -174,7 +174,7 @@
                 <option value="employee">employee</option>
                 <option value="cashier">cashier</option>
                 <option value="kitchen">kitchen</option>
-                <option value="admin">admin</option>
+
               </select>
             </div>
           </div>

@@ -49,3 +49,4 @@ jobs:
           node tools/test-security-browser.mjs
           node tools/test-payments-browser.mjs
           node tools/test-workspace-browser.mjs
+          node tools/test-hierarchy-browser.mjs

@@ -31,6 +31,26 @@ const workspaceViews = {
   HealthView: () => import("../views/shared/HealthView.vue"),
 };
 const routes = [
+  {
+    path: "/restaurants",
+    component: () => import("../views/shared/RestaurantsView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin", "admin"] },
+  },
+  {
+    path: "/locations",
+    component: () => import("../views/shared/LocationsView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin", "admin"] },
+  },
+  {
+    path: "/team",
+    component: () => import("../views/shared/TeamView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin", "admin"] },
+  },
+  {
+    path: "/accept-business-invitation",
+    component: () => import("../views/auth/RecoveryView.vue"),
+    meta: { authAction: "business-invite" },
+  },
   ...[
     ["/orders", "OrdersView", ["owner", "super_admin", "admin", "cashier"]],
     [
@@ -140,7 +160,7 @@ const routes = [
       {
         path: "admins",
         name: "OwnerAdmins",
-        component: AdminListView,
+        redirect: "/restaurants",
       },
     ],
   },
@@ -163,7 +183,7 @@ const routes = [
       {
         path: "employees",
         name: "AdminEmployees",
-        component: AdminEmployeesView,
+        redirect: "/team",
       },
       {
         path: "production",

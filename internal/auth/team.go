@@ -18,7 +18,7 @@ func managerTenant(tx *gorm.DB, p SessionPrincipal, tenant string) (string, erro
 		return "", inputError("Elegí un local válido")
 	}
 	var brand string
-	result := tx.Raw(`SELECT brand_id::text FROM public.tenants WHERE id=? AND active FOR SHARE`, tenant).Scan(&brand)
+	result := tx.Raw(`SELECT t.brand_id::text FROM public.tenants t JOIN public.brands b ON b.id=t.brand_id AND b.suspended_at IS NULL WHERE t.id=? AND t.active FOR SHARE OF t,b`, tenant).Scan(&brand)
 	if result.Error != nil {
 		return "", result.Error
 	}
@@ -62,7 +62,7 @@ func (h *SecurityHandler) invite(w http.ResponseWriter, r *http.Request) error {
 			return e
 		}
 		var exists bool
-		if e = tx.Raw(`SELECT EXISTS(SELECT 1 FROM public.employees WHERE lower(email)=? UNION ALL SELECT 1 FROM public.users WHERE lower(email)=?)`, input.Email, input.Email).Scan(&exists).Error; e != nil {
+		if e = tx.Raw(`SELECT EXISTS(SELECT 1 FROM public.employees e JOIN public.tenants t ON t.id=e.tenant_id WHERE lower(e.email)=? AND (t.brand_id<>?::uuid OR NOT e.is_active OR e.role<>?) UNION ALL SELECT 1 FROM public.users WHERE lower(email)=?)`, input.Email, brand, input.Role, input.Email).Scan(&exists).Error; e != nil {
 			return e
 		}
 		if exists {
@@ -149,22 +149,27 @@ func (h *SecurityHandler) acceptInvitation(w http.ResponseWriter, r *http.Reques
 		return err
 	}
 	var input struct {
-		Token     string `json:"token"`
-		FirstName string `json:"first_name"`
-		LastName  string `json:"last_name"`
-		Password  string `json:"password"`
+		Token           string `json:"token"`
+		FirstName       string `json:"first_name"`
+		LastName        string `json:"last_name"`
+		Password        string `json:"password"`
+		CurrentPassword string `json:"current_password"`
 	}
 	if err := readSecurityJSON(r, &input); err != nil {
 		return err
 	}
 	input.FirstName = strings.TrimSpace(input.FirstName)
 	input.LastName = strings.TrimSpace(input.LastName)
-	if input.FirstName == "" || input.LastName == "" || len(input.FirstName) > 50 || len(input.LastName) > 50 || !validPassword(input.Password) {
+	if input.FirstName == "" || input.LastName == "" || len(input.FirstName) > 50 || len(input.LastName) > 50 || (input.CurrentPassword == "" && !validPassword(input.Password)) {
 		return inputError("Ingresá nombre, apellido y una contraseña de 12 a 72 bytes")
 	}
-	hashed, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
+	var hashed []byte
+	var err error
+	if validPassword(input.Password) {
+		hashed, err = bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
 	}
 	err = h.database.WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
 		action, e := actionByToken(tx, input.Token, "team_invitation")
@@ -190,15 +195,39 @@ func (h *SecurityHandler) acceptInvitation(w http.ResponseWriter, r *http.Reques
 			return invalidAction()
 		}
 		var exists bool
-		if e = tx.Raw(`SELECT EXISTS(SELECT 1 FROM public.users WHERE lower(email)=? UNION ALL SELECT 1 FROM public.employees WHERE lower(email)=?)`, action.Email, action.Email).Scan(&exists).Error; e != nil {
+		if e = tx.Exec(`SELECT pg_advisory_xact_lock(hashtextextended(?,0))`, "identity-email:"+action.Email).Error; e != nil {
+			return e
+		}
+		if e = tx.Raw(`SELECT EXISTS(SELECT 1 FROM public.users WHERE lower(email)=?)`, action.Email).Scan(&exists).Error; e != nil {
 			return e
 		}
 		if exists {
 			return &securityError{409, "ACCOUNT_EXISTS", "Este correo ya tiene una cuenta. Iniciá sesión o pedí una nueva invitación"}
 		}
-		id := uuid.NewString()
-		if e = tx.Exec(`INSERT INTO public.employees(id,tenant_id,first_name,last_name,email,password_hash,role,is_active) VALUES(?,?,?,?,?,?,?,true)`, id, action.TenantID, input.FirstName, input.LastName, action.Email, string(hashed), action.Role).Error; e != nil {
-			return e
+		var existing struct {
+			ID, BrandID, PasswordHash, Role string
+			IsActive                        bool
+		}
+		q := tx.Raw(`SELECT e.id::text,t.brand_id::text,e.password_hash,e.role,e.is_active FROM public.employees e JOIN public.tenants t ON t.id=e.tenant_id WHERE lower(e.email)=? FOR UPDATE OF e`, action.Email).Scan(&existing)
+		if q.Error != nil {
+			return q.Error
+		}
+		id := existing.ID
+		if q.RowsAffected > 0 {
+			if existing.BrandID != brand || !existing.IsActive || existing.Role != action.Role || bcrypt.CompareHashAndPassword([]byte(existing.PasswordHash), []byte(input.CurrentPassword)) != nil {
+				return ErrInvalidCredentials
+			}
+			if e = tx.Exec(`INSERT INTO legui_private.employee_locations(employee_id,tenant_id) VALUES(?,?) ON CONFLICT DO NOTHING`, id, action.TenantID).Error; e != nil {
+				return e
+			}
+		} else {
+			if !validPassword(input.Password) {
+				return inputError("Elegí una contraseña de 12 a 72 bytes para tu cuenta nueva")
+			}
+			id = uuid.NewString()
+			if e = tx.Exec(`INSERT INTO public.employees(id,tenant_id,first_name,last_name,email,password_hash,role,is_active) VALUES(?,?,?,?,?,?,?,true)`, id, action.TenantID, input.FirstName, input.LastName, action.Email, string(hashed), action.Role).Error; e != nil {
+				return e
+			}
 		}
 		if e = tx.Exec(`UPDATE legui_private.auth_action_tokens SET used_at=clock_timestamp() WHERE digest=?`, action.Digest).Error; e != nil {
 			return e
