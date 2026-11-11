@@ -19,7 +19,7 @@ let active = false, enabled = true, captured = [], refunded = false;
 const errors = [];
 const session = () => ({ token: 'fixture-memory-token', user: { id: 'fixture-admin', role: 'admin', email: 'admin@example.invalid', brand_id: 'brand-1' } });
 try {
-  const page = await browser.newPage(); page.on('pageerror', error => errors.push(error.message));
+  const page = await browser.newPage(); await page.setViewport({width:1440,height:960}); page.on('pageerror', error => errors.push(error.message));
   await page.setRequestInterception(true);
   page.on('request', request => {
     const path = new URL(request.url()).pathname;
@@ -47,7 +47,10 @@ try {
   const clickText = async text => { await page.evaluate(text => { const button = [...document.querySelectorAll('button')].find(item => item.textContent.trim() === text); if (!button) throw new Error(`Missing button: ${text}`); button.click(); }, text); };
   await page.goto(origin + '/login', { waitUntil: 'networkidle0' });
   await page.waitForSelector('#email');
-  await page.type('#email', 'admin@example.invalid'); await page.type('#password', 'fixture-password-123'); await page.click('form button.btn-submit');
+  await page.evaluate(()=>document.fonts.ready);
+  await page.type('#email', 'admin@example.invalid'); await page.type('#password', 'fixture-password-123');
+  assert(await page.$eval('form',form=>form.checkValidity()),'Fixture login must satisfy browser validation');
+  await page.$eval('form',form=>form.requestSubmit());
   await page.waitForFunction(() => location.pathname === '/admin');
   await page.goto(origin + '/payments', { waitUntil: 'networkidle0' });
   assert(await page.$eval('.payment-table', table => table.textContent.includes('Por confirmar')));
