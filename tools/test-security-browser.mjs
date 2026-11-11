@@ -17,7 +17,7 @@ const server = createServer(async (request, response) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = process.env.SECURITY_PREVIEW_URL || `http://127.0.0.1:${server.address().port}`;
 await mkdir('.cache/security-browser', { recursive: true });
-const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH, args: ['--disable-gpu'] });
+const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH, args: ['--disable-gpu', ...(process.env.CI ? ['--no-sandbox'] : [])] });
 const user = role => ({ id: 'fixture-user', role, email: `${role}@example.invalid`, brand_id: role === 'owner' ? '' : 'fixture-brand', tenant_id: role === 'employee' ? 'fixture-tenant' : '' });
 let active = null;
 let freshLogin = null;

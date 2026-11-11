@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"leguiburger/internal/auth"
-	"leguiburger/internal/models"
 	"leguiburger/internal/brands"
+	"leguiburger/internal/models"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,10 +16,10 @@ import (
 var (
 	ErrUserNotFound       = errors.New("usuario no encontrado")
 	ErrDuplicateUserEmail = errors.New("ya existe un usuario con ese email")
-	ErrInvalidUserData    = errors.New("email, password y brand_id son obligatorios")
+	ErrInvalidUserData    = errors.New("completá email y marca; usá una contraseña de 12 a 72 bytes sin espacios en los extremos")
 	ErrInvalidUserRole    = errors.New("el rol del usuario no es válido")
 	ErrBrandNotFound      = errors.New("la marca especificada no existe")
-	ErrUnauthorizedAction  = errors.New("no tienes permisos para realizar esta acción")
+	ErrUnauthorizedAction = errors.New("no tienes permisos para realizar esta acción")
 )
 
 type Service interface {
@@ -31,7 +31,7 @@ type Service interface {
 }
 
 type service struct {
-	repo       Repository
+	repo      Repository
 	brandRepo brands.Repository
 }
 
@@ -44,9 +44,12 @@ func (s *service) CreateUser(ctx context.Context, firstName, lastName, brandID, 
 	cleanLastName := strings.TrimSpace(lastName)
 	cleanBrandID := strings.TrimSpace(brandID)
 	cleanEmail := strings.ToLower(strings.TrimSpace(email))
-	cleanPassword := strings.TrimSpace(password)
+	cleanPassword := password
 	cleanRole := normalizeRole(role)
 
+	if !auth.ValidPassword(password) {
+		return nil, ErrInvalidUserData
+	}
 	if cleanFirstName == "" || cleanLastName == "" || cleanEmail == "" || cleanPassword == "" || cleanBrandID == "" {
 		return nil, ErrInvalidUserData
 	}
@@ -155,6 +158,9 @@ func (s *service) UpdateUser(ctx context.Context, id, firstName, lastName, email
 	}
 
 	if password != "" {
+		if !auth.ValidPassword(password) {
+			return nil, ErrInvalidUserData
+		}
 		hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
 			return nil, fmt.Errorf("error al hashear la contraseña: %w", err)

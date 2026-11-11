@@ -36,6 +36,11 @@ El seed de un administrador inicial requiere `SEED_OWNER_EMAIL` y `SEED_OWNER_PA
 
 ## API y pruebas
 
+El [espacio operativo](docs/espacio-operativo.md) documenta dashboard real, caja,
+cocina, stock/costos, gastos, clientes, seguimiento privado, notificaciones,
+onboarding y procesos de segundo plano. El ingreso actual usa usuario y contraseña;
+el segundo factor queda desactivado por configuración.
+
 La [integración de Mercado Pago](docs/mercadopago.md) documenta OAuth, cobros de
 pedidos, membresías, devoluciones, webhooks, conciliación y configuración.
 

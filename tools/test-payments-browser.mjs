@@ -13,7 +13,7 @@ const server = createServer(async (request, response) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
-const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH, args: ['--disable-gpu'] });
+const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH, args: ['--disable-gpu', ...(process.env.CI ? ['--no-sandbox'] : [])] });
 await mkdir('.cache/payments-browser', { recursive: true });
 let active = false, enabled = true, captured = [], refunded = false;
 const errors = [];

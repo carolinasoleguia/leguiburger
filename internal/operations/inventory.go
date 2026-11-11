@@ -58,10 +58,10 @@ func (h *Handler) listInventory(r *http.Request, p Principal) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb),'limit',?::int,'offset',?::int)::text payload FROM(
- SELECT * FROM(SELECT 'product' kind,tp.product_id id,p.name,tp.current_stock::numeric current_stock,tp.minimum_stock::numeric minimum_stock,tp.stock_version,'unit' unit,tp.track_stock,tp.is_available FROM public.tenant_products tp JOIN public.products p ON p.id=tp.product_id WHERE tp.tenant_id=? AND tp.is_active AND p.is_active
- UNION ALL SELECT 'extra',id,name,current_stock,minimum_stock,stock_version,'unit',track_stock,is_active FROM public.extras WHERE tenant_id=? AND is_active
- UNION ALL SELECT 'supply',id,name,current_stock,minimum_stock,stock_version,measurement_unit,true,is_active FROM public.supplies WHERE tenant_id=? AND is_active)items ORDER BY kind,name,id LIMIT ? OFFSET ?)v`, limit, offset, scope.TenantID, scope.TenantID, scope.TenantID, limit, offset))
+	return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(CASE WHEN ? THEN to_jsonb(v) ELSE to_jsonb(v)-'unit_cost' END),'[]'::jsonb),'limit',?::int,'offset',?::int)::text payload FROM(
+ SELECT * FROM(SELECT 'product' kind,tp.product_id id,p.name,tp.current_stock::numeric current_stock,tp.minimum_stock::numeric minimum_stock,tp.stock_version,'unit' unit,tp.track_stock,tp.is_available,(SELECT CASE WHEN count(*) FILTER(WHERE r.quantity_used*s.current_wholesale_cost IS NULL)>0 THEN NULL ELSE sum(r.quantity_used*s.current_wholesale_cost) END FROM public.recipes r LEFT JOIN public.supplies s ON s.id=r.supply_id AND s.tenant_id=tp.tenant_id WHERE r.product_id=tp.product_id) unit_cost FROM public.tenant_products tp JOIN public.products p ON p.id=tp.product_id WHERE tp.tenant_id=? AND tp.is_active AND p.is_active
+ UNION ALL SELECT 'extra',id,name,current_stock,minimum_stock,stock_version,'unit',track_stock,is_active,current_unit_cost FROM public.extras WHERE tenant_id=? AND is_active
+ UNION ALL SELECT 'supply',id,name,current_stock,minimum_stock,stock_version,measurement_unit,true,is_active,current_wholesale_cost FROM public.supplies WHERE tenant_id=? AND is_active)items ORDER BY kind,name,id LIMIT ? OFFSET ?)v`, p.Manager(), limit, offset, scope.TenantID, scope.TenantID, scope.TenantID, limit, offset))
 }
 func (h *Handler) listInventoryMovements(r *http.Request, p Principal) (Result, error) {
 	scope, err := h.tenantScope(r.Context(), p, r)

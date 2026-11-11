@@ -1,130 +1,212 @@
-import { createRouter, createWebHistory } from 'vue-router';
-import { useAuth } from '../composables/useAuth.js';
-import { bootstrapSession } from '../services/session.js';
-import LandingView from '../views/public/LandingView.vue';
-import LoginView from '../views/auth/LoginView.vue';
-import OwnerDashboard from '../views/owner/OwnerDashboard.vue';
-import OwnerHomeView from '../views/owner/OwnerHomeView.vue';
-import TenantListView from '../views/owner/TenantListView.vue';
-import AdminListView from '../views/owner/AdminListView.vue';
-import BrandListView from '../views/owner/BrandListView.vue';
-import AdminDashboard from '../views/admins/AdminDashboard.vue';
-import AdminLandingView from '../views/admins/AdminLandingView.vue';
-import AdminHomeView from '../views/admins/AdminHomeView.vue';
-import AdminEmployeesView from '../views/admins/AdminEmployeesView.vue';
-import AdminProductionView from '../views/admins/AdminProductionView.vue';
-import AdminCatalogView from '../views/admins/AdminCatalogView.vue';
-import AdminCatalogTenantView from '../views/admins/AdminCatalogTenantView.vue';
-import EmployeeDashboard from '../views/employees/EmployeeDashboard.vue';
-import CatalogLandingView from '../views/buyers/CatalogLandingView.vue';
-import UnauthorizedView from '../views/shared/UnauthorizedView.vue';
-import NotFoundView from '../views/shared/NotFoundView.vue';
+import { createRouter, createWebHistory } from "vue-router";
+import { useAuth } from "../composables/useAuth.js";
+import { bootstrapSession } from "../services/session.js";
+import LandingView from "../views/public/LandingView.vue";
+import LoginView from "../views/auth/LoginView.vue";
+import OwnerDashboard from "../views/owner/OwnerDashboard.vue";
+import OwnerHomeView from "../views/owner/OwnerHomeView.vue";
+import TenantListView from "../views/owner/TenantListView.vue";
+import AdminListView from "../views/owner/AdminListView.vue";
+import BrandListView from "../views/owner/BrandListView.vue";
+import AdminDashboard from "../views/admins/AdminDashboard.vue";
+import AdminLandingView from "../views/admins/AdminLandingView.vue";
+import AdminHomeView from "../views/admins/AdminHomeView.vue";
+import AdminEmployeesView from "../views/admins/AdminEmployeesView.vue";
+import AdminProductionView from "../views/admins/AdminProductionView.vue";
+import AdminCatalogView from "../views/admins/AdminCatalogView.vue";
+import AdminCatalogTenantView from "../views/admins/AdminCatalogTenantView.vue";
+import EmployeeDashboard from "../views/employees/EmployeeDashboard.vue";
+import CatalogLandingView from "../views/buyers/CatalogLandingView.vue";
+import UnauthorizedView from "../views/shared/UnauthorizedView.vue";
+import NotFoundView from "../views/shared/NotFoundView.vue";
 
+const workspaceViews = {
+  OrdersView: () => import("../views/shared/OrdersView.vue"),
+  KitchenView: () => import("../views/shared/KitchenView.vue"),
+  InventoryView: () => import("../views/shared/InventoryView.vue"),
+  ExpensesView: () => import("../views/shared/ExpensesView.vue"),
+  CustomersView: () => import("../views/shared/CustomersView.vue"),
+  NotificationsView: () => import("../views/shared/NotificationsView.vue"),
+  OnboardingView: () => import("../views/shared/OnboardingView.vue"),
+  HealthView: () => import("../views/shared/HealthView.vue"),
+};
 const routes = [
-  { path: '/payments', component: () => import('../views/shared/PaymentsView.vue'), meta: { requiresAuth: true, roles: ['owner', 'super_admin', 'admin', 'cashier'] } },
-  { path: '/payments/return', component: () => import('../views/public/PaymentReturnView.vue') },
-  { path: '/forgot-password', component: () => import('../views/auth/RecoveryView.vue'), meta: { authAction: 'forgot' } },
-  { path: '/reset-password', component: () => import('../views/auth/RecoveryView.vue'), meta: { authAction: 'reset' } },
-  { path: '/accept-invitation', component: () => import('../views/auth/RecoveryView.vue'), meta: { authAction: 'invite' } },
-  { path: '/account/security', component: () => import('../views/shared/SecurityView.vue'), meta: { requiresAuth: true } },
-  { path: '/team/invitations', component: () => import('../views/shared/InvitationsView.vue'), meta: { requiresAuth: true, roles: ['owner', 'super_admin', 'admin'] } },
-  { path: '/audit', component: () => import('../views/shared/AuditView.vue'), meta: { requiresAuth: true, roles: ['owner', 'super_admin', 'admin'] } },
+  ...[
+    ["/orders", "OrdersView", ["owner", "super_admin", "admin", "cashier"]],
+    [
+      "/kitchen",
+      "KitchenView",
+      ["owner", "super_admin", "admin", "employee", "cashier", "kitchen"],
+    ],
+    [
+      "/inventory",
+      "InventoryView",
+      ["owner", "super_admin", "admin", "employee", "cashier", "kitchen"],
+    ],
+    ["/expenses", "ExpensesView", ["owner", "super_admin", "admin"]],
+    [
+      "/customers",
+      "CustomersView",
+      ["owner", "super_admin", "admin", "cashier"],
+    ],
+    ["/notifications", "NotificationsView", null],
+    ["/onboarding", "OnboardingView", ["admin"]],
+    ["/platform/health", "HealthView", ["owner", "super_admin"]],
+  ].map(([path, view, roles]) => ({
+    path,
+    component: workspaceViews[view],
+    meta: { requiresAuth: true, ...(roles ? { roles } : {}) },
+  })),
   {
-    path: '/',
-    name: 'Landing',
-    component: LandingView
+    path: "/order",
+    component: () => import("../views/public/OrderTrackingView.vue"),
   },
   {
-    path: '/login',
-    name: 'Login',
-    component: LoginView
+    path: "/confirm-email",
+    component: () => import("../views/auth/ConfirmEmailView.vue"),
   },
   {
-    path: '/owner',
+    path: "/payments",
+    component: () => import("../views/shared/PaymentsView.vue"),
+    meta: {
+      requiresAuth: true,
+      roles: ["owner", "super_admin", "admin", "cashier"],
+    },
+  },
+  {
+    path: "/payments/return",
+    component: () => import("../views/public/PaymentReturnView.vue"),
+  },
+  {
+    path: "/forgot-password",
+    component: () => import("../views/auth/RecoveryView.vue"),
+    meta: { authAction: "forgot" },
+  },
+  {
+    path: "/reset-password",
+    component: () => import("../views/auth/RecoveryView.vue"),
+    meta: { authAction: "reset" },
+  },
+  {
+    path: "/accept-invitation",
+    component: () => import("../views/auth/RecoveryView.vue"),
+    meta: { authAction: "invite" },
+  },
+  {
+    path: "/account/security",
+    component: () => import("../views/shared/SecurityView.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/team/invitations",
+    component: () => import("../views/shared/InvitationsView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin", "admin"] },
+  },
+  {
+    path: "/audit",
+    component: () => import("../views/shared/AuditView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin", "admin"] },
+  },
+  {
+    path: "/",
+    name: "Landing",
+    component: LandingView,
+  },
+  {
+    path: "/login",
+    name: "Login",
+    component: LoginView,
+  },
+  {
+    path: "/owner",
     component: OwnerDashboard,
-    meta: { requiresAuth: true, roles: ['owner', 'super_admin'] },
+    meta: { requiresAuth: true, roles: ["owner", "super_admin"] },
     children: [
       {
-        path: '',
-        name: 'OwnerHome',
-        component: OwnerHomeView
+        path: "",
+        name: "OwnerHome",
+        component: OwnerHomeView,
       },
       {
-        path: 'brands',
-        name: 'OwnerBrands',
-        component: BrandListView
+        path: "brands",
+        name: "OwnerBrands",
+        component: BrandListView,
       },
       {
-        path: 'tenants',
-        name: 'OwnerTenants',
-        component: TenantListView
+        path: "tenants",
+        name: "OwnerTenants",
+        component: TenantListView,
       },
       {
-        path: 'admins',
-        name: 'OwnerAdmins',
-        component: AdminListView
-      }
-    ]
+        path: "admins",
+        name: "OwnerAdmins",
+        component: AdminListView,
+      },
+    ],
   },
   {
-    path: '/admin/landing',
-    name: 'AdminLanding',
+    path: "/admin/landing",
+    name: "AdminLanding",
     component: AdminLandingView,
-    meta: { requiresAuth: true, roles: ['admin'] }
+    meta: { requiresAuth: true, roles: ["admin"] },
   },
   {
-    path: '/admin',
+    path: "/admin",
     component: AdminDashboard,
-    meta: { requiresAuth: true, roles: ['admin'] },
+    meta: { requiresAuth: true, roles: ["admin"] },
     children: [
       {
-        path: '',
-        name: 'AdminHome',
-        component: AdminHomeView
+        path: "",
+        name: "AdminHome",
+        component: AdminHomeView,
       },
       {
-        path: 'employees',
-        name: 'AdminEmployees',
-        component: AdminEmployeesView
+        path: "employees",
+        name: "AdminEmployees",
+        component: AdminEmployeesView,
       },
       {
-        path: 'production',
-        name: 'AdminProduction',
-        component: AdminProductionView
+        path: "production",
+        name: "AdminProduction",
+        component: AdminProductionView,
       },
       {
-        path: 'catalog',
-        name: 'AdminCatalog',
-        component: AdminCatalogView
+        path: "catalog",
+        name: "AdminCatalog",
+        component: AdminCatalogView,
       },
       {
-        path: 'catalog/tenants',
-        name: 'AdminCatalogTenants',
-        component: AdminCatalogTenantView
-      }
-    ]
+        path: "catalog/tenants",
+        name: "AdminCatalogTenants",
+        component: AdminCatalogTenantView,
+      },
+    ],
   },
   {
-    path: '/tenant/:tenantId/employee',
-    name: 'TenantEmployeeDashboard',
+    path: "/tenant/:tenantId/employee",
+    name: "TenantEmployeeDashboard",
     component: EmployeeDashboard,
-    meta: { requiresAuth: true, roles: ['employee', 'cashier', 'kitchen'], tenantMatch: true }
+    meta: {
+      requiresAuth: true,
+      roles: ["employee", "cashier", "kitchen"],
+      tenantMatch: true,
+    },
   },
   {
-    path: '/catalogo',
-    name: 'CatalogLanding',
-    component: CatalogLandingView
+    path: "/catalogo",
+    name: "CatalogLanding",
+    component: CatalogLandingView,
   },
   {
-    path: '/unauthorized',
-    name: 'Unauthorized',
-    component: UnauthorizedView
+    path: "/unauthorized",
+    name: "Unauthorized",
+    component: UnauthorizedView,
   },
   {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: NotFoundView
-  }
+    path: "/:pathMatch(.*)*",
+    name: "NotFound",
+    component: NotFoundView,
+  },
 ];
 
 const router = createRouter({
@@ -134,7 +216,7 @@ const router = createRouter({
     if (savedPosition) return savedPosition;
     if (to.hash) return { el: to.hash, top: 90 };
     return { top: 0 };
-  }
+  },
 });
 
 router.beforeEach(async (to, from, next) => {
@@ -142,28 +224,32 @@ router.beforeEach(async (to, from, next) => {
   const auth = useAuth();
 
   if (to.meta.requiresAuth && !auth.isLoggedIn.value) {
-    return next({ name: 'Login' });
+    return next({ name: "Login" });
   }
 
-  if (to.name === 'Login' && auth.isLoggedIn.value) {
+  if (to.name === "Login" && auth.isLoggedIn.value) {
     const role = auth.userRole.value;
-    if (role === 'owner' || role === 'super_admin') {
-      return next({ path: '/owner' });
+    if (role === "owner" || role === "super_admin") {
+      return next({ path: "/owner" });
     }
-    if (role === 'admin') {
-      return next({ path: '/admin' });
+    if (role === "admin") {
+      return next({ path: "/admin" });
     }
-    if (['employee', 'cashier', 'kitchen'].includes(role)) {
+    if (["employee", "cashier", "kitchen"].includes(role)) {
       return next({ path: `/tenant/${auth.tenantId.value}/employee` });
     }
   }
 
   if (to.meta.roles && !to.meta.roles.includes(auth.userRole.value)) {
-    return next({ name: 'Unauthorized' });
+    return next({ name: "Unauthorized" });
   }
 
-  if (to.meta.tenantMatch && auth.tenantId.value && auth.tenantId.value !== to.params.tenantId) {
-    return next({ name: 'Unauthorized' });
+  if (
+    to.meta.tenantMatch &&
+    auth.tenantId.value &&
+    auth.tenantId.value !== to.params.tenantId
+  ) {
+    return next({ name: "Unauthorized" });
   }
 
   return next();

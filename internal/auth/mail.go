@@ -45,32 +45,32 @@ func StartMailWorker(ctx context.Context, database *gorm.DB) {
 	}()
 }
 func deliverOne(ctx context.Context, database *gorm.DB) error {
-	return database.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec(`UPDATE legui_private.mail_outbox SET body_cipher=NULL WHERE expires_at<clock_timestamp() AND body_cipher IS NOT NULL`).Error; err != nil {
-			return err
-		}
-		var item struct {
-			ID         string
-			Recipient  string
-			Subject    string
-			BodyCipher string
-		}
-		result := tx.Raw(`SELECT id::text,recipient,subject,body_cipher FROM legui_private.mail_outbox WHERE delivered_at IS NULL AND body_cipher IS NOT NULL AND expires_at>clock_timestamp() AND next_attempt_at<=clock_timestamp() AND attempts<8 ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED`).Scan(&item)
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected == 0 {
-			return nil
-		}
-		body, err := openSecret(item.BodyCipher, "mail/"+item.Recipient)
-		if err != nil {
-			return err
-		}
-		if err = sendMail(item.Recipient, item.Subject, body); err != nil {
-			return tx.Exec(`UPDATE legui_private.mail_outbox SET attempts=attempts+1,next_attempt_at=clock_timestamp()+interval '5 minutes' WHERE id=?`, item.ID).Error
-		}
-		return tx.Exec(`UPDATE legui_private.mail_outbox SET delivered_at=clock_timestamp(),body_cipher=NULL,attempts=attempts+1 WHERE id=?`, item.ID).Error
-	})
+	tx := database.WithContext(ctx)
+	if err := tx.Exec(`UPDATE legui_private.mail_outbox SET body_cipher=NULL WHERE expires_at<clock_timestamp() AND body_cipher IS NOT NULL AND (lease_until IS NULL OR lease_until<clock_timestamp())`).Error; err != nil {
+		return err
+	}
+	var item struct {
+		ID         string
+		Recipient  string
+		Subject    string
+		BodyCipher string
+		LeaseToken string
+	}
+	result := tx.Raw(`UPDATE legui_private.mail_outbox SET lease_token=gen_random_uuid(),lease_until=clock_timestamp()+interval '1 minute',attempts=attempts+1 WHERE id=(SELECT id FROM legui_private.mail_outbox WHERE delivered_at IS NULL AND body_cipher IS NOT NULL AND expires_at>clock_timestamp() AND next_attempt_at<=clock_timestamp() AND attempts<8 AND (lease_until IS NULL OR lease_until<clock_timestamp()) ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id::text,recipient,subject,body_cipher,lease_token::text`).Scan(&item)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil
+	}
+	body, err := openSecret(item.BodyCipher, "mail/"+item.Recipient)
+	if err != nil {
+		return err
+	}
+	if err = sendMail(item.Recipient, item.Subject, body); err != nil {
+		return tx.Exec(`UPDATE legui_private.mail_outbox SET lease_until=NULL,next_attempt_at=clock_timestamp()+interval '5 minutes' WHERE id=? AND lease_token=?`, item.ID, item.LeaseToken).Error
+	}
+	return tx.Exec(`UPDATE legui_private.mail_outbox SET delivered_at=clock_timestamp(),body_cipher=NULL,lease_until=NULL WHERE id=? AND lease_token=?`, item.ID, item.LeaseToken).Error
 }
 func sendMail(recipient, subject, body string) error {
 	from, err := mail.ParseAddress(os.Getenv("SMTP_FROM"))

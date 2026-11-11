@@ -212,6 +212,10 @@ func TestDatabaseIntegration(t *testing.T) {
 	expense := request("POST", "/api/expenses", managerToken, t1, "fixture-expense", map[string]any{"category": "rent", "amount": "100.00", "currency": "ARS", "incurred_at": time.Now().UTC()}, 201)
 	request("POST", "/api/expenses/"+idOf(expense)+"/void", managerToken, t1, "fixture-expense-void", map[string]any{"reason": "Fixture correction"}, 200)
 	request("GET", "/api/inventory", employeeToken, t1, "", nil, 200)
+	stockView := request("GET", "/api/inventory", employeeToken, t1, "", nil, 200)
+	if strings.Contains(stockView.Body.String(), "unit_cost") {
+		t.Fatal("inventory leaks costs to collaborator")
+	}
 	request("GET", "/api/inventory/movements", managerToken, t1, "", nil, 200)
 	request("GET", "/api/expenses", managerToken, t1, "", nil, 200)
 	// Unknown costs must remain unknown; multiple cart lines consume each stock balance only once.
@@ -259,6 +263,64 @@ func TestDatabaseIntegration(t *testing.T) {
 		request("GET", path, managerToken, "", "", nil, 403)
 	}
 	request("GET", "/api/platform/billing/invoices/"+invoiceID+"/payments", ownerToken, "", "", nil, 200)
+	// Workspace flows reuse the same rollback transaction and real session middleware.
+	request("GET", "/api/kitchen", otherToken, t1, "", nil, 403)
+	request("GET", "/api/pos/catalog", employeeToken, t1, "", nil, 403)
+	request("GET", "/api/crm/customers", employeeToken, t1, "", nil, 403)
+	request("GET", "/api/onboarding", employeeToken, t1, "", nil, 403)
+	request("GET", "/api/platform/health", managerToken, "", "", nil, 403)
+	request("GET", "/api/platform/health", ownerToken, "", "", nil, 200)
+	request("GET", "/api/pos/catalog", managerToken, t1, "", nil, 200)
+	request("GET", "/api/crm/customers?search=fixture", managerToken, t1, "", nil, 200)
+	request("GET", "/api/onboarding", managerToken, t1, "", nil, 200)
+	request("POST", "/api/onboarding/complete", managerToken, t1, "fixture-onboarding", map[string]any{}, 200)
+	request("POST", "/api/onboarding/complete", otherToken, t1, "fixture-onboarding-wrong", map[string]any{}, 403)
+	queue := request("GET", "/api/kitchen", employeeToken, t1, "", nil, 200)
+	for _, secret := range []string{"shipping_address", "total_paid", "customer_id", "final_price_unit"} {
+		if strings.Contains(queue.Body.String(), secret) {
+			t.Fatalf("kitchen leaks %s", secret)
+		}
+	}
+	prepID := multiOrder["id"].(string)
+	prep := object(request("GET", "/api/orders/"+prepID, managerToken, t1, "", nil, 200))
+	request("PATCH", "/api/kitchen/"+prepID+"/status", employeeToken, t1, "fixture-kitchen-invalid", map[string]any{"status": "canceled", "expected_version": prep["version"]}, 400)
+	prepared := object(request("PATCH", "/api/kitchen/"+prepID+"/status", employeeToken, t1, "fixture-kitchen-start", map[string]any{"status": "preparing", "expected_version": prep["version"]}, 200))
+	request("PATCH", "/api/kitchen/"+prepID+"/status", employeeToken, t1, "fixture-kitchen-stale", map[string]any{"status": "ready", "expected_version": prep["version"]}, 404)
+	request("PATCH", "/api/kitchen/"+prepID+"/status", employeeToken, t1, "fixture-kitchen-done", map[string]any{"status": "ready", "expected_version": prepared["version"]}, 200)
+	link := object(request("POST", "/api/orders/"+prepID+"/link", managerToken, t1, "fixture-public-link", map[string]any{}, 201))
+	capability := strings.TrimPrefix(link["path"].(string), "/order#token=")
+	public := request("GET", "/api/public/order", capability, "", "", nil, 200)
+	for _, secret := range []string{"shipping_address", "customer_id", "tenant_id", "provider", "password", "@"} {
+		if strings.Contains(public.Body.String(), secret) {
+			t.Fatalf("public order leaks %s", secret)
+		}
+	}
+	request("GET", "/api/public/order", managerToken, "", "", nil, 404)
+	request("POST", "/api/orders/"+prepID+"/link", otherToken, t1, "fixture-forbidden-link", map[string]any{}, 403)
+	request("DELETE", "/api/orders/"+prepID+"/link", managerToken, t1, "fixture-revoke-link", map[string]any{}, 200)
+	request("GET", "/api/public/order", capability, "", "", nil, 404)
+	link = object(request("POST", "/api/orders/"+prepID+"/link", managerToken, t1, "fixture-expiring-link", map[string]any{}, 201))
+	capability = strings.TrimPrefix(link["path"].(string), "/order#token=")
+	must(`UPDATE legui_private.order_links SET created_at=clock_timestamp()-interval '8 days',expires_at=clock_timestamp()-interval '1 day' WHERE digest=?`, capabilityDigest(capability))
+	request("GET", "/api/public/order", capability, "", "", nil, 404)
+	if err = GenerateNotifications(t.Context(), tx); err != nil {
+		t.Fatal(err)
+	}
+	var before int64
+	tx.Raw(`SELECT count(*) FROM legui_private.notifications`).Scan(&before)
+	if err = GenerateNotifications(t.Context(), tx); err != nil {
+		t.Fatal(err)
+	}
+	checkNumeric(`SELECT count(*) FROM legui_private.notifications`, int(before))
+	must(`INSERT INTO legui_private.notifications(principal_kind,principal_id,event_key,title,message,destination,brand_id,tenant_id) VALUES('user',?,'fixture-forbidden-notification','SECRET_FOREIGN_NOTIFICATION','scope fixture','/inventory',?,?)`, manager, b2, t2)
+	inbox := request("GET", "/api/notifications", managerToken, "", "", nil, 200)
+	if strings.Contains(inbox.Body.String(), "SECRET_FOREIGN_NOTIFICATION") {
+		t.Fatal("old brand notification disclosed")
+	}
+	request("POST", "/api/notifications/read", managerToken, "", "", map[string]any{}, 200)
+	checkNumeric(`SELECT count(*) FROM legui_private.notifications WHERE principal_id=? AND brand_id=? AND read_at IS NULL`, 0, manager, b1)
+	checkNumeric(`SELECT count(*) FROM legui_private.notifications WHERE principal_id=? AND brand_id=? AND read_at IS NULL`, 1, manager, b2)
+	request("GET", "/api/notifications", employeeToken, "", "", nil, 200)
 	must(`UPDATE public.users SET is_active=false WHERE id=?`, manager)
 	request("GET", "/api/orders", managerToken, t1, "", nil, 401)
 	t.Log("API workflow, replay, tenant isolation, collaborator permissions, stock restoration, receipts, subscriptions and analytics passed; outer transaction will roll back all fixtures")

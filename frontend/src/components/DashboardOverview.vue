@@ -1,45 +1,328 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
-import { getJSON } from '../services/api.js';
-import { useAuth } from '../composables/useAuth.js';
-import AppIcon from './AppIcon.vue';
-const props = defineProps({ role: { type: String, default: 'owner' } });
-const auth = useAuth();
-const sections = computed(() => props.role === 'owner' ? [
-  { title: 'Marcas', icon: 'burger', path: '/brands', to: '/owner/brands', text: 'La identidad de cada negocio.', action: 'Gestionar marcas' },
-  { title: 'Locales', icon: 'store', path: '/tenants', to: '/owner/tenants', text: 'Cada sucursal, en un mismo lugar.', action: 'Ver locales' },
-  { title: 'Administradores', icon: 'users', path: '/users', to: '/owner/admins', text: 'Las personas al frente del negocio.', action: 'Administrar accesos' },
-] : [
-  { title: 'Locales', icon: 'store', path: '/tenants', to: '/admin/catalog/tenants', text: 'Disponibilidad y precios por sucursal.', action: 'Ver sucursales' },
-  { title: 'Productos', icon: 'burger', path: '/products', to: '/admin/catalog', text: 'Una carta que invita a volver.', action: 'Abrir catálogo' },
-  { title: 'Producción', icon: 'flame', to: '/admin/production', text: 'Registrá lo que pasa en la cocina.', action: 'Ver producción' },
+import { computed, ref } from "vue";
+import {
+  useWorkspace,
+  money,
+  statusLabels,
+} from "../composables/useWorkspace.js";
+defineProps({ role: String });
+const report = ref(null),
+  currency = ref("ARS"),
+  showDaily = ref(false);
+const day = (d) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+  }).format(d);
+const to = ref(day(new Date())),
+  from = ref(day(new Date(Date.now() - 6 * 86400000)));
+const w = useWorkspace(async ({ request, tenant, platform, current }) => {
+  report.value = null;
+  if (!platform && !tenant) return;
+  const data = await request(
+    `/analytics/${platform ? "platform" : "restaurant"}?from=${from.value}&to=${to.value}`,
+  );
+  if (current()) report.value = data;
+});
+const amounts = computed(
+  () => report.value?.money?.find((x) => x.currency === currency.value) || {},
+);
+const currencies = computed(() => [
+  ...new Set(["ARS", ...(report.value?.money || []).map((x) => x.currency)]),
 ]);
-const metrics = ref({}), loading = ref(true), failed = ref([]);
-const firstName = computed(() => auth.user.value?.name?.split(' ')[0] || '');
-const date = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
-const locals = ref([]);
-async function load() {
-  loading.value = true; failed.value = [];
-  await Promise.all(sections.value.filter(s => s.path).map(async section => {
-    try {
-      const brand = auth.user.value?.brand_id || auth.user.value?.brandID;
-      const query = props.role === 'admin' && brand ? `?brand_id=${encodeURIComponent(brand)}` : '';
-      const data = await getJSON(section.path + query);
-      if (!Array.isArray(data)) throw new Error('Formato inesperado');
-      metrics.value[section.path] = data.length;
-      if (section.path === '/tenants') locals.value = data;
-    } catch { failed.value.push(section.path); }
-  }));
-  loading.value = false;
+const previous = computed(() =>
+  report.value?.previous_period?.sales?.find(
+    (x) => x.currency === currency.value,
+  ),
+);
+const comparison = computed(() =>
+  !previous.value || Number(previous.value.amount) === 0
+    ? "Sin base de comparación"
+    : `${((Number(amounts.value.sales || 0) / Number(previous.value.amount) - 1) * 100).toFixed(1)}% frente al período anterior`,
+);
+const days = computed(() =>
+  w.platform.value
+    ? report.value?.daily_new_businesses || []
+    : (report.value?.daily_sales || []).filter(
+        (x) => x.currency === currency.value,
+      ),
+);
+const max = computed(() =>
+  Math.max(
+    1,
+    ...days.value.map((x) => Number(w.platform.value ? x.registered : x.total)),
+  ),
+);
+const cards = computed(() =>
+  w.platform.value
+    ? [
+        [
+          "Cobros de membresías",
+          money(amounts.value.collected ?? 0, currency.value),
+          "Cobros netos de devoluciones del período",
+        ],
+        [
+          "Ingreso mensual contratado",
+          money(amounts.value.active_mrr ?? 0, currency.value),
+          "Contratos vigentes; no equivale a dinero cobrado",
+        ],
+        [
+          "Negocios nuevos",
+          report.value?.businesses?.production_registered_in_period ?? 0,
+          "Clasificados como producción",
+        ],
+        [
+          "Suscripciones activas",
+          report.value?.subscriptions?.active ?? 0,
+          "Con período vigente",
+        ],
+        [
+          "Saldo de membresías",
+          money(amounts.value.outstanding ?? 0, currency.value),
+          "Facturas pendientes",
+        ],
+        [
+          "Negocios activos / 7 días",
+          report.value?.businesses?.active_last_week ?? 0,
+          "Actividad real registrada",
+        ],
+      ]
+    : [
+        [
+          "Ventas",
+          money(amounts.value.sales ?? 0, currency.value),
+          comparison.value,
+        ],
+        [
+          "Pedidos",
+          report.value?.metrics?.orders_created ?? 0,
+          "Creados en el período",
+        ],
+        [
+          "Ticket promedio",
+          money(amounts.value.average_ticket, currency.value),
+          "Ventas / pedidos con venta",
+        ],
+        [
+          "Cobrado",
+          money(amounts.value.collected ?? 0, currency.value),
+          "Cobros menos devoluciones del período",
+        ],
+        [
+          "Gastos operativos",
+          money(amounts.value.operating_expenses ?? 0, currency.value),
+          "Gastos vigentes, sin anulados",
+        ],
+        [
+          "Resultado estimado",
+          money(amounts.value.estimated_operating_result, currency.value),
+          Number(amounts.value.missing_cost_lines) > 0
+            ? "Faltan costos: no se estima rentabilidad"
+            : "Margen conocido menos gastos registrados",
+        ],
+      ],
+);
+function preset(count) {
+  to.value = day(new Date());
+  from.value = day(new Date(Date.now() - (count - 1) * 86400000));
+  w.refresh();
 }
-onMounted(load);
 </script>
 <template>
-  <section class="overview">
-    <header class="overview-heading"><div><p class="eyebrow">TU NEGOCIO, EN UN VISTAZO</p><h1>Todo a punto{{ firstName ? ', ' + firstName : '' }}.</h1><p>Marcas, personas y cocina. Cada cosa en su lugar.</p></div><span class="date-label"><AppIcon name="clock" :size="16" />{{ date }}</span></header>
-    <div class="overview-banner"><span class="banner-icon"><AppIcon name="flame" :size="26" /></span><div><strong>El sabor es tuyo. El orden, también.</strong><p>{{ role === 'owner' ? 'Organizá tus marcas, acompañá a tus locales y dale a tu equipo el acceso que necesita.' : 'Prepará el catálogo, organizá al equipo y llevá el registro de la producción de tus locales.' }}</p></div><router-link class="btn-primary" :to="role === 'owner' ? '/owner/tenants' : '/admin/production'">{{ role === 'owner' ? 'Ver mis locales' : 'Ir a producción' }}<AppIcon name="arrow" :size="17" /></router-link></div>
-    <div class="metrics-grid" :aria-busy="loading"><router-link v-for="section in sections" :key="section.title" :to="section.to" class="metric-card"><div class="metric-label"><span>{{ section.title }}</span><span class="metric-icon"><AppIcon :name="section.icon" /></span></div><strong class="metric-number">{{ !section.path ? 'Ir a cocina' : loading ? '…' : failed.includes(section.path) ? '—' : metrics[section.path] }}</strong><span class="metric-caption">{{ section.path ? failed.includes(section.path) ? 'No se pudo cargar' : 'Registros en tu negocio' : 'Registro diario de producción' }}</span><span class="metric-link">{{ section.action }}<AppIcon name="arrow" :size="16" /></span></router-link></div>
-    <p v-if="failed.length" class="inline-notice" role="status">No pudimos cargar algunos datos del resumen. <button class="text-button" @click="load">Volver a intentar</button></p>
-    <div class="overview-columns"><section class="card local-summary"><div class="panel-heading"><div><p class="eyebrow">CERCA DE CADA SUCURSAL</p><h2>Tus locales</h2></div><router-link class="text-link" :to="role === 'owner' ? '/owner/tenants' : '/admin/catalog/tenants'">Ver todos<AppIcon name="arrow" :size="16" /></router-link></div><div v-if="loading" class="empty-state">Cargando tus locales…</div><div v-else-if="failed.includes('/tenants')" class="empty-state"><AppIcon name="store" :size="32" /><h3>No pudimos consultar los locales</h3><button class="btn-secondary" @click="load">Reintentar</button></div><div v-else-if="!locals.length" class="empty-state"><AppIcon name="store" :size="36" /><h3>Acá empieza tu próximo local.</h3><p>Los locales que registres aparecerán en este espacio.</p><router-link v-if="role === 'owner'" to="/owner/tenants" class="btn-secondary">Gestionar locales</router-link></div><div v-else class="local-list"><router-link v-for="local in locals.slice(0, 5)" :key="local.id" :to="role === 'owner' ? '/owner/tenants' : '/admin/catalog/tenants'" class="local-row"><span class="local-icon"><AppIcon name="store" /></span><div><strong>{{ local.name || local.subdomain || 'Local' }}</strong><small>{{ local.brand?.name || 'Sucursal de tu negocio' }}</small></div><AppIcon name="arrow" :size="17" /></router-link></div></section><section class="card quick-panel"><p class="eyebrow">A MANO, SIEMPRE</p><h2>Accesos rápidos</h2><router-link v-for="section in sections" :key="section.to" :to="section.to" class="quick-link"><AppIcon :name="section.icon" /><span><strong>{{ section.title }}</strong><small>{{ section.text }}</small></span><AppIcon name="arrow" :size="17" /></router-link><router-link v-if="role === 'admin'" to="/admin/employees" class="quick-link"><AppIcon name="users" /><span><strong>Equipo</strong><small>Organizá las personas de tu local.</small></span><AppIcon name="arrow" :size="17" /></router-link></section></div>
+  <section class="operations-page">
+    <header class="section-header">
+      <div>
+        <p class="eyebrow">
+          {{
+            w.platform.value
+              ? "LEGUIBURGER COMO NEGOCIO"
+              : "EL PULSO DE TU HAMBURGUESERÍA"
+          }}
+        </p>
+        <h1>
+          {{ w.platform.value ? "Cada negocio cuenta." : "Todo a punto." }}
+        </h1>
+        <p>
+          Datos reales, en horario de Argentina. Los movimientos de prueba
+          quedan fuera.
+        </p>
+      </div>
+      <router-link v-if="!w.platform.value" class="btn-primary" to="/orders"
+        >Abrir caja</router-link
+      ><router-link v-else class="btn-secondary" to="/platform/health"
+        >Estado del sistema</router-link
+      >
+    </header>
+    <div class="workspace-filters">
+      <label v-if="!w.platform.value"
+        >Local<select v-model="w.tenant.value">
+          <option v-for="t in w.tenants.value" :key="t.id" :value="t.id">
+            {{ t.subdomain }}
+          </option>
+        </select></label
+      ><label>Desde<input v-model="from" type="date" /></label
+      ><label>Hasta<input v-model="to" type="date" /></label
+      ><label
+        >Moneda<select v-model="currency">
+          <option v-for="c in currencies" :key="c">{{ c }}</option>
+        </select></label
+      ><button
+        class="btn-secondary"
+        :disabled="w.loading.value"
+        @click="w.refresh"
+      >
+        Consultar</button
+      ><button class="text-button" @click="preset(7)">7 días</button
+      ><button class="text-button" @click="preset(30)">30 días</button>
+    </div>
+    <div v-if="w.error.value" class="error-msg" role="alert">
+      {{ w.error.value }}
+      <button class="text-button" @click="w.refresh">Reintentar</button>
+    </div>
+    <p v-if="w.loading.value" class="load-state" role="status">
+      Consultando la actividad…
+    </p>
+    <template v-else-if="report"
+      ><div class="metric-grid">
+        <article v-for="card in cards" :key="card[0]" class="card">
+          <h3>{{ card[0] }}</h3>
+          <strong>{{ card[1] }}</strong
+          ><small>{{ card[2] }}</small>
+        </article>
+      </div>
+      <p
+        v-if="w.platform.value && report.businesses?.unclassified"
+        class="inline-notice"
+      >
+        Hay {{ report.businesses.unclassified }} marcas sin clasificar. Sus
+        cobros no se incluyen en la facturación de producción.
+      </p>
+      <div class="report-grid">
+        <section class="card">
+          <h2>{{ w.platform.value ? "Nuevos negocios" : "Ventas por día" }}</h2>
+          <p v-if="!days.length" class="no-data">
+            Todavía no hay actividad para este período.
+          </p>
+          <template v-else
+            ><div
+              class="bar-chart"
+              role="img"
+              aria-label="Actividad por día. Consultá el detalle debajo."
+            >
+              <div
+                v-for="d in days"
+                :key="d.day"
+                class="bar"
+                :style="{
+                  height: `${(Number(w.platform.value ? d.registered : d.total) / max) * 100}%`,
+                }"
+                :title="`${d.day}: ${w.platform.value ? d.registered : money(d.total, currency)}`"
+              />
+            </div>
+            <div class="chart-labels">
+              <span>{{ days[0]?.day }}</span
+              ><span>{{ days.at(-1)?.day }}</span>
+            </div>
+            <button
+              class="text-button"
+              :aria-expanded="showDaily"
+              @click="showDaily = !showDaily"
+            >
+              {{ showDaily ? "Ocultar" : "Ver" }} detalle diario
+            </button>
+            <table v-if="showDaily" class="data-table">
+              <tbody>
+                <tr v-for="d in days" :key="d.day">
+                  <td>{{ d.day }}</td>
+                  <td>
+                    {{
+                      w.platform.value ? d.registered : money(d.total, currency)
+                    }}
+                  </td>
+                </tr>
+              </tbody>
+            </table></template
+          >
+        </section>
+        <section class="card">
+          <h2>{{ w.platform.value ? "Suscripciones" : "Los más pedidos" }}</h2>
+          <template v-if="w.platform.value"
+            ><div
+              v-for="[label, value] in [
+                ['Activas', report.subscriptions?.active],
+                ['En prueba', report.subscriptions?.trialing],
+                ['Con atraso', report.subscriptions?.past_due],
+                [
+                  'Canceladas en el período',
+                  report.subscriptions?.canceled_in_period,
+                ],
+              ]"
+              :key="label"
+              class="report-row"
+            >
+              <span>{{ label }}</span
+              ><strong>{{ value || 0 }}</strong>
+            </div></template
+          ><template v-else
+            ><div
+              v-for="p in report.top_products?.filter(
+                (x) => x.currency === currency,
+              )"
+              :key="p.product_id"
+              class="report-row"
+            >
+              <span>{{ p.product_name }}</span
+              ><strong>{{ p.units }} u.</strong>
+            </div>
+            <p v-if="!report.top_products?.length" class="no-data">
+              Tus productos aparecerán con las primeras ventas.
+            </p></template
+          >
+        </section>
+      </div>
+      <section class="card table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>
+                {{ w.platform.value ? "Función utilizada" : "Pedido reciente" }}
+              </th>
+              <th>{{ w.platform.value ? "Eventos" : "Estado" }}</th>
+              <th>{{ w.platform.value ? "Negocios" : "Total" }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in w.platform.value
+                ? report.activity_by_feature
+                : report.recent_orders"
+              :key="item.id || item.event_name"
+            >
+              <td>{{ item.event_name || item.id.slice(0, 8) }}</td>
+              <td>
+                {{ w.platform.value ? item.events : statusLabels[item.status] }}
+              </td>
+              <td>
+                {{
+                  w.platform.value
+                    ? item.businesses
+                    : money(item.total_due, item.currency)
+                }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section></template
+    >
+    <p v-else-if="!w.error.value" class="no-data">
+      Creá un local activo para empezar a ver tus números.
+    </p>
+    <div v-if="!w.platform.value" class="operation-actions">
+      <router-link to="/inventory" class="btn-secondary"
+        >Stock e insumos</router-link
+      ><router-link to="/expenses" class="btn-secondary">Gastos</router-link
+      ><router-link to="/onboarding" class="btn-secondary"
+        >Preparar mi negocio</router-link
+      >
+    </div>
   </section>
 </template>

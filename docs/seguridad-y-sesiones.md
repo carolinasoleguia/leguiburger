@@ -15,11 +15,15 @@ anteriores, sin sesión persistida, ya no autorizan peticiones: hay que volver a
 - Cada petición verifica cuenta activa, rol, asignación, credenciales y sesión en DB.
   Cambiar email, contraseña, rol, local, marca o estado revoca las sesiones mediante
   triggers. Las escrituras vuelven a bloquear y comprobar la sesión.
-- La cuenta de plataforma debe completar TOTP antes de recibir acceso o refresh.
+- Actualmente el acceso es con usuario y contraseña, por decisión del producto.
+  `AUTH_REQUIRE_PLATFORM_MFA=false` es el valor predeterminado y la configuración
+  local. El segundo factor de plataforma sólo se exige si se cambia a `true`.
+  Las sesiones sin MFA dejan de autorizar peticiones al activar esa política.
+  Cuando se activa, la cuenta de plataforma debe completar TOTP antes de recibir acceso o refresh.
   Alta con clave manual compatible con autenticadores, tolerancia de un paso de
   30 segundos y protección contra reutilización. Diez códigos de recuperación de
   un solo uso se muestran al completar el alta. Deben guardarse fuera de la app.
-- Recuperar contraseña no elimina el segundo factor. No hay bypass administrativo
+- Cuando está habilitado, recuperar contraseña no elimina el segundo factor. No hay bypass administrativo
   público para desactivar MFA. Si se pierden autenticador y todos los códigos, hace
   falta un procedimiento operativo de verificación de identidad fuera de la app.
 

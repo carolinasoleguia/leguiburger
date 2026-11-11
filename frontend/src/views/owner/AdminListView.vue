@@ -80,7 +80,7 @@
 
           <div class="input-group">
             <label>Contraseña</label>
-            <input type="password" v-model="createForm.password" required />
+            <input type="password" minlength="12" maxlength="72" v-model="createForm.password" required />
           </div>
 
           <div class="input-group">
@@ -123,7 +123,7 @@
 
           <div class="input-group">
             <label>Contraseña (dejar vacío para no cambiar)</label>
-            <input type="password" v-model="editForm.password" />
+            <input type="password" minlength="12" maxlength="72" v-model="editForm.password" />
           </div>
 
           <div class="input-group">

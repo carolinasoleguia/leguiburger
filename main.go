@@ -6,8 +6,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"leguiburger/internal/auth"
@@ -17,6 +19,7 @@ import (
 	"leguiburger/internal/employees"
 	"leguiburger/internal/extras"
 	"leguiburger/internal/mercadopago"
+	"leguiburger/internal/observability"
 	"leguiburger/internal/operations"
 	"leguiburger/internal/production"
 	"leguiburger/internal/products"
@@ -26,6 +29,7 @@ import (
 	"leguiburger/internal/tenantproducts"
 	"leguiburger/internal/tenants"
 	"leguiburger/internal/users"
+	"leguiburger/internal/workers"
 
 	"github.com/joho/godotenv"
 )
@@ -37,6 +41,8 @@ func registerRoute(path string, handler http.HandlerFunc) {
 
 func main() {
 	_ = godotenv.Load()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	db.Connect()
 	if err := operations.VerifyDatabase(db.DB, os.Getenv("DATABASE_URL")); err != nil {
@@ -159,12 +165,23 @@ func main() {
 		log.Fatalf("Error al configurar autenticacion: %v", err)
 	}
 	auth.RegisterSecurityRoutes(http.DefaultServeMux, db.DB, authSvc)
-	auth.StartMailWorker(context.Background(), db.DB)
 
 	operations.RegisterRoutes(http.DefaultServeMux, db.DB)
 	mp := mercadopago.NewHandler(db.DB, mercadopago.LoadConfig(), nil)
 	mp.Register(http.DefaultServeMux)
-	mp.StartWorker(context.Background())
+	if os.Getenv("WORKER_MODE") != "external" {
+		go workers.Run(ctx, db.DB)
+	}
+	http.HandleFunc("GET /health/ready", func(w http.ResponseWriter, r *http.Request) {
+		check, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		defer cancel()
+		pool, err := db.DB.DB()
+		if err != nil || pool.PingContext(check) != nil {
+			http.Error(w, "unavailable", 503)
+			return
+		}
+		w.WriteHeader(204)
+	})
 
 	//----------------------------------------------------------------//
 	// 📂 SERVIR EL FRONTEND ESTÁTICO EN LA RAIZ (/)
@@ -177,8 +194,16 @@ func main() {
 	}
 
 	fmt.Printf("Servidor corriendo exitosamente en http://localhost:%s\n", port)
-	server := &http.Server{Addr: ":" + port, Handler: auth.SecurityHeaders(http.DefaultServeMux), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
-	log.Fatal(server.ListenAndServe())
+	server := &http.Server{Addr: ":" + port, Handler: observability.HTTP(auth.SecurityHeaders(http.DefaultServeMux)), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
+	go func() {
+		<-ctx.Done()
+		shutdown, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdown)
+	}()
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
 }
 
 func spaHandler(distDir string) http.HandlerFunc {

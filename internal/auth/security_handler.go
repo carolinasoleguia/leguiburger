@@ -41,7 +41,8 @@ func unauthorizedAction() error {
 func RegisterSecurityRoutes(mux *http.ServeMux, database *gorm.DB, credentials Service) {
 	h := &SecurityHandler{database: database, credentials: credentials}
 	public := map[string]func(http.ResponseWriter, *http.Request) error{
-		"POST /api/auth/login": h.login, "POST /api/auth/refresh": h.refresh, "POST /api/auth/logout": h.logout,
+		"POST /api/auth/email/confirm": h.confirmEmail,
+		"POST /api/auth/login":         h.login, "POST /api/auth/refresh": h.refresh, "POST /api/auth/logout": h.logout,
 		"POST /api/auth/password/forgot": h.forgotPassword, "POST /api/auth/password/reset": h.resetPassword,
 		"POST /api/auth/mfa/enroll": h.enrollMFA, "POST /api/auth/mfa/verify": h.verifyMFA,
 		"POST /api/auth/invitations/accept": h.acceptInvitation,
@@ -50,7 +51,8 @@ func RegisterSecurityRoutes(mux *http.ServeMux, database *gorm.DB, credentials S
 		mux.HandleFunc(pattern, h.handle(fn))
 	}
 	protected := map[string]func(http.ResponseWriter, *http.Request) error{
-		"GET /api/auth/me": h.me, "GET /api/auth/sessions": h.sessions, "DELETE /api/auth/sessions/{id}": h.revokeSession,
+		"POST /api/auth/email/change": h.changeEmail,
+		"GET /api/auth/me":            h.me, "GET /api/auth/sessions": h.sessions, "DELETE /api/auth/sessions/{id}": h.revokeSession,
 		"POST /api/auth/logout-all": h.logoutAll, "POST /api/auth/password/change": h.changePassword,
 		"POST /api/team/invitations": h.invite, "GET /api/team/invitations": h.invitations, "DELETE /api/team/invitations/{id}": h.revokeInvitation,
 		"GET /api/audit": h.audit,
@@ -193,7 +195,7 @@ func (h *SecurityHandler) login(w http.ResponseWriter, r *http.Request) error {
 			return ErrInvalidCredentials
 		}
 		sid := uuid.NewString()
-		platform := i.principal().Platform()
+		platform := i.principal().Platform() && PlatformMFARequired()
 		lifetime := "7 days"
 		if platform {
 			lifetime = "5 minutes"

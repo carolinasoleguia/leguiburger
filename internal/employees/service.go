@@ -16,7 +16,7 @@ import (
 var (
 	ErrEmployeeNotFound          = errors.New("empleado no encontrado")
 	ErrDuplicateEmployeeEmail    = errors.New("ya existe un empleado con ese email")
-	ErrInvalidEmployeeData       = errors.New("nombre, apellido, email y password son obligatorios")
+	ErrInvalidEmployeeData       = errors.New("completá nombre, apellido y email; usá una contraseña de 12 a 72 bytes sin espacios en los extremos")
 	ErrInvalidEmployeeRole       = errors.New("el rol del empleado no es válido")
 	ErrTenantNotFoundForEmployee = errors.New("el comercio (tenant) especificado no existe")
 	ErrUnauthorizedAction        = errors.New("no tienes permisos para realizar esta acción sobre este usuario")
@@ -47,7 +47,7 @@ func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastN
 	cleanFirstName := strings.TrimSpace(firstName)
 	cleanLastName := strings.TrimSpace(lastName)
 	cleanEmail := strings.ToLower(strings.TrimSpace(email))
-	cleanPassword := strings.TrimSpace(password)
+	cleanPassword := password
 	cleanRole := normalizeRole(role)
 	cleanTenantID := strings.TrimSpace(tenantID)
 	actor, authenticated := auth.GetClaimsFromContext(ctx)
@@ -55,6 +55,9 @@ func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastN
 		return nil, ErrUnauthorizedAction
 	}
 
+	if !auth.ValidPassword(password) {
+		return nil, ErrInvalidEmployeeData
+	}
 	if cleanFirstName == "" || cleanLastName == "" || cleanEmail == "" || cleanPassword == "" {
 		return nil, ErrInvalidEmployeeData
 	}
@@ -241,8 +244,11 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 		employee.LastName = strings.TrimSpace(lastName)
 	}
 
-	cleanPassword := strings.TrimSpace(password)
+	cleanPassword := password
 	if cleanPassword != "" {
+		if !auth.ValidPassword(password) {
+			return nil, ErrInvalidEmployeeData
+		}
 		hashedBytes, err := bcrypt.GenerateFromPassword([]byte(cleanPassword), bcrypt.DefaultCost)
 		if err != nil {
 			return nil, fmt.Errorf("error al hashear la contraseña: %w", err)

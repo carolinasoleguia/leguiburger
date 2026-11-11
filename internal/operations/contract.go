@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const requiredMigration = "202611110001_mercadopago_integration"
+const requiredMigration = "202611110003_workspace_scope_guards"
 
 // VerifyDatabase refuses to start the new API against an old or different project.
 func VerifyDatabase(database *gorm.DB, dsn string) error {

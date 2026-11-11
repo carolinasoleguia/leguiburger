@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"os"
 	"strings"
 )
 
@@ -98,11 +99,15 @@ func sessionIdentity(ctx context.Context, database *gorm.DB, s authSession) (ide
 	if i.Kind != s.PrincipalKind || i.Role != s.Role || i.BrandID != s.BrandID || i.TenantID != s.TenantID || digest(i.PasswordHash) != s.CredentialDigest {
 		return identity{}, ErrInvalidCredentials
 	}
-	if i.principal().Platform() && !s.MFAVerified {
+	if i.principal().Platform() && PlatformMFARequired() && !s.MFAVerified {
 		return identity{}, ErrInvalidCredentials
 	}
 	return i, nil
 }
+
+// Password login is the current product policy. MFA can be enabled explicitly
+// later without changing the role/resource authorization or session validation.
+func PlatformMFARequired() bool { return os.Getenv("AUTH_REQUIRE_PLATFORM_MFA") == "true" }
 func ResolveSessionPrincipal(ctx context.Context, database *gorm.DB, claims *Claims) (SessionPrincipal, error) {
 	if database == nil {
 		return SessionPrincipal{}, fmt.Errorf("authentication database unavailable")

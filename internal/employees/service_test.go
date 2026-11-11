@@ -246,7 +246,7 @@ func TestCreateEmployee_AdminSameBrand_Success(t *testing.T) {
 		"Chanchi",
 		"Gómez",
 		"chanchi@colab.com",
-		"admin123",
+		"admin-passphrase-123",
 		"2219999999",
 		"employee",
 	)

@@ -62,6 +62,7 @@ func TestSecurityIntegration(t *testing.T) {
 	t.Setenv("JWT_SECRET", "security-integration-fixture-not-used-by-running-app")
 	t.Setenv("AUTH_ENCRYPTION_KEY", "security-integration-encryption-fixture")
 	t.Setenv("APP_ENV", "development")
+	t.Setenv("AUTH_REQUIRE_PLATFORM_MFA", "true")
 	t.Setenv("PUBLIC_SITE_URL", "http://127.0.0.1:5173")
 	must := func(q string, args ...any) {
 		t.Helper()
@@ -249,7 +250,62 @@ func TestSecurityIntegration(t *testing.T) {
 	request("POST", "/api/auth/mfa/verify", thirdChallenge, nil, nil, map[string]any{"recovery_code": codes[0]}, 401)
 	request("POST", "/api/auth/logout", "", verified.cookie, nil, map[string]any{}, 200)
 	request("GET", "/api/analytics/platform", ownerToken, nil, nil, nil, 401)
+	t.Setenv("AUTH_REQUIRE_PLATFORM_MFA", "false")
+	passwordOnly := login(owner)
+	passwordOnlyToken := tokenOf(passwordOnly)
+	passwordClaims, e := auth.ValidateToken(passwordOnlyToken)
+	if e != nil || passwordClaims.MFA || passwordOnly.body["mfa_required"] == true || passwordOnly.cookie == nil {
+		t.Fatal("password-only login unexpectedly requires MFA")
+	}
+	request("GET", "/api/analytics/platform", passwordOnlyToken, nil, nil, nil, 200)
+	passwordRefreshed := request("POST", "/api/auth/refresh", "", passwordOnly.cookie, nil, map[string]any{}, 200)
+	request("GET", "/api/analytics/platform", tokenOf(passwordRefreshed), nil, nil, nil, 200)
+	t.Setenv("AUTH_REQUIRE_PLATFORM_MFA", "true")
+	request("GET", "/api/analytics/platform", tokenOf(passwordRefreshed), nil, nil, nil, 401)
+	request("POST", "/api/auth/refresh", "", passwordRefreshed.cookie, nil, map[string]any{}, 401)
 	request("GET", "/api/auth/sessions", managerToken, nil, nil, nil, 200)
+	// Email changes require password reauthentication and both mailbox capabilities.
+	t.Setenv("SMTP_HOST", "smtp.example.invalid")
+	t.Setenv("SMTP_FROM", "noreply@example.invalid")
+	emailActor := uuid.NewString()
+	must(`INSERT INTO public.users(id,first_name,last_name,email,password_hash,role,brand_id,is_active) VALUES(?,'Email','Fixture',?,?,'admin',?,true)`, emailActor, email(emailActor), string(hashed), b1)
+	emailLogin := login(emailActor)
+	emailToken := tokenOf(emailLogin)
+	newEmail := emailActor + "-new@example.invalid"
+	request("POST", "/api/auth/email/change", emailToken, nil, nil, map[string]any{"email": newEmail, "current_password": "incorrect"}, 401)
+	request("POST", "/api/auth/email/change", emailToken, nil, nil, map[string]any{"email": newEmail, "current_password": password}, 202)
+	mailToken := func(recipient string) string {
+		t.Helper()
+		var cipherText string
+		if e := tx.Raw(`SELECT body_cipher FROM legui_private.mail_outbox WHERE recipient=? ORDER BY created_at DESC LIMIT 1`, recipient).Scan(&cipherText).Error; e != nil {
+			t.Fatal(e)
+		}
+		for _, line := range strings.Split(decryptFixtureMail(t, cipherText, recipient), "\n") {
+			if strings.HasPrefix(line, "http://") {
+				u, _ := url.Parse(line)
+				values, _ := url.ParseQuery(u.Fragment)
+				return values.Get("token")
+			}
+		}
+		t.Fatal("email confirmation capability missing")
+		return ""
+	}
+	oldApproval, newApproval := mailToken(email(emailActor)), mailToken(newEmail)
+	if oldApproval == newApproval {
+		t.Fatal("email confirmations must be independent")
+	}
+	firstApproval := request("POST", "/api/auth/email/confirm", "", nil, nil, map[string]any{"token": newApproval}, 200)
+	if firstApproval.body["completed"] != false {
+		t.Fatal("one mailbox changed the login email")
+	}
+	request("GET", "/api/auth/me", emailToken, nil, nil, nil, 200)
+	completedEmail := request("POST", "/api/auth/email/confirm", "", nil, nil, map[string]any{"token": oldApproval}, 200)
+	if completedEmail.body["completed"] != true {
+		t.Fatal("both approvals did not complete email change")
+	}
+	request("GET", "/api/auth/me", emailToken, nil, nil, nil, 401)
+	request("POST", "/api/auth/email/confirm", "", nil, nil, map[string]any{"token": oldApproval}, 400)
+	request("POST", "/api/auth/login", "", nil, nil, map[string]any{"email": newEmail, "password": password}, 200)
 	request("POST", "/api/auth/logout-all", managerToken, managerLogin.cookie, nil, map[string]any{}, 200)
 	request("GET", "/api/auth/me", managerToken, nil, nil, nil, 401)
 	// Limits apply to failed requests and survive handler instances.

@@ -1,52 +1,51 @@
-name: Go CI (Tests & Coverage)
-
+name: Application checks
 on:
-  pull_request:
-    branches: [ develop, master ]
   push:
-    branches: [ develop, master ]
-
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  test:
+  verify:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
-    # 1. Traer el código del repositorio
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    # 2. Configurar Go
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.21' # Ajustalo a tu versión exacta si es necesario
-
-    # 3. Descargar dependencias
-    - name: Install dependencies
-      run: go mod download
-
-    # 4. Correr los tests generando el reporte de cobertura
-    - name: Run Tests with Coverage
-      run: |
-        go test -v -coverprofile=coverage.txt -covermode=atomic ./internal/tenants/...
-
-    # 5. Validar que la cobertura sea mayor o igual al 30%
-    - name: Verify Coverage Threshold (30%)
-      run: |
-        # Extraemos el porcentaje total del reporte usando herramientas nativas de Go
-        TOTAL_COVERAGE=$(go tool cover -func=coverage.txt | grep total | grep -Eo '[0-9]+\.[0-9]+')
-        echo "La cobertura total actual es: $TOTAL_COVERAGE%"
-        
-        # Definimos el límite mínimo requerido
-        THRESHOLD=30.0
-        
-        # Comparamos usando awk (ya que bash no maneja decimales de forma nativa fácilmente)
-        is_enough=$(echo "$TOTAL_COVERAGE $THRESHOLD" | awk '{print ($1 >= $2) ? "true" : "false"}')
-        
-        if [ "$is_enough" = "false" ]; then
-          echo "❌ ERROR: El coverage de los tests ($TOTAL_COVERAGE%) es menor al mínimo requerido ($THRESHOLD%)."
-          echo "Por favor, agregá más pruebas unitarias para cubrir las líneas faltantes."
-          exit 1
-        else
-          echo "✅ ¡ÉXITO! El coverage de los tests ($TOTAL_COVERAGE%) supera el límite requerido ($THRESHOLD%)."
-        fi
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Verify source and secrets
+        run: python3 tools/check-source.py
+      - name: Verify Go dependencies
+        run: go mod verify
+      - name: Backend tests
+        run: go test -count=1 ./...
+      - name: Static checks
+        run: go vet ./...
+      - name: Go vulnerability check
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: Install frontend
+        run: npm ci --prefix frontend
+      - name: Frontend vulnerabilities
+        run: npm audit --prefix frontend --audit-level=high
+      - name: Build frontend
+        run: npm run build --prefix frontend
+      - name: Install isolated browser harness
+        run: npm install --prefix .cache/browser-tests --no-save puppeteer@24.40.0
+      - name: Browser workflows
+        env:
+          PUPPETEER_MODULE: ${{ github.workspace }}/.cache/browser-tests/node_modules/puppeteer/lib/puppeteer/puppeteer.js
+        run: |
+          node tools/test-security-browser.mjs
+          node tools/test-payments-browser.mjs
+          node tools/test-workspace-browser.mjs

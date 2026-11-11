@@ -37,7 +37,14 @@ type endpoint func(*http.Request, Principal) (Result, error)
 
 func RegisterRoutes(mux *http.ServeMux, db *gorm.DB) {
 	h := &Handler{repo: NewRepository(db)}
+	mux.HandleFunc("GET /api/public/order", h.publicOrder)
 	routes := map[string]endpoint{
+		"GET /api/pos/catalog": h.posCatalog, "GET /api/crm/customers": h.customerDirectory,
+		"GET /api/kitchen": h.kitchenOrders, "PATCH /api/kitchen/{id}/status": h.kitchenStatus,
+		"GET /api/notifications": h.notifications, "POST /api/notifications/read": h.readNotifications,
+		"GET /api/onboarding": h.onboarding, "POST /api/onboarding/complete": h.completeOnboarding,
+		"POST /api/orders/{id}/link": h.orderLink, "DELETE /api/orders/{id}/link": h.orderLink,
+		"GET /api/platform/health":      h.workerHealth,
 		"GET /api/analytics/restaurant": h.restaurantAnalytics, "GET /api/analytics/operations": h.operationalAnalytics, "GET /api/analytics/platform": h.platformAnalytics,
 		"GET /api/orders": h.listOrders, "POST /api/orders": h.createOrder, "GET /api/orders/{id}": h.getOrder,
 		"PATCH /api/orders/{id}/status": h.changeOrderStatus, "POST /api/orders/{id}/payments": h.createOrderPayment, "GET /api/orders/{id}/payments": h.listOrderPayments,
