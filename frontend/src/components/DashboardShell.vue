@@ -12,12 +12,14 @@ const roleLabel = computed(() => ({ owner: 'Administración general', admin: 'Ge
 const navigation = computed(() => props.role === 'owner' ? [
   { label: 'Resumen', to: '/owner', icon: 'grid' }, { label: 'Marcas', to: '/owner/brands', icon: 'burger' },
   { label: 'Locales', to: '/owner/tenants', icon: 'store' }, { label: 'Administradores', to: '/owner/admins', icon: 'users' },
+  { label: 'Cobros', to: '/payments', icon: 'grid' },
   { label: 'Invitaciones', to: '/team/invitations', icon: 'users' }, { label: 'Actividad', to: '/audit', icon: 'grid' }, { label: 'Seguridad', to: '/account/security', icon: 'grid' },
 ] : props.role === 'admin' ? [
   { label: 'Resumen', to: '/admin', icon: 'grid' }, { label: 'Equipo', to: '/admin/employees', icon: 'users' },
   { label: 'Producción', to: '/admin/production', icon: 'flame' }, { label: 'Catálogo', to: '/admin/catalog', icon: 'burger' },
+  { label: 'Cobros', to: '/payments', icon: 'grid' },
   { label: 'Invitaciones', to: '/team/invitations', icon: 'users' }, { label: 'Actividad', to: '/audit', icon: 'grid' }, { label: 'Seguridad', to: '/account/security', icon: 'grid' },
-] : [{ label: 'Mi espacio', to: `/tenant/${auth.tenantId.value}/employee`, icon: 'grid' }, { label: 'Seguridad', to: '/account/security', icon: 'grid' }]);
+] : [{ label: 'Mi espacio', to: `/tenant/${auth.tenantId.value}/employee`, icon: 'grid' }, ...(auth.userRole.value === 'cashier' ? [{ label: 'Cobros', to: '/payments', icon: 'grid' }] : []), { label: 'Seguridad', to: '/account/security', icon: 'grid' }]);
 const activeItem = computed(() => [...navigation.value].reverse().find(item => route.path === item.to || route.path.startsWith(item.to + '/')));
 const displayName = computed(() => auth.user.value?.name || auth.user.value?.email || 'Mi cuenta');
 const initials = computed(() => displayName.value.slice(0, 2).toUpperCase());

@@ -21,6 +21,8 @@ import UnauthorizedView from '../views/shared/UnauthorizedView.vue';
 import NotFoundView from '../views/shared/NotFoundView.vue';
 
 const routes = [
+  { path: '/payments', component: () => import('../views/shared/PaymentsView.vue'), meta: { requiresAuth: true, roles: ['owner', 'super_admin', 'admin', 'cashier'] } },
+  { path: '/payments/return', component: () => import('../views/public/PaymentReturnView.vue') },
   { path: '/forgot-password', component: () => import('../views/auth/RecoveryView.vue'), meta: { authAction: 'forgot' } },
   { path: '/reset-password', component: () => import('../views/auth/RecoveryView.vue'), meta: { authAction: 'reset' } },
   { path: '/accept-invitation', component: () => import('../views/auth/RecoveryView.vue'), meta: { authAction: 'invite' } },

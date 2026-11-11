@@ -16,6 +16,7 @@ import (
 	"leguiburger/internal/db"
 	"leguiburger/internal/employees"
 	"leguiburger/internal/extras"
+	"leguiburger/internal/mercadopago"
 	"leguiburger/internal/operations"
 	"leguiburger/internal/production"
 	"leguiburger/internal/products"
@@ -161,6 +162,9 @@ func main() {
 	auth.StartMailWorker(context.Background(), db.DB)
 
 	operations.RegisterRoutes(http.DefaultServeMux, db.DB)
+	mp := mercadopago.NewHandler(db.DB, mercadopago.LoadConfig(), nil)
+	mp.Register(http.DefaultServeMux)
+	mp.StartWorker(context.Background())
 
 	//----------------------------------------------------------------//
 	// 📂 SERVIR EL FRONTEND ESTÁTICO EN LA RAIZ (/)

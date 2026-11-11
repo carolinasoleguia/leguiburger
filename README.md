@@ -36,6 +36,9 @@ El seed de un administrador inicial requiere `SEED_OWNER_EMAIL` y `SEED_OWNER_PA
 
 ## API y pruebas
 
+La [integración de Mercado Pago](docs/mercadopago.md) documenta OAuth, cobros de
+pedidos, membresías, devoluciones, webhooks, conciliación y configuración.
+
 La guía de [seguridad y sesiones](docs/seguridad-y-sesiones.md) explica permisos,
 MFA, recuperación, invitaciones, auditoría y configuración del correo SMTP.
 
