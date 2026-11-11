@@ -1,7 +1,7 @@
 <script setup>
 import DashboardShell from "./DashboardShell.vue";
 import PageHeading from "./PageHeading.vue";
-import StatePanel from "./StatePanel.vue";
+import DashboardSkeleton from "./DashboardSkeleton.vue";
 defineProps({
   workspace: Object,
   title: String,
@@ -52,9 +52,21 @@ defineProps({
       <p v-if="workspace.notice.value" class="status-notice" role="status">
         {{ workspace.notice.value }}
       </p>
-      <StatePanel v-if="workspace.loading.value" kind="loading" />
-      <div v-show="!workspace.loading.value" :aria-busy="workspace.busy.value">
-        <slot />
+      <div
+        class="data-stage"
+        :aria-busy="workspace.loading.value || workspace.busy.value"
+      >
+        <Transition name="panel"
+          ><DashboardSkeleton v-if="workspace.loading.value"
+        /></Transition>
+        <Transition name="panel"
+          ><div
+            v-show="!workspace.loading.value"
+            class="data-stage-content"
+            :aria-busy="workspace.busy.value"
+          >
+            <slot /></div
+        ></Transition>
       </div></section
   ></DashboardShell>
 </template>

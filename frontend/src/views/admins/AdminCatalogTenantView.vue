@@ -92,7 +92,7 @@
       </div>
     </div>
 
-    <div v-if="isCatalogModalOpen" class="modal-overlay" @click.self="closeCatalogModal">
+    <Transition name="modal"><div v-if="isCatalogModalOpen" class="modal-overlay" @click.self="closeCatalogModal">
       <div v-dialog-care class="modal-card modal-card--catalog">
         <button type="button" class="modal-close" @click="closeCatalogModal">×</button>
         <h3>{{ brandBaseCatalogLabel }}</h3>
@@ -134,9 +134,9 @@
           </article>
         </div>
       </div>
-    </div>
+    </div></Transition>
 
-    <div v-if="isAssignModalOpen" class="modal-overlay" @click.self="closeAssignModal">
+    <Transition name="modal"><div v-if="isAssignModalOpen" class="modal-overlay" @click.self="closeAssignModal">
       <div v-dialog-care class="modal-card modal-card--wide">
         <button type="button" class="modal-close" @click="closeAssignModal">×</button>
         <h3>Configuración por sucursal</h3>
@@ -188,7 +188,7 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
     <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
       <div class="alert-card">

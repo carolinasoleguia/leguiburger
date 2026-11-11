@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
+import DashboardSkeleton from "./DashboardSkeleton.vue";
 import {
   useWorkspace,
   money,
@@ -178,9 +179,7 @@ function preset(count) {
       {{ w.error.value }}
       <button class="text-button" @click="w.refresh">Reintentar</button>
     </div>
-    <p v-if="w.loading.value" class="load-state" role="status">
-      Consultando la actividad…
-    </p>
+    <DashboardSkeleton v-if="w.loading.value" view="overview" label="Consultando la actividad…" />
     <template v-else-if="report"
       ><div class="metric-grid">
         <article v-for="card in cards" :key="card[0]" class="card">

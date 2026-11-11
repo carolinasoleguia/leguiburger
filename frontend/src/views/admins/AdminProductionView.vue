@@ -50,7 +50,7 @@
       </table></div>
     </div>
 
-    <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
+    <Transition name="modal"><div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
       <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeCreateModal">×</button>
         <h3>Nuevo reporte de producción</h3>
@@ -88,7 +88,7 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
   </section>
 </template>
 
@@ -103,7 +103,7 @@ const auth = useAuth();
 const tenants = ref([]);
 const selectedTenant = ref('');
 const reports = ref([]);
-const loading = ref(false);
+const loading = ref(true);
 const error = ref('');
 const isCreateModalOpen = ref(false);
 const actionLoading = ref(false);
@@ -128,7 +128,9 @@ async function loadTenants() {
     const url = brandId ? `/tenants?brand_id=${brandId}` : '/tenants';
     tenants.value = await getJSON(url);
   } catch (err) {
-    error.value = err.message || 'No se pudieron cargar los tenants.';
+    error.value = err.message || 'No se pudieron cargar los locales.';
+  } finally {
+    if (!tenants.value.length) loading.value = false;
   }
 }
 
@@ -212,86 +214,14 @@ onMounted(async () => {
   await loadTenants();
   if (tenants.value.length > 0) {
     selectedTenant.value = tenants.value[0].id;
-    await loadReports();
   }
 });
 </script>
 
 <style scoped>
-.admin-production {
-  padding: 1.5rem;
-}
+.admin-production {width:100%;min-width:0;}
+.controls-grid {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end;margin-bottom:24px;}
+.control-actions {display:flex;justify-content:flex-end;}
+.input-group {display:flex;flex-direction:column;gap:8px;}
+@media(max-width:650px){.controls-grid{grid-template-columns:1fr}.control-actions{justify-content:flex-start}}
 </style>
-.controls-grid {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  align-items: end;
-}
-.control-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.data-table th,
-.data-table td {
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--control-border);
-  text-align: left;
-}
-.centered-loading {
-  display: flex;
-  justify-content: center;
-  padding: 2rem 0;
-}
-.status-text {
-  padding: 1.5rem;
-  border-radius: 12px;
-  background: var(--field);
-  margin-top: 1rem;
-}
-.status-text.error {
-  color: var(--danger);
-}
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--surface-strong);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-  padding: 1rem;
-}
-.modal-card {
-  width: min(640px, 100%);
-  background: #ffffff;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
-}
-.modal-close {
-  background: transparent;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  position: absolute;
-  right: 1.25rem;
-  top: 1.25rem;
-}
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-}
-

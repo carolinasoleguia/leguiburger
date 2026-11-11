@@ -236,4 +236,4 @@ p { line-height: 1.65; }
   .preview-status { font-size: 8px; padding: 4px; } .panel-options button > span { font-size: 13px; } .panel-options button svg { display: none; }
   .landing-footer { align-items: flex-start; } .landing-footer nav { flex-wrap: wrap; gap: 20px; } .landing-final h2 { font-size: 35px; }
 }
-@media(prefers-reduced-motion:reduce) { html { scroll-behavior: auto; } *:not(.landing, .landing *), *:not(.landing, .landing *)::before, *:not(.landing, .landing *)::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+@media(prefers-reduced-motion:reduce) { html { scroll-behavior: auto; } html:not([data-motion="full"]) *:not(.landing, .landing *), html:not([data-motion="full"]) *:not(.landing, .landing *)::before, html:not([data-motion="full"]) *:not(.landing, .landing *)::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }

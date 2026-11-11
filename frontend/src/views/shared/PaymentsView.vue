@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import DashboardShell from "../../components/DashboardShell.vue";
+import DashboardSkeleton from "../../components/DashboardSkeleton.vue";
 import { useAuth } from "../../composables/useAuth.js";
 import { apiFetch, getJSON } from "../../services/api.js";
 const auth = useAuth();
@@ -388,6 +389,8 @@ onMounted(async () => {
           Actualizar
         </button>
       </div>
+      <Transition name="panel"><DashboardSkeleton v-if="loading" view="table" label="Cargando cobros y membresías…" /></Transition>
+      <Transition name="panel"><div v-show="!loading" :aria-busy="busy">
       <div v-if="!config.enabled && !loading" class="card setup-notice">
         <strong>Mercado Pago todavía no está habilitado.</strong>
         <p>
@@ -944,6 +947,7 @@ onMounted(async () => {
           </button>
         </form></template
       >
+      </div></Transition>
     </section></DashboardShell
   >
 </template>

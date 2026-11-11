@@ -1,12 +1,14 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import DashboardShell from "../../components/DashboardShell.vue";
+import DashboardSkeleton from "../../components/DashboardSkeleton.vue";
 import { useAuth } from "../../composables/useAuth.js";
 import { apiFetch, getJSON, postJSON } from "../../services/api.js";
 const auth = useAuth(),
   sessions = ref([]),
   error = ref(""),
   busy = ref(false);
+const loading=ref(true);
 const newEmail = ref(""),
   emailPassword = ref(""),
   emailNotice = ref("");
@@ -24,7 +26,7 @@ async function load() {
     sessions.value = (await getJSON("/auth/sessions")) || [];
   } catch {
     error.value = "No pudimos cargar las sesiones";
-  }
+  } finally {loading.value=false;}
 }
 async function revoke(item) {
   busy.value = true;
@@ -110,7 +112,8 @@ onMounted(load);
         <section class="card">
           <h3>Sesiones activas</h3>
           <p>Se cierran después de 30 minutos sin actividad.</p>
-          <ul class="session-list">
+          <DashboardSkeleton v-if="loading" view="table" label="Cargando tus sesiones…" compact />
+          <ul v-else class="session-list">
             <li v-for="item in sessions" :key="item.id">
               <div>
                 <strong>{{

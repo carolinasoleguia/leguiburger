@@ -31,7 +31,7 @@
       </table></div>
     </div>
 
-    <div v-if="isCreateModalOpen || isEditModalOpen" class="modal-overlay" @click.self="closeModal">
+    <Transition name="modal"><div v-if="isCreateModalOpen || isEditModalOpen" class="modal-overlay" @click.self="closeModal">
       <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeModal" aria-label="Cerrar modal">×</button>
         <h3>{{ isEditModalOpen ? 'Editar marca' : 'Nueva marca' }}</h3>
@@ -57,7 +57,7 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
     <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
       <div class="alert-card">

@@ -1,0 +1,590 @@
+/* Al Toque's data-reveal timing, panel loading and shimmer, in burger tokens. */
+:root {
+  --motion-ease: cubic-bezier(0.2, 0.65, 0.3, 1);
+  --motion-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-data: 480ms;
+}
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+.app-spinner-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: var(--accent);
+}
+.app-spinner {
+  animation: app-spin 0.85s linear infinite;
+  flex: none;
+}
+.app-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 3px;
+  z-index: 20000;
+  overflow: hidden;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.app-progress > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 35%;
+  border-radius: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 50%, transparent);
+  animation: progress-travel 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.progress-enter-active,
+.progress-leave-active {
+  transition: opacity 180ms ease;
+}
+.progress-enter-from,
+.progress-leave-to {
+  opacity: 0;
+}
+.screen-enter-active {
+  transition: opacity 180ms ease;
+}
+.screen-leave-active {
+  transition: opacity 90ms ease;
+}
+.screen-enter-from,
+.screen-leave-to {
+  opacity: 0;
+}
+.workspace-route-enter-active {
+  transition:
+    opacity 240ms var(--motion-ease),
+    transform 240ms var(--motion-ease);
+}
+.workspace-route-leave-active {
+  transition: opacity 90ms ease;
+}
+.workspace-route-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.workspace-route-leave-to {
+  opacity: 0;
+}
+.app-shell .content-pane {
+  animation: shell-reveal 300ms ease-out both;
+}
+.app-shell .section-header {
+  animation: data-reveal 400ms var(--motion-ease) both;
+}
+.data-stage {
+  display: grid;
+  min-width: 0;
+  position: relative;
+}
+.data-stage > * {
+  grid-area: 1/1;
+  min-width: 0;
+}
+.data-stage-content {
+  align-self: start;
+}
+.panel-enter-active {
+  transition:
+    opacity var(--motion-data) var(--motion-ease),
+    transform var(--motion-data) var(--motion-ease);
+}
+.panel-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.panel-leave-active {
+  transition: opacity 100ms ease;
+  pointer-events: none;
+}
+.panel-leave-to {
+  opacity: 0;
+}
+.dashboard-skeleton {
+  width: 100%;
+  min-width: 0;
+  margin: 20px 0 24px;
+  overflow: hidden;
+  align-self: start;
+}
+.dashboard-skeleton--compact {
+  margin: 12px 0;
+}
+.skeleton-bone {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 5px;
+  background: var(--border);
+  width: var(--bone-width, 100%);
+  animation: skeleton-pulse 1.3s ease-in-out infinite;
+}
+.skeleton-bone::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--accent) 13%, transparent),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+.skeleton-label {
+  height: 11px;
+  width: 46%;
+  margin: 0 0 16px;
+}
+.skeleton-number {
+  height: 34px;
+  width: 62%;
+  margin: 0 0 16px;
+}
+.skeleton-caption {
+  height: 10px;
+  width: 76%;
+}
+.skeleton-metric {
+  padding: 22px;
+  min-height: 156px;
+  background: var(--surface-raised) !important;
+}
+.skeleton-metric:nth-child(2n) .skeleton-bone {
+  animation-delay: 90ms;
+}
+.skeleton-metric:nth-child(3n) .skeleton-bone {
+  animation-delay: 160ms;
+}
+.skeleton-panel {
+  padding: 24px;
+  background: var(--surface) !important;
+  min-height: 250px;
+}
+.skeleton-title {
+  height: 17px;
+  width: 48%;
+  margin: 0 0 24px;
+}
+.skeleton-chart {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  height: 190px;
+  padding-top: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.skeleton-chart > .skeleton-bone {
+  flex: 1;
+  min-width: 0;
+  border-radius: 5px 5px 0 0;
+}
+.skeleton-panel-data {
+  display: grid;
+  place-items: center;
+  min-height: 190px;
+}
+.skeleton-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.skeleton-field {
+  height: 42px;
+  border-radius: 8px;
+  max-width: 360px;
+}
+.skeleton-action {
+  height: 38px;
+  width: 132px;
+  flex: none;
+  border-radius: 8px;
+}
+.skeleton-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.skeleton-card {
+  padding: 22px;
+  min-height: 194px;
+}
+.skeleton-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.skeleton-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex: none;
+}
+.skeleton-card-heading .skeleton-title {
+  margin: 0;
+  width: 65%;
+  height: 13px;
+}
+.skeleton-line {
+  height: 11px;
+  margin: 12px 0;
+}
+.skeleton-line--short {
+  width: 65%;
+}
+.skeleton-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 26px;
+}
+.skeleton-card-footer .skeleton-label {
+  margin: 0;
+  width: 28%;
+}
+.skeleton-card-footer .skeleton-action {
+  width: 84px;
+  height: 30px;
+}
+.skeleton-image {
+  height: 140px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.skeleton-form-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.4fr);
+  gap: 24px;
+}
+.skeleton-form-field {
+  margin: 28px 0;
+}
+.skeleton-form-field .skeleton-label {
+  margin-bottom: 10px;
+  width: 33%;
+}
+.skeleton-form-field .skeleton-field {
+  max-width: none;
+}
+.skeleton-textarea {
+  height: 120px;
+}
+.skeleton-table {
+  width: 100%;
+  overflow: hidden;
+}
+.skeleton-table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 24px;
+  padding: 21px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.skeleton-table-row > .skeleton-bone {
+  height: 11px;
+}
+.skeleton-table-row:first-child {
+  padding: 17px 8px;
+  background: var(--surface-raised);
+  border-radius: 8px;
+}
+.skeleton-table-row:nth-child(2n) .skeleton-bone::after {
+  animation-delay: 120ms;
+}
+.app-shell
+  :is(
+    .metric-grid > article,
+    .report-grid > section,
+    .kitchen-board > article,
+    .care-grid > section
+  ) {
+  animation: data-reveal var(--motion-data) var(--motion-ease) both;
+}
+.app-shell .metric-grid > article:nth-child(2) {
+  animation-delay: 35ms;
+}
+.app-shell .metric-grid > article:nth-child(3) {
+  animation-delay: 70ms;
+}
+.app-shell .metric-grid > article:nth-child(4) {
+  animation-delay: 105ms;
+}
+.app-shell .metric-grid > article:nth-child(5) {
+  animation-delay: 140ms;
+}
+.app-shell .metric-grid > article:nth-child(6) {
+  animation-delay: 175ms;
+}
+.app-shell .report-grid > section:nth-child(2) {
+  animation-delay: 90ms;
+}
+.app-shell
+  :is(
+    .metric-grid > article,
+    .care-ticket,
+    .tenant-product-card,
+    .base-product-row
+  ) {
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+.app-shell :is(.metric-grid > article, .tenant-product-card):hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.05);
+}
+.app-shell tbody tr {
+  animation: row-reveal 300ms var(--motion-ease) both;
+}
+.app-shell tbody tr:nth-child(2) {
+  animation-delay: 25ms;
+}
+.app-shell tbody tr:nth-child(3) {
+  animation-delay: 50ms;
+}
+.app-shell tbody tr:nth-child(4) {
+  animation-delay: 75ms;
+}
+.app-shell tbody tr:nth-child(5) {
+  animation-delay: 100ms;
+}
+.app-shell :is(.error-msg, .status-notice, .inline-notice) {
+  animation: data-reveal 260ms var(--motion-ease) both;
+}
+.app-shell :is(button, a, input, select, textarea) {
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.app-shell button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+button.is-pending::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  flex: none;
+  display: inline-block;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: app-spin 0.8s linear infinite;
+}
+button.is-pending :is(.spinner, .app-spinner-wrap) {
+  display: none;
+}
+.modal-enter-active,
+.modal-leave-active {
+  transition:
+    opacity 200ms ease,
+    backdrop-filter 200ms ease;
+}
+.modal-enter-active > .modal-card,
+.modal-leave-active > .modal-card {
+  transition:
+    opacity 220ms var(--motion-spring),
+    transform 220ms var(--motion-spring);
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+  backdrop-filter: blur(0);
+}
+.modal-enter-from > .modal-card,
+.modal-leave-to > .modal-card {
+  opacity: 0;
+  transform: translateY(12px) scale(0.975);
+}
+.app-shell .bar-chart :is(.bar-column > span, .bar-fill) {
+  transform-origin: bottom;
+  animation: chart-reveal 700ms var(--motion-spring) both;
+}
+.app-shell .bar-chart > .bar {
+  transform-origin: bottom;
+  animation: chart-reveal 700ms var(--motion-spring) both;
+}
+.app-shell .catalog-tab,
+.app-shell .payment-tabs button {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+@keyframes app-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes progress-travel {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(390%);
+  }
+}
+@keyframes skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@keyframes data-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes row-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes shell-reveal {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes chart-reveal {
+  from {
+    opacity: 0.35;
+    transform: scaleY(0.05);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+@media (max-width: 1050px) {
+  .skeleton-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .skeleton-card-grid,
+  .skeleton-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .skeleton-card-grid--kitchen {
+    grid-template-columns: 1fr;
+  }
+  .skeleton-toolbar {
+    gap: 16px;
+  }
+  .skeleton-toolbar .skeleton-field {
+    max-width: 60%;
+  }
+  .skeleton-action {
+    width: 100px;
+  }
+  .skeleton-panel {
+    padding: 20px;
+  }
+  .skeleton-table-row {
+    grid-template-columns: 1.7fr 1fr 1fr;
+    gap: 18px;
+  }
+  .skeleton-table-row > .skeleton-bone:last-child {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion="full"]) .app-shell *,
+  html:not([data-motion="full"]) .app-shell *::before,
+  html:not([data-motion="full"]) .dashboard-skeleton *,
+  html:not([data-motion="full"]) .dashboard-skeleton *::after,
+  html:not([data-motion="full"]) .app-spinner,
+  html:not([data-motion="full"]) .app-progress > span,
+  html:not([data-motion="full"]) .modal-enter-active,
+  html:not([data-motion="full"]) .modal-leave-active,
+  html:not([data-motion="full"]) .modal-enter-active > .modal-card,
+  html:not([data-motion="full"]) .modal-leave-active > .modal-card {
+    animation: none !important;
+    transition: none !important;
+  }
+  html:not([data-motion="full"]) .skeleton-bone {
+    opacity: 0.65;
+  }
+  html:not([data-motion="full"]) .skeleton-bone::after {
+    display: none;
+  }
+  html:not([data-motion="full"]) .app-progress > span {
+    width: 100%;
+    opacity: 0.65;
+  }
+  html:not([data-motion="full"]) .screen-enter-active,
+  html:not([data-motion="full"]) .screen-leave-active {
+    transition: none;
+  }
+  html:not([data-motion="full"]) .panel-enter-from,
+  html:not([data-motion="full"]) .workspace-route-enter-from {
+    transform: none;
+  }
+}
+
+html[data-motion="reduced"] .app-shell *,
+html[data-motion="reduced"] .app-shell *::before,
+html[data-motion="reduced"] .dashboard-skeleton *,
+html[data-motion="reduced"] .dashboard-skeleton *::after,
+html[data-motion="reduced"] .app-spinner,
+html[data-motion="reduced"] .app-progress > span,
+html[data-motion="reduced"] .modal-enter-active,
+html[data-motion="reduced"] .modal-leave-active,
+html[data-motion="reduced"] .modal-enter-active > .modal-card,
+html[data-motion="reduced"] .modal-leave-active > .modal-card {
+  animation: none !important;
+  transition: none !important;
+}
+html[data-motion="reduced"] .skeleton-bone {
+  opacity: 0.65;
+}
+html[data-motion="reduced"] .skeleton-bone::after {
+  display: none;
+}
+html[data-motion="reduced"] .app-progress > span {
+  width: 100%;
+  opacity: 0.65;
+}
+html[data-motion="reduced"] .screen-enter-active,
+html[data-motion="reduced"] .screen-leave-active {
+  transition: none;
+}
+html[data-motion="reduced"] .panel-enter-from,
+html[data-motion="reduced"] .workspace-route-enter-from {
+  transform: none;
+}

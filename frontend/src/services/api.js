@@ -1,6 +1,7 @@
 const BASE_API = "/api";
 import { session, refreshSession, clearSession } from "./session.js";
 import { formRequest, formSaved } from "../plugins/formCare.js";
+import { beginActivity } from "./activity.js";
 
 function isFormDataBody(body) {
   return (
@@ -25,30 +26,38 @@ function buildHeaders(customHeaders = {}, body = null) {
 }
 
 export async function apiFetch(path, options = {}) {
-  const mutation = options.method && !['GET','HEAD'].includes(options.method.toUpperCase());
-  const draft = mutation ? formRequest(document.activeElement?.closest('form')) : null;
-  let response = await fetch(`${BASE_API}${path}`, {
-    ...options,
-    headers: buildHeaders(options.headers, options.body),
-  });
+  const mutation =
+    options.method && !["GET", "HEAD"].includes(options.method.toUpperCase());
+  const draft = mutation
+    ? formRequest(document.activeElement?.closest("form"))
+    : null;
+  const finish = beginActivity(draft?.form);
+  try {
+    let response = await fetch(`${BASE_API}${path}`, {
+      ...options,
+      headers: buildHeaders(options.headers, options.body),
+    });
 
-  if (response.status === 401 && !path.startsWith("/auth/")) {
-    try {
-      await refreshSession();
-      response = await fetch(`${BASE_API}${path}`, {
-        ...options,
-        headers: buildHeaders(options.headers, options.body),
-      });
-    } catch {
-      clearSession();
-      window.dispatchEvent(
-        new CustomEvent("legui:logout", { detail: "expired" }),
-      );
+    if (response.status === 401 && !path.startsWith("/auth/")) {
+      try {
+        await refreshSession();
+        response = await fetch(`${BASE_API}${path}`, {
+          ...options,
+          headers: buildHeaders(options.headers, options.body),
+        });
+      } catch {
+        clearSession();
+        window.dispatchEvent(
+          new CustomEvent("legui:logout", { detail: "expired" }),
+        );
+      }
     }
-  }
 
-  if (response.ok && mutation) formSaved(draft);
-  return response;
+    if (response.ok && mutation) formSaved(draft);
+    return response;
+  } finally {
+    finish();
+  }
 }
 
 export async function getJSON(path) {

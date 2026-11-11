@@ -9,9 +9,7 @@
     </div>
 
     <div class="card">
-      <div v-if="loading" class="centered-loading">
-        <span class="spinner-large"></span>
-      </div>
+      <StatePanel v-if="loading" kind="loading" />
       <div v-else-if="error" class="status-text error">{{ error }}</div>
       <div v-else-if="tenants.length === 0" class="status-text">No hay tenants registrados.</div>
       <table v-else class="data-table">
@@ -43,7 +41,7 @@
       </table>
     </div>
 
-    <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
+    <Transition name="modal"><div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
       <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeCreateModal" aria-label="Cerrar modal">×</button>
         <h3>Nuevo tenant</h3>
@@ -76,9 +74,9 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
-    <div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
+    <Transition name="modal"><div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
       <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeEditModal" aria-label="Cerrar modal">×</button>
         <h3>Editar Tenant</h3>
@@ -111,9 +109,9 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
-    <div v-if="isDeleteModalOpen" class="modal-overlay" @click.self="closeDeleteModal">
+    <Transition name="modal"><div v-if="isDeleteModalOpen" class="modal-overlay" @click.self="closeDeleteModal">
       <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeDeleteModal" aria-label="Cerrar modal">×</button>
         <h3>{{ deletingTenant.active ? 'Confirmar eliminación' : 'Confirmar reactivación' }}</h3>
@@ -137,7 +135,7 @@
           </button>
         </div>
       </div>
-    </div>
+    </div></Transition>
 
     <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
       <div class="alert-card">
@@ -152,6 +150,7 @@
 </template>
 
 <script setup>
+import StatePanel from "../../components/StatePanel.vue";
 import { ref, onMounted } from 'vue';
 import { getJSON, postJSON, putJSON, deleteJSON } from '../../services/api.js';
 

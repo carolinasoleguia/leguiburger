@@ -12,6 +12,7 @@ import { useAuth } from "../composables/useAuth.js";
 import AppIcon from "./AppIcon.vue";
 import BrandLogo from "./BrandLogo.vue";
 import ThemeToggle from "./ThemeToggle.vue";
+import MotionToggle from "./MotionToggle.vue";
 import { getJSON } from "../services/api.js";
 import {
   authRequest,
@@ -109,7 +110,10 @@ const baseNavigation = computed(() =>
         ],
 );
 const navigation = computed(() => {
-  const shared = [{ label: "Novedades", to: "/notifications", icon: "clock" }, { label: "Soporte y continuidad", to: "/care", icon: "store" }];
+  const shared = [
+    { label: "Novedades", to: "/notifications", icon: "clock" },
+    { label: "Soporte y continuidad", to: "/care", icon: "store" },
+  ];
   const operational = [
     ...(["owner", "super_admin", "admin", "cashier"].includes(
       auth.userRole.value,
@@ -269,8 +273,7 @@ async function logout() {
         <div class="sidebar-account">
           <span class="avatar">{{ initials }}</span>
           <div>
-            <strong>{{ displayName }}</strong
-            ><small>{{ roleLabel }}</small>
+            <strong>{{ displayName }}</strong><small>{{ roleLabel }}</small>
           </div>
         </div>
         <button class="btn-logout" @click="logout">
@@ -299,14 +302,19 @@ async function logout() {
               : role === "admin"
                 ? "Administrador"
                 : "Equipo"
-          }}</span
-          ><ThemeToggle /><span class="avatar avatar-small">{{
+          }}</span><MotionToggle /><ThemeToggle /><span class="avatar avatar-small">{{
             initials
           }}</span>
         </div>
       </header>
       <main id="main-content" class="content-pane" tabindex="-1">
-        <slot><router-view /></slot>
+        <slot
+          ><router-view v-slot="{ Component, route }"
+            ><Transition name="workspace-route" mode="out-in"
+              ><component
+                :is="Component"
+                :key="route.path" /></Transition></router-view
+        ></slot>
       </main>
       <footer class="workspace-footer">
         <span>leguiburger.</span><span>Hecho para el ritmo de tu cocina.</span>

@@ -22,9 +22,7 @@
         <button class="btn-secondary" @click="clearFilter" v-if="selectedTenantFilter">Limpiar filtro</button>
       </div>
 
-      <div v-if="loading" class="centered-loading">
-        <span class="spinner-large"></span>
-      </div>
+      <StatePanel v-if="loading" kind="loading" />
       <div v-else-if="error" class="status-text error">{{ error }}</div>
       <div v-else-if="filteredEmployees.length === 0" class="status-text">No hay empleados registrados para el filtro seleccionado.</div>
 
@@ -61,7 +59,7 @@
       </table>
     </div>
 
-    <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
+    <Transition name="modal"><div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
       <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeCreateModal">×</button>
         <h3>Nuevo empleado</h3>
@@ -127,9 +125,9 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
-    <div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
+    <Transition name="modal"><div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
       <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeEditModal">×</button>
         <h3>Editar empleado</h3>
@@ -195,9 +193,9 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
-    <div v-if="isConfirmModalOpen" class="modal-overlay" @click.self="closeConfirmModal">
+    <Transition name="modal"><div v-if="isConfirmModalOpen" class="modal-overlay" @click.self="closeConfirmModal">
       <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeConfirmModal">×</button>
         <h3>Confirmar acción</h3>
@@ -207,7 +205,7 @@
           <button type="button" class="btn-danger" @click="confirmToggle">Sí, {{ confirmAction }}</button>
         </div>
       </div>
-    </div>
+    </div></Transition>
 
     <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
       <div class="alert-card">
@@ -222,6 +220,7 @@
 </template>
 
 <script setup>
+import StatePanel from "../../components/StatePanel.vue";
 import { computed, ref, onMounted } from 'vue';
 import { getJSON, postJSON, putJSON, deleteJSON, apiFetch } from '../../services/api.js';
 import { useAuth } from '../../composables/useAuth.js';

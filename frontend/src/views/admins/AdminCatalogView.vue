@@ -68,7 +68,7 @@
       </div>
     </div>
 
-    <div v-if="isProductModalOpen" class="modal-overlay" @click.self="closeProductModal">
+    <Transition name="modal"><div v-if="isProductModalOpen" class="modal-overlay" @click.self="closeProductModal">
       <div v-dialog-care class="modal-card modal-card--product">
         <button type="button" class="modal-close" @click="closeProductModal">×</button>
         <h3>{{ productForm.id ? 'Editar producto' : 'Nuevo producto' }}</h3>
@@ -122,7 +122,7 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
     <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
       <div class="alert-card">

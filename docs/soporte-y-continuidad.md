@@ -46,6 +46,10 @@ Las pruebas de arquitectura protegen la dirección de dependencias y que las rut
 
 Se comparten encabezados, estados de carga, tablas, tipografía, campos, errores, confirmaciones y tokens de color en modos claro y oscuro. El catálogo y producción se alinean con las pantallas nuevas. Las confirmaciones y modales administran foco, Escape y navegación con Tab. Los campos inválidos muestran errores asociados; los formularios mantienen sus valores si falla el guardado, advierten antes de descartar cambios y no guardan contraseñas ni borradores en localStorage.
 
+Los patrones visuales de Al Toque se trasladan a Vue: entrada de datos de 480 ms y 6 px, skeletons con pulso de 1,3 s y shimmer de 1,6 s, cargas que reservan la forma de cada pantalla, spinners por panel, indicador compartido de solicitudes y feedback en el botón que inició la operación. Las rutas, tarjetas, filas, gráficos y modales tienen transiciones suaves; `prefers-reduced-motion` desactiva el movimiento. No se agregan esperas artificiales y los formularios permanecen montados durante las recargas.
+
+El control de animaciones junto al cambio de tema permite activarlas o pausarlas explícitamente. La preferencia se conserva en ese navegador; mientras no se elige, se respeta la configuración del sistema. La prueba `tools/test-motion-browser.mjs` verifica cargas concurrentes, errores, conservación del formulario, entrada de paneles, modales y preferencias de movimiento con API simulada.
+
 ```powershell
 go test ./...
 go vet ./...

@@ -1,4 +1,5 @@
 import { reactive } from "vue";
+import { beginActivity } from "./activity.js";
 
 // Access tokens live only in memory; the refresh credential is an HttpOnly cookie.
 for (const key of ["token", "authUser", "employee"])
@@ -24,29 +25,34 @@ export function clearSession() {
   session.user = null;
 }
 export async function authRequest(path, body = {}, token = "") {
-  const response = await fetch(`/api/auth/${path}`, {
-    method: "POST",
-    credentials: "same-origin",
-    signal: AbortSignal.timeout(15000),
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(path === "refresh" && session.user?.id
-        ? { "X-Legui-Account": session.user.id }
-        : {}),
-    },
-    body: JSON.stringify(body),
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(
-      payload.message || "No se pudo completar la operación",
-    );
-    error.status = response.status;
-    error.code = payload.code;
-    throw error;
+  const finish = beginActivity();
+  try {
+    const response = await fetch(`/api/auth/${path}`, {
+      method: "POST",
+      credentials: "same-origin",
+      signal: AbortSignal.timeout(15000),
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(path === "refresh" && session.user?.id
+          ? { "X-Legui-Account": session.user.id }
+          : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(
+        payload.message || "No se pudo completar la operación",
+      );
+      error.status = response.status;
+      error.code = payload.code;
+      throw error;
+    }
+    return payload;
+  } finally {
+    finish();
   }
-  return payload;
 }
 export function refreshSession() {
   if (!refreshPromise) {
