@@ -113,6 +113,11 @@ try {
         const body = r.postData() ? JSON.parse(r.postData()) : undefined;
         calls.push({ path, body, headers: r.headers(), method: r.method() });
         if (path === "/api/auth/refresh") return reply(r, {}, 401);
+        if (path.endsWith("/buyer-session"))
+          return reply(r, {
+            creation_key: "60000000-0000-4000-8000-000000000001",
+            payment_key: "70000000-0000-4000-8000-000000000001",
+          });
         if (path.endsWith("/quote")) {
           quotes++;
           const q = {
@@ -219,7 +224,7 @@ try {
       await page.goto(origin + "/catalogo/" + tenant, {
         waitUntil: "networkidle0",
       });
-      await page.waitForSelector(".menu-add:disabled");
+      await page.waitForSelector(".menu-add:not(:disabled)");
       check(
         !calls.some((x) => x.path.startsWith("/api/auth/")),
         "public buying never requests an app session",
@@ -310,8 +315,9 @@ try {
         "unknown confirmation retried with identical data",
       );
       check(
-        sent[1].headers.authorization.length === 50,
-        "guest capability sent in header",
+        sent[1].headers["x-buyer-tenant"] === tenant &&
+          !sent[1].headers.authorization,
+        "cookie session scoped by restaurant, no secret in JS header",
       );
       check(
         !JSON.stringify(sent[1].body).includes("price"),

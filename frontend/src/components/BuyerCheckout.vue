@@ -32,21 +32,59 @@ let access = null,
   pendingBody = null,
   alive = true;
 const controllers = new Set();
-function saveAccess() {
-  // Capabilities stay in this tab; contact details and card data are never persisted.
-  sessionStorage.setItem(storageKey, JSON.stringify(access));
-}
+const checkingSession = ref(true);
+let legacyAccess = null;
 try {
   const saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
-  if (
-    saved?.tenant === props.tenant &&
-    saved.expires > Date.now() &&
-    /^[A-Za-z0-9_-]{43}$/.test(saved.secret)
-  )
-    access = saved;
-  else sessionStorage.removeItem(storageKey);
-} catch {
-  /* Storage may be unavailable. Confirming requires it to work. */
+  if (saved?.tenant === props.tenant && saved.expires > Date.now())
+    legacyAccess = saved;
+} catch {}
+
+async function bootstrapBuyer(fresh = false) {
+  checkingSession.value = true;
+  try {
+    const run = async () => {
+      const response = await fetch(
+        `/api/public/menu/${props.tenant}/buyer-session`,
+        {
+          method: "POST",
+          credentials: "same-origin",
+          signal: AbortSignal.timeout(15000),
+          headers: {
+            "Content-Type": "application/json",
+            ...(legacyAccess?.secret && !fresh
+              ? { Authorization: `Bearer ${legacyAccess.secret}` }
+              : {}),
+          },
+          body: JSON.stringify({
+            ...(legacyAccess && !fresh ? { legacy_key: legacyAccess.key } : {}),
+            ...(fresh ? { new: true } : {}),
+          }),
+        },
+      );
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(
+          data.message || "No pudimos recuperar tu sesión de compra.",
+        );
+      return data;
+    };
+    const data = navigator.locks
+      ? await navigator.locks.request(`legui-buyer:${props.tenant}`, run)
+      : await run();
+    if (!alive) return false;
+    access = { key: data.creation_key, paymentKey: data.payment_key };
+    legacyAccess = null;
+    try {
+      sessionStorage.removeItem(storageKey);
+    } catch {}
+    return true;
+  } catch (e) {
+    if (alive) error.value = e.message;
+    return false;
+  } finally {
+    if (alive) checkingSession.value = false;
+  }
 }
 function cents(raw) {
   const [whole, fraction = ""] = String(raw || "0").split(".");
@@ -73,6 +111,7 @@ const estimated = computed(() =>
 const locked = computed(
   () =>
     busy.value ||
+    checkingSession.value ||
     !!pendingBody ||
     (!!access && !receipt.value && !recoveryMissing.value),
 );
@@ -111,11 +150,11 @@ async function request(path, body, authenticated = false, key = "") {
   try {
     const response = await fetch(path, {
       method: body === undefined ? "GET" : "POST",
-      credentials: "omit",
+      credentials: "same-origin",
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
-        ...(authenticated ? { Authorization: "Bearer " + access.secret } : {}),
+        ...(authenticated ? { "X-Buyer-Tenant": props.tenant } : {}),
         ...(key ? { "Idempotency-Key": key } : {}),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -225,20 +264,10 @@ async function confirm() {
   busy.value = true;
   error.value = "";
   try {
-    if (!access) {
-      const bytes = crypto.getRandomValues(new Uint8Array(32));
-      access = {
-        tenant: props.tenant,
-        secret: btoa(String.fromCharCode(...bytes))
-          .replaceAll("+", "-")
-          .replaceAll("/", "_")
-          .replaceAll("=", ""),
-        key: crypto.randomUUID(),
-        paymentKey: crypto.randomUUID(),
-        expires: Date.now() + 86400000,
-      };
-    }
-    saveAccess(); // Do not send if the tab cannot retain the receipt capability.
+    if (!access)
+      throw new Error(
+        "No hay sesión de compra. Usá Reintentar sesión antes de confirmar.",
+      );
     if (!pendingBody)
       pendingBody = {
         ...basket(),
@@ -300,7 +329,6 @@ async function pay() {
         Date.parse(result.expires_at) <= Date.now())
     ) {
       access.paymentKey = crypto.randomUUID();
-      saveAccess();
       await refreshReceipt();
       error.value =
         "Este intento no está disponible. Podés volver a iniciar el pago.";
@@ -323,27 +351,32 @@ async function pay() {
     if (alive) busy.value = false;
   }
 }
-function newOrder() {
-  if (!canStartNew.value) return;
-  access = null;
+async function newOrder() {
+  if (!canStartNew.value || busy.value) return;
+  if (!(await bootstrapBuyer(true))) return;
   receipt.value = null;
   quote.value = null;
   pendingBody = null;
   step.value = "cart";
-  sessionStorage.removeItem(storageKey);
+  try {
+    sessionStorage.removeItem(storageKey);
+  } catch {}
   name.value = "";
   phone.value = "";
   email.value = "";
   address.value = "";
   panel.value = false;
 }
-if (access) {
-  panel.value = true;
-  refreshReceipt();
-}
+bootstrapBuyer().then(async (ok) => {
+  if (!ok || !alive) return;
+  await refreshReceipt(true);
+  if (alive && receipt.value) panel.value = true;
+});
+
 const { live } = useOrderStream({
   path: "/api/public/buyer-order/events",
-  token: () => access?.secret || "",
+  token: () => "",
+  tenant: () => props.tenant,
   enabled: () =>
     !!receipt.value &&
     !(
@@ -359,11 +392,19 @@ onBeforeUnmount(() => {
 
   for (const controller of controllers) controller.abort();
 });
-defineExpose({ open });
+defineExpose({
+  open,
+  ready: computed(
+    () =>
+      !checkingSession.value &&
+      !!access &&
+      (!!receipt.value || recoveryMissing.value),
+  ),
+});
 </script>
 <template>
   <button
-    v-if="menu?.ordering_enabled || receipt || access"
+    v-if="menu?.ordering_enabled || receipt"
     class="buyer-cart-trigger btn-primary"
     @click="panel = true"
   >
@@ -456,6 +497,17 @@ defineExpose({ open });
             ×
           </button>
           <p v-if="error" role="alert" class="error-msg">{{ error }}</p>
+          <p v-if="checkingSession" role="status">
+            Recuperando tu pedido anterior…
+          </p>
+          <button
+            v-if="!checkingSession && !access"
+            type="button"
+            class="btn-secondary"
+            @click="bootstrapBuyer().then((ok) => ok && refreshReceipt(true))"
+          >
+            Reintentar sesión
+          </button>
           <template v-if="receipt">
             <p v-if="!canStartNew" class="inline-notice" role="status">
               {{
@@ -552,7 +604,7 @@ defineExpose({ open });
               </button>
             </div>
             <p class="buyer-muted">
-              La confirmación se conserva en esta pestaña durante 24 horas.
+              La confirmación se conserva en este navegador durante 24 horas.
               Guardá el enlace de seguimiento para consultarlo después.
             </p>
           </template>

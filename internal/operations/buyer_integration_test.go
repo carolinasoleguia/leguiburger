@@ -200,6 +200,24 @@ func TestBuyerCheckoutIntegration(t *testing.T) {
 	order := parse(request("POST", path+"/orders", "", "", headers, payload, 201))
 	oid := order["id"].(string)
 
+	adopted := request("POST", path+"/buyer-session", "", "", headers, map[string]any{"legacy_key": key}, 200)
+	cookies := adopted.Result().Cookies()
+	if len(cookies) != 1 || !cookies[0].HttpOnly || cookies[0].MaxAge != 86400 {
+		t.Fatal("buyer cookie not persisted")
+	}
+	if strings.Contains(adopted.Body.String(), guest) {
+		t.Fatal("secret exposed to JS")
+	}
+	cookieHeaders := map[string]string{"Cookie": cookies[0].Name + "=" + cookies[0].Value, "X-Buyer-Tenant": t1}
+	request("GET", "/api/public/buyer-order", "", "", cookieHeaders, nil, 200)
+	request("POST", path+"/buyer-session", "", "", cookieHeaders, map[string]any{}, 200)
+	request("POST", path+"/buyer-session", "", "", cookieHeaders, map[string]any{"new": true}, 409)
+	cookieHeaders["X-Buyer-Tenant"] = t2
+	request("GET", "/api/public/buyer-order", "", "", cookieHeaders, nil, 404)
+	cookieHeaders["X-Buyer-Tenant"] = t1
+	cookieHeaders["Origin"] = "https://attacker.invalid"
+	request("POST", path+"/buyer-session", "", "", cookieHeaders, map[string]any{}, 403)
+	delete(cookieHeaders, "Origin")
 	server := httptest.NewServer(mux)
 	defer server.Close()
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -220,6 +238,17 @@ func TestBuyerCheckoutIntegration(t *testing.T) {
 	bad.Body.Close()
 	denied := openStream("/api/public/buyer-order/events", buyeraccess.TrackingToken(guest), 404)
 	denied.Body.Close()
+	cookieRequest, _ := http.NewRequest("GET", server.URL+"/api/public/buyer-order/events", nil)
+	cookieRequest.AddCookie(cookies[0])
+	cookieRequest.Header.Set("X-Buyer-Tenant", t1)
+	cookieStream, e := client.Do(cookieRequest)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if cookieStream.StatusCode != 200 {
+		t.Fatal("cookie SSE did not authorize own order")
+	}
+	cookieStream.Body.Close()
 	stream := openStream("/api/public/buyer-order/events", guest, 200)
 	reader := bufio.NewReader(stream.Body)
 	readEvent := func(want string) {
@@ -295,6 +324,16 @@ func TestBuyerCheckoutIntegration(t *testing.T) {
 	if !strings.Contains(kitchenData, "Sin cebolla") || strings.Contains(kitchenData, "buyer@example.invalid") || strings.Contains(kitchenData, "11 5555 0123") {
 		t.Fatal("kitchen buyer projection invalid")
 	}
+	request("POST", "/api/orders/"+oid+"/payments", "admin_a", t1, nil, map[string]any{"kind": "charge", "method": "transfer", "amount": "220.50"}, 201)
+	for _, next := range []string{"preparing", "ready", "delivered"} {
+		current := parse(request("GET", "/api/orders/"+oid, "admin_a", t1, nil, nil, 200))
+		request("PATCH", "/api/orders/"+oid+"/status", "admin_a", t1, nil, map[string]any{"status": next, "expected_version": current["version"]}, 200)
+	}
+	rotated := request("POST", path+"/buyer-session", "", "", cookieHeaders, map[string]any{"new": true}, 200)
+	if len(rotated.Result().Cookies()) != 1 || rotated.Result().Cookies()[0].Value == cookies[0].Value {
+		t.Fatal("completed buyer session did not rotate")
+	}
+	request("GET", "/api/public/buyer-order", "", "", cookieHeaders, nil, 200) // Old receipt remains valid, never erased by completion.
 	must(`UPDATE public.tenants SET ordering_enabled=false,menu_published=false WHERE id=?`, t1)
 	request("POST", path+"/quote", "", "", nil, basket, 409)
 	request("GET", "/api/public/buyer-order", "", "", headers, nil, 200)

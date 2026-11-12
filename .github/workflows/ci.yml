@@ -55,6 +55,7 @@ jobs:
           node tools/test-workspace-browser.mjs
           node tools/test-menu-cash-browser.mjs
           node tools/test-buyer-browser.mjs
+          node tools/test-buyer-cookie-browser.mjs
           node tools/test-order-stream-browser.mjs
           node tools/test-hierarchy-browser.mjs
           node tools/test-care-browser.mjs

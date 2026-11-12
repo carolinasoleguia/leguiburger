@@ -268,6 +268,9 @@ func (h *Handler) buyerReceiptData(r *http.Request, db *gorm.DB, grant buyeracce
 }
 func (h *Handler) buyerReceipt(r *http.Request) (Result, error) {
 	grant, e := buyeraccess.Resolve(r.Context(), h.repo.DB, buyeraccess.Token(r), false)
+	if e == nil && r.Header.Get("Authorization") == "" && grant.TenantID != r.Header.Get("X-Buyer-Tenant") {
+		return Result{}, notFound()
+	}
 	if e != nil {
 		return Result{}, e
 	}
@@ -279,6 +282,12 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 		return Result{}, notFound()
 	}
 	secret := buyeraccess.Token(r)
+	if r.Header.Get("Authorization") == "" {
+		s, ok := buyeraccess.CookieSession(r, id)
+		if !ok || s.Secret != secret || s.Key != r.Header.Get("Idempotency-Key") {
+			return Result{}, badInput("La confirmación no coincide con la sesión de compra")
+		}
+	}
 	key := r.Header.Get("Idempotency-Key")
 	if !buyeraccess.ValidToken(secret) || !validID(key) {
 		return Result{}, badInput("Falta una confirmación de compra válida")

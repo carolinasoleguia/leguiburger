@@ -20,7 +20,17 @@ type Grant struct{ OrderID, TenantID, BrandID string }
 
 func Digest(raw string) string { sum := sha256.Sum256([]byte(raw)); return hex.EncodeToString(sum[:]) }
 func Token(r *http.Request) string {
-	return strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if r.Header.Get("Authorization") != "" {
+		return strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	}
+	tenant := r.Header.Get("X-Buyer-Tenant")
+	if tenant == "" {
+		tenant = r.PathValue("id")
+	}
+	if session, ok := CookieSession(r, tenant); ok {
+		return session.Secret
+	}
+	return ""
 }
 func ValidToken(raw string) bool {
 	decoded, e := base64.RawURLEncoding.DecodeString(raw)

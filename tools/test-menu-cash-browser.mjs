@@ -133,6 +133,11 @@ async function setup(width, theme, actor = "admin") {
               email: "fixture@example.invalid",
             },
           });
+    if (p.endsWith("/buyer-session"))
+      return reply(r, {
+        creation_key: "60000000-0000-4000-8000-000000000001",
+        payment_key: "70000000-0000-4000-8000-000000000001",
+      });
     if (p.startsWith("/api/public/menu/")) {
       const data = {
         location: {

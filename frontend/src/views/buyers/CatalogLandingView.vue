@@ -225,7 +225,7 @@ function image(url) {
               <button
                 v-if="data.ordering_enabled"
                 class="btn-primary menu-add"
-                :disabled="!item.available"
+                :disabled="!item.available || !checkout?.ready"
                 @click="checkout?.open(item)"
               >
                 Elegir producto

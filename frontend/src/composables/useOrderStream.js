@@ -1,6 +1,12 @@
 import { ref, watch, onBeforeUnmount } from "vue";
-// fetch streaming keeps the capability in Authorization, out of URLs and logs.
-export function useOrderStream({ path, token, enabled, refresh }) {
+// Use the HttpOnly buyer cookie or a read-only tracking bearer, never URL credentials.
+export function useOrderStream({
+  path,
+  token,
+  tenant = () => "",
+  enabled,
+  refresh,
+}) {
   const live = ref(false);
   let stopped = false,
     controller,
@@ -25,17 +31,26 @@ export function useOrderStream({ path, token, enabled, refresh }) {
     }
   }
   async function connect() {
-    if (running || stopped || document.hidden || !enabled() || !token()) return;
+    if (
+      running ||
+      stopped ||
+      document.hidden ||
+      !enabled() ||
+      (!token() && !tenant())
+    )
+      return;
     running = true;
     controller = new AbortController();
     let watchdog = setTimeout(() => controller.abort(), 45000);
     try {
       const response = await fetch(path, {
-        credentials: "omit",
+        credentials: "same-origin",
         cache: "no-store",
         referrerPolicy: "no-referrer",
         headers: {
-          Authorization: `Bearer ${token()}`,
+          ...(token()
+            ? { Authorization: `Bearer ${token()}` }
+            : { "X-Buyer-Tenant": tenant() }),
           Accept: "text/event-stream",
         },
         signal: controller.signal,

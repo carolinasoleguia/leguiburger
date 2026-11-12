@@ -30,6 +30,9 @@ func (h *Handler) buyerOrderCheckout(w http.ResponseWriter, r *http.Request) err
 		return denied()
 	}
 	grant, e := buyeraccess.Resolve(r.Context(), h.db, buyeraccess.Token(r), false)
+	if e == nil && r.Header.Get("Authorization") == "" && grant.TenantID != r.Header.Get("X-Buyer-Tenant") {
+		return missing()
+	}
 	if e != nil {
 		return missing()
 	}

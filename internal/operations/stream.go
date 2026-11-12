@@ -30,6 +30,9 @@ func (h *Handler) orderStream(w http.ResponseWriter, r *http.Request, tracking b
 		defer cancel()
 		if !tracking {
 			grant, e := buyeraccess.Resolve(ctx, h.repo.DB, raw, false)
+			if e == nil && r.Header.Get("Authorization") == "" && grant.TenantID != r.Header.Get("X-Buyer-Tenant") {
+				return "", notFound()
+			}
 			return grant.OrderID, e
 		}
 		var id string

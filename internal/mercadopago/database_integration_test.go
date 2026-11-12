@@ -223,6 +223,7 @@ func TestDatabaseIntegration(t *testing.T) {
 		}
 		if local != "" {
 			r.Header.Set("X-Tenant-ID", local)
+			r.Header.Set("X-Buyer-Tenant", local)
 		}
 		for _, c := range cookies {
 			r.AddCookie(c)
@@ -409,7 +410,9 @@ func TestDatabaseIntegration(t *testing.T) {
 	guestBasket := map[string]any{"fulfillment": "pickup", "items": []any{map[string]any{"product_id": product, "quantity": 1}}}
 	quote := request("POST", "/api/public/menu/"+tenant+"/quote", "", "", "", guestBasket, 200)
 	guestPayload := map[string]any{"fulfillment": "pickup", "items": guestBasket["items"], "quote_digest": quote.Body["digest"], "name": "Guest buyer", "phone": "1155550123", "payment_method": "mercadopago"}
-	guestOrder := request("POST", "/api/public/menu/"+tenant+"/orders", guest, uuid.NewString(), "", guestPayload, 201).Body["id"].(string)
+	guestCreationKey := uuid.NewString()
+	guestOrder := request("POST", "/api/public/menu/"+tenant+"/orders", guest, guestCreationKey, "", guestPayload, 201).Body["id"].(string)
+	guestSession := request("POST", "/api/public/menu/"+tenant+"/buyer-session", guest, "", "", map[string]any{"legacy_key": guestCreationKey}, 200)
 	guestKey := uuid.NewString()
 	request("POST", "/api/public/buyer-order/mercadopago", guest, guestKey, otherTenant, map[string]any{}, 409)
 	privateOrder := request("GET", "/api/orders/"+guestOrder, adminToken, "", tenant, nil, 200)
@@ -417,7 +420,8 @@ func TestDatabaseIntegration(t *testing.T) {
 	request("POST", "/api/public/buyer-order/mercadopago", guest, guestKey, otherTenant, map[string]any{"amount": "0.01"}, 400)
 	request("POST", "/api/public/buyer-order/mercadopago", buyeraccess.TrackingToken(guest), guestKey, tenant, map[string]any{}, 404)
 	beforeGuestCreates := creates
-	guestCheckout := request("POST", "/api/public/buyer-order/mercadopago", guest, guestKey, otherTenant, map[string]any{}, 200)
+	request("POST", "/api/public/buyer-order/mercadopago", "", guestKey, otherTenant, map[string]any{}, 404, guestSession.Cookies...)
+	guestCheckout := request("POST", "/api/public/buyer-order/mercadopago", "", guestKey, tenant, map[string]any{}, 200, guestSession.Cookies...)
 	request("POST", "/api/public/buyer-order/mercadopago", guest, guestKey, otherTenant, map[string]any{}, 200)
 	if creates != beforeGuestCreates+1 || guestCheckout.Body["state"] != "created" || guestCheckout.Body["amount"] != "100.00" {
 		t.Fatalf("guest checkout failed %v", guestCheckout.Body)
