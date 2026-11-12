@@ -293,7 +293,10 @@ function menuPage(n) {
         <tbody>
           <LoadingRows v-if="w.loading.value" :columns="6" />
           <tr v-show="!w.loading.value" v-for="item in orders" :key="item.id">
-            <td>#{{ item.id.slice(0, 8) }}</td>
+            <td>
+              #{{ item.id.slice(0, 8)
+              }}<small v-if="item.channel === 'web'"> · Online</small>
+            </td>
             <td>{{ when(item.created_at) }}</td>
             <td>{{ statusLabels[item.status] }}</td>
             <td>{{ money(item.total_due, item.currency) }}</td>
@@ -320,11 +323,37 @@ function menuPage(n) {
       <h2>
         Pedido #{{ detail.id.slice(0, 8) }} · {{ statusLabels[detail.status] }}
       </h2>
+      <section v-if="detail.buyer_name" aria-label="Datos del comprador">
+        <h3>{{ detail.buyer_name }}</h3>
+        <p>
+          Teléfono: {{ detail.buyer_phone
+          }}<span v-if="detail.buyer_email"> · {{ detail.buyer_email }}</span>
+        </p>
+        <p>
+          {{
+            detail.fulfillment === "delivery"
+              ? "Envío a domicilio"
+              : "Retiro en el local"
+          }}<span v-if="detail.shipping_address">
+            · {{ detail.shipping_address }}</span
+          >
+        </p>
+        <p>
+          Pago elegido:
+          {{
+            detail.buyer_payment_method === "mercadopago"
+              ? "Mercado Pago después de la aceptación"
+              : "Al retirar o recibir"
+          }}
+        </p>
+      </section>
       <div v-for="line in detail.items" :key="line.id" class="report-row">
         <span
           >{{ line.quantity }} × {{ line.product_name
           }}<small v-for="extra in line.extras" :key="extra.id">
             + {{ extra.quantity }} {{ extra.extra_name }}</small
+          ><small v-if="line.preparation_note"
+            >Preferencias: {{ line.preparation_note }}</small
           ></span
         ><span>{{ money(line.final_price_unit, detail.currency) }} c/u</span>
       </div>

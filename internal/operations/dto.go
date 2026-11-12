@@ -56,6 +56,7 @@ type CreateOrderRequest struct {
 	Items            []OrderItemRequest `json:"items"`
 }
 type OrderItemRequest struct {
+	Note      string              `json:"note,omitempty"`
 	ProductID string              `json:"product_id"`
 	Quantity  int                 `json:"quantity"`
 	Extras    []OrderExtraRequest `json:"extras,omitempty"`

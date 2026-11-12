@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import BuyerCheckout from "../../components/BuyerCheckout.vue";
+const checkout = ref(null);
 import BrandLogo from "../../components/BrandLogo.vue";
 import ThemeToggle from "../../components/ThemeToggle.vue";
 import AppIcon from "../../components/AppIcon.vue";
@@ -128,6 +130,15 @@ function image(url) {
           </p>
         </div>
       </header>
+      <p class="menu-ordering-notice" :aria-hidden="!data || loading">
+        {{
+          !data || loading
+            ? " "
+            : data.ordering_enabled
+              ? "Elegí tus favoritas. Pedí acá, sin crear una cuenta."
+              : "Por ahora, este local comparte su carta sin recibir pedidos online."
+        }}
+      </p>
       <section v-if="!tenant" class="card menu-message">
         <AppIcon name="burger" :size="40" />
         <h2>Encontrá la carta de tu local</h2>
@@ -211,6 +222,14 @@ function image(url) {
                   item.available ? "Disponible" : "No disponible por ahora"
                 }}</span>
               </div>
+              <button
+                v-if="data.ordering_enabled"
+                class="btn-primary menu-add"
+                :disabled="!item.available"
+                @click="checkout?.open(item)"
+              >
+                Elegir producto
+              </button>
             </div>
           </article>
           <div
@@ -234,6 +253,13 @@ function image(url) {
           @change="page"
       /></template>
     </main>
+    <BuyerCheckout
+      v-if="tenant"
+      :key="tenant"
+      ref="checkout"
+      :tenant="tenant"
+      :menu="data"
+    />
     <footer class="public-menu-footer">
       <span>Tu marca. Tu sabor.</span
       ><router-link to="/">Con LeguiBurger</router-link>
@@ -241,6 +267,15 @@ function image(url) {
   </div>
 </template>
 <style scoped>
+.menu-add {
+  margin-top: 20px;
+  width: 100%;
+}
+.menu-ordering-notice {
+  min-height: 48px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
 .public-menu {
   min-height: 100dvh;
   background: var(--bg);
@@ -408,7 +443,7 @@ function image(url) {
   gap: 24px;
   max-width: 1200px;
   margin: auto;
-  padding: 24px;
+  padding: 24px 24px 110px;
   border-top: 1px solid var(--border);
   font-size: 13px;
   color: var(--text-muted);

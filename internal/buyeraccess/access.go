@@ -1,0 +1,70 @@
+// Package buyeraccess validates a guest capability. It never creates an app session.
+package buyeraccess
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
+	"gorm.io/gorm"
+	"net"
+	"net/http"
+	"strings"
+)
+
+var ErrInvalid = errors.New("invalid buyer capability")
+var ErrRateLimited = errors.New("buyer request rate exceeded")
+
+type Grant struct{ OrderID, TenantID, BrandID string }
+
+func Digest(raw string) string { sum := sha256.Sum256([]byte(raw)); return hex.EncodeToString(sum[:]) }
+func Token(r *http.Request) string {
+	return strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+}
+func ValidToken(raw string) bool {
+	decoded, e := base64.RawURLEncoding.DecodeString(raw)
+	return e == nil && len(decoded) == 32 && len(raw) == 43
+}
+func TrackingToken(raw string) string {
+	sum := sha256.Sum256([]byte("leguiburger:buyer-tracking:" + raw))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+func Resolve(ctx context.Context, db *gorm.DB, raw string, lock bool) (Grant, error) {
+	var grant Grant
+	if !ValidToken(raw) {
+		return grant, ErrInvalid
+	}
+	query := `SELECT a.order_id::text,a.tenant_id::text,t.brand_id::text FROM legui_private.buyer_orders a JOIN public.orders o ON o.id=a.order_id AND o.tenant_id=a.tenant_id AND o.payment_environment='production' JOIN public.tenants t ON t.id=a.tenant_id AND t.active JOIN public.brands b ON b.id=t.brand_id AND b.suspended_at IS NULL AND b.closed_at IS NULL WHERE a.access_digest=? AND a.expires_at>clock_timestamp()`
+	if lock {
+		query += ` FOR SHARE OF a,t,b`
+	}
+	q := db.WithContext(ctx).Raw(query, Digest(raw)).Scan(&grant)
+	if q.Error != nil {
+		return grant, q.Error
+	}
+	if q.RowsAffected != 1 {
+		return grant, ErrInvalid
+	}
+	return grant, nil
+}
+
+// Use the TCP peer; client-supplied forwarded IP headers cannot reset the bucket.
+func Rate(ctx context.Context, db *gorm.DB, r *http.Request, scope string, max int) error {
+	ip, _, e := net.SplitHostPort(r.RemoteAddr)
+	if e != nil {
+		ip = r.RemoteAddr
+	}
+	if ip == "" {
+		ip = "unknown"
+	}
+	var count int
+	q := db.WithContext(ctx).Raw(`INSERT INTO legui_private.auth_rate_limits(bucket,attempts) VALUES(?,1) ON CONFLICT(bucket) DO UPDATE SET attempts=CASE WHEN auth_rate_limits.window_start<clock_timestamp()-interval '15 minutes' THEN 1 ELSE auth_rate_limits.attempts+1 END,window_start=CASE WHEN auth_rate_limits.window_start<clock_timestamp()-interval '15 minutes' THEN clock_timestamp() ELSE auth_rate_limits.window_start END RETURNING attempts`, "buyer:"+scope+":"+Digest(ip)).Scan(&count)
+	if q.Error != nil {
+		return q.Error
+	}
+	if count > max {
+		return ErrRateLimited
+	}
+	return nil
+}

@@ -65,6 +65,7 @@ function advance(item, status) {
           <ul>
             <li v-for="(line, i) in item.items" :key="i">
               <strong>{{ line.quantity }} × {{ line.product_name }}</strong>
+              <p v-if="line.note">Preferencias: {{ line.note }}</p>
               <div v-for="(extra, j) in line.extras" :key="j">
                 + {{ extra.quantity }} {{ extra.name }}
               </div>

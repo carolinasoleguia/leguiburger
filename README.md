@@ -59,6 +59,10 @@ del catálogo existente, QR, búsqueda completa y arqueos. La [revisión de aisl
 de la API](docs/revision-aislamiento-api.md) documenta los límites entre plataforma,
 restaurantes y colaboradores, con pruebas de IDs y ámbitos forzados.
 
+La [experiencia de compradores](docs/experiencia-compradores.md) agrega carrito, extras,
+entrega, confirmación sin registro, seguimiento y pago de pedidos aceptados sobre
+la misma carta pública.
+
 La [API de operación y analítica](docs/api-operaciones.md) documenta roles, endpoints, DTOs y ejemplos. El [diagnóstico de analítica](docs/analitica-dashboards.md) conserva la comparación con Al Toque y el inventario previo a la migración.
 
 ```powershell

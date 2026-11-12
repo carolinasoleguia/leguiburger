@@ -19,7 +19,9 @@ anteriores conservan la categoría inicial “Hamburguesas”.
 
 `GET /api/public/menu/{id}` no requiere sesión. Devuelve únicamente nombre de
 marca/local, dirección, contacto, horarios y productos activos con descripción,
-categoría, imagen, precio efectivo y disponibilidad. El stock exacto, costos,
+categoría, imagen, precio efectivo y disponibilidad. También informa extras y
+métodos de envío activos con sus precios públicos, recepción de pedidos y
+disponibilidad del pago online, sin exponer credenciales. El stock exacto, costos,
 recetas, credenciales, clientes, pedidos y pagos no forman parte de esa proyección.
 Un producto sin stock y con seguimiento aparece como no disponible.
 
@@ -32,6 +34,10 @@ Un contenido que alguien ya descargó no puede retirarse de su dispositivo.
 
 La carta publicada es pública también para usuarios de otras marcas. Esa
 publicación explícita no concede acceso a los endpoints internos del catálogo.
+
+Para comprar desde esta misma carta, el administrador habilita por separado la
+recepción de pedidos online. Ver [experiencia de compradores](experiencia-compradores.md)
+para carrito, entrega, aceptación, pagos y seguimiento.
 
 ## Búsqueda completa
 

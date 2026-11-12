@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"leguiburger/internal/auth"
+	"leguiburger/internal/buyeraccess"
 	"leguiburger/internal/operations"
 	"net/http"
 	"net/http/httptest"
@@ -387,6 +388,63 @@ func TestDatabaseIntegration(t *testing.T) {
 	}
 	// Authentication and browser roles do not grant direct access to provider state.
 	count(`SELECT CASE WHEN has_table_privilege('anon','legui_private.mp_connections','SELECT') OR has_table_privilege('authenticated','legui_private.mp_provider_payments','SELECT') THEN 1 ELSE 0 END`, 0)
+
+	// Production guest flow still uses only the simulated provider and rollback DB.
+	liveCfg := cfg
+	liveCfg.Environment = "production"
+	liveCfg.LiveEnabled = true
+	liveHandler := NewHandler(tx, liveCfg, provider)
+	oldMux := mux
+	mux = http.NewServeMux()
+	liveHandler.Register(mux)
+	operations.RegisterRoutes(mux, tx, operations.BuyerOptions{OnlinePaymentAvailable: liveHandler.BuyerPaymentAvailable})
+	liveConnection := uuid.NewString()
+	encrypted, e := liveCfg.seal(jsonString(credentials{AccessToken: "business-token", RefreshToken: "business-refresh"}), "connection/"+liveConnection)
+	if e != nil {
+		t.Fatal(e)
+	}
+	must(`INSERT INTO legui_private.mp_connections(id,scope,brand_id,tenant_id,environment,state,collector_id,credential_cipher,expires_at) VALUES(?,'business',?,?,'production','connected','111',?,clock_timestamp()+interval '1 day')`, liveConnection, brand, tenant, encrypted)
+	must(`UPDATE public.tenants SET menu_published=true,ordering_enabled=true WHERE id=?`, tenant)
+	guest := base64.RawURLEncoding.EncodeToString([]byte(strings.Repeat("g", 32)))
+	guestBasket := map[string]any{"fulfillment": "pickup", "items": []any{map[string]any{"product_id": product, "quantity": 1}}}
+	quote := request("POST", "/api/public/menu/"+tenant+"/quote", "", "", "", guestBasket, 200)
+	guestPayload := map[string]any{"fulfillment": "pickup", "items": guestBasket["items"], "quote_digest": quote.Body["digest"], "name": "Guest buyer", "phone": "1155550123", "payment_method": "mercadopago"}
+	guestOrder := request("POST", "/api/public/menu/"+tenant+"/orders", guest, uuid.NewString(), "", guestPayload, 201).Body["id"].(string)
+	guestKey := uuid.NewString()
+	request("POST", "/api/public/buyer-order/mercadopago", guest, guestKey, otherTenant, map[string]any{}, 409)
+	privateOrder := request("GET", "/api/orders/"+guestOrder, adminToken, "", tenant, nil, 200)
+	request("PATCH", "/api/orders/"+guestOrder+"/status", adminToken, uuid.NewString(), tenant, map[string]any{"status": "accepted", "expected_version": privateOrder.Body["version"]}, 200)
+	request("POST", "/api/public/buyer-order/mercadopago", guest, guestKey, otherTenant, map[string]any{"amount": "0.01"}, 400)
+	request("POST", "/api/public/buyer-order/mercadopago", buyeraccess.TrackingToken(guest), guestKey, tenant, map[string]any{}, 404)
+	beforeGuestCreates := creates
+	guestCheckout := request("POST", "/api/public/buyer-order/mercadopago", guest, guestKey, otherTenant, map[string]any{}, 200)
+	request("POST", "/api/public/buyer-order/mercadopago", guest, guestKey, otherTenant, map[string]any{}, 200)
+	if creates != beforeGuestCreates+1 || guestCheckout.Body["state"] != "created" || guestCheckout.Body["amount"] != "100.00" {
+		t.Fatalf("guest checkout failed %v", guestCheckout.Body)
+	}
+	var gc checkout
+	tx.Raw(`SELECT `+checkoutColumns+` FROM legui_private.mp_checkouts WHERE id=?`, guestCheckout.Body["id"]).Scan(&gc)
+	if gc.OrderID != guestOrder || gc.TenantID != tenant || gc.ActorKind != "buyer" {
+		t.Fatal("guest checkout escaped capability scope")
+	}
+	mutex.Lock()
+	preference := preferences[gc.RemoteID]
+	back := preference["back_urls"].(map[string]any)["success"].(string)
+	mutex.Unlock()
+	if !strings.Contains(back, "/catalogo/"+tenant) || strings.Contains(back, guest) {
+		t.Fatal("unsafe buyer payment return")
+	}
+	payments["3001"] = newPayment("3001", gc, "111", "100.00")
+	payments["3001"]["live_mode"] = true
+	if state, e := liveHandler.observePayment(context.Background(), liveConnection, "3001"); e != nil || state != "applied" {
+		t.Fatalf("guest payment settlement %s %v", state, e)
+	}
+	guestReceipt := request("GET", "/api/public/buyer-order", guest, "", "", nil, 200)
+	if guestReceipt.Body["total_paid"] != "100.00" {
+		t.Fatal("verified guest payment missing from receipt")
+	}
+	request("GET", "/api/orders/"+guestOrder, guest, "", tenant, nil, 401)
+	mux = oldMux
 	// An archived business submits only prepared cancellation commands through
 	// the normal journal. Re-running a worker cannot send the command again.
 	must(`INSERT INTO legui_private.business_closures(brand_id,actor_id,reason) VALUES(?,?,'Fixture closure worker')`, brand, admin)

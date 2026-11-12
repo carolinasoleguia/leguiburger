@@ -32,13 +32,22 @@ func unauthorized() error {
 func notFound() error               { return &apiError{404, "NOT_FOUND", "Recurso no encontrado"} }
 func conflict(message string) error { return &apiError{409, "CONFLICT", message} }
 
-type Handler struct{ repo *Repository }
+type Handler struct {
+	repo  *Repository
+	buyer BuyerOptions
+}
 type endpoint func(*http.Request, Principal) (Result, error)
 
-func RegisterRoutes(mux *http.ServeMux, db *gorm.DB) {
+func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 	h := &Handler{repo: NewRepository(db)}
+	if len(options) > 0 {
+		h.buyer = options[0]
+	}
 	mux.HandleFunc("GET /api/public/order", h.publicOrder)
 	mux.HandleFunc("GET /api/public/menu/{id}", h.publicMenu)
+	mux.HandleFunc("POST /api/public/menu/{id}/quote", h.buyerWrap(h.buyerQuote))
+	mux.HandleFunc("POST /api/public/menu/{id}/orders", h.buyerWrap(h.buyerCreate))
+	mux.HandleFunc("GET /api/public/buyer-order", h.buyerWrap(h.buyerReceipt))
 	routes := map[string]endpoint{
 		"GET /api/menu/settings": h.menuSettings, "PATCH /api/menu/settings": h.menuSettings,
 		"GET /api/cash/shifts": h.cashShifts, "POST /api/cash/shifts": h.openCash, "GET /api/cash/shifts/{id}": h.cashShift, "GET /api/cash/shifts/{id}/entries": h.cashEntries, "POST /api/cash/shifts/{id}/entries": h.moveCash, "POST /api/cash/shifts/{id}/close": h.closeCash,

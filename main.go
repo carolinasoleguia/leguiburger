@@ -167,10 +167,10 @@ func main() {
 	}
 	auth.RegisterSecurityRoutes(http.DefaultServeMux, db.DB, authSvc)
 
-	operations.RegisterRoutes(http.DefaultServeMux, db.DB)
+	mp := mercadopago.NewHandler(db.DB, mercadopago.LoadConfig(), nil)
+	operations.RegisterRoutes(http.DefaultServeMux, db.DB, operations.BuyerOptions{OnlinePaymentAvailable: mp.BuyerPaymentAvailable})
 	businesscare.Register(http.DefaultServeMux, db.DB)
 	observability.Report = func(ctx context.Context, code, id string) { _ = businesscare.Record(ctx, db.DB, "api", code, id) }
-	mp := mercadopago.NewHandler(db.DB, mercadopago.LoadConfig(), nil)
 	mp.Register(http.DefaultServeMux)
 	if os.Getenv("WORKER_MODE") != "external" {
 		go workers.Run(ctx, db.DB)

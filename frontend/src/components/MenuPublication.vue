@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import { apiFetch } from "../services/api.js";
 const props = defineProps({ tenant: String });
 const published = ref(false),
+  ordering = ref(false),
   loading = ref(true),
   busy = ref(false),
   error = ref(""),
@@ -30,6 +31,7 @@ async function read() {
       throw new Error(data.message || "No pudimos consultar la publicación");
     if (current !== revision) return;
     published.value = !!data.published;
+    ordering.value = !!data.ordering_enabled;
     if (published.value) await makeQR(current);
   } catch (e) {
     if (current === revision) error.value = e.message;
@@ -48,13 +50,17 @@ async function makeQR(current = revision) {
 }
 let pendingKey = "",
   pendingBody = "";
-async function toggle() {
+async function toggle(receiving = false) {
   if (busy.value) return;
   busy.value = true;
   error.value = "";
   notice.value = "";
   const current = revision;
-  const body = JSON.stringify({ published: !published.value });
+  const body = JSON.stringify(
+    receiving
+      ? { ordering_enabled: !ordering.value }
+      : { published: !published.value },
+  );
   if (body !== pendingBody) {
     pendingBody = body;
     pendingKey = crypto.randomUUID();
@@ -71,11 +77,16 @@ async function toggle() {
     pendingBody = "";
     if (current !== revision) return;
     published.value = data.published;
+    ordering.value = !!data.ordering_enabled;
     if (published.value) await makeQR(current);
     else qr.value = "";
-    notice.value = published.value
-      ? "Carta publicada"
-      : "Carta retirada de la vista pública";
+    notice.value = receiving
+      ? ordering.value
+        ? "Pedidos online habilitados"
+        : "Pedidos online pausados"
+      : published.value
+        ? "Carta publicada"
+        : "Carta retirada de la vista pública";
   } catch (e) {
     if (current === revision) error.value = e.message;
   } finally {
@@ -116,7 +127,7 @@ watch(() => props.tenant, read, { immediate: true });
           class="btn-primary"
           type="button"
           :disabled="loading || busy || !!error"
-          @click="toggle"
+          @click="toggle(false)"
         >
           {{
             busy
@@ -140,6 +151,22 @@ watch(() => props.tenant, read, { immediate: true });
           Copiar enlace
         </button>
       </div>
+      <p v-if="published">
+        {{
+          ordering
+            ? "Recibiendo pedidos online. Revisá Caja y pedidos para aceptarlos."
+            : "La carta está visible, pero no recibe pedidos online."
+        }}
+      </p>
+      <button
+        v-if="published"
+        class="btn-secondary"
+        type="button"
+        :disabled="loading || busy || !!error"
+        @click="toggle(true)"
+      >
+        {{ ordering ? "Pausar pedidos online" : "Habilitar pedidos online" }}
+      </button>
       <p v-if="published" class="menu-share-url">{{ link }}</p>
       <p v-if="error" class="error-msg" role="alert">
         {{ error }}

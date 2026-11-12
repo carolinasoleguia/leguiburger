@@ -78,7 +78,7 @@ func (h *Handler) createOrder(r *http.Request, p Principal) (Result, error) {
 		return Result{}, badInput("Pedido inválido; debe contener de 1 a 50 productos")
 	}
 	for _, item := range input.Items {
-		if !validID(item.ProductID) || item.Quantity < 1 || item.Quantity > 500 || len(item.Extras) > 20 {
+		if !validID(item.ProductID) || item.Quantity < 1 || item.Quantity > 500 || len(item.Extras) > 20 || len([]rune(item.Note)) > 300 {
 			return Result{}, badInput("Producto o cantidad inválidos")
 		}
 		seen := map[string]bool{}
@@ -90,61 +90,66 @@ func (h *Handler) createOrder(r *http.Request, p Principal) (Result, error) {
 		}
 	}
 	return h.mutate(r, p, scope, "orders.create", input, func(tx *gorm.DB, key, digest string) (json.RawMessage, int, error) {
-		id := uuid.NewString()
-		shipping := "0"
-		if input.ShippingMethodID != nil {
-			var row struct{ Cost string }
-			q := tx.Raw(`SELECT cost::text FROM public.shipping_methods WHERE id=? AND tenant_id=? AND is_active FOR SHARE`, *input.ShippingMethodID, scope.TenantID).Scan(&row)
-			if q.Error != nil {
-				return nil, 0, q.Error
-			}
-			if q.RowsAffected == 0 {
-				return nil, 0, notFound()
-			}
-			shipping = row.Cost
+		data, err := writeOrder(tx, scope, input, key)
+		return data, 201, err
+	})
+}
+
+func writeOrder(tx *gorm.DB, scope Scope, input CreateOrderRequest, key string) (json.RawMessage, error) {
+	id := uuid.NewString()
+	shipping := "0"
+	if input.ShippingMethodID != nil {
+		var row struct{ Cost string }
+		q := tx.Raw(`SELECT cost::text FROM public.shipping_methods WHERE id=? AND tenant_id=? AND is_active FOR SHARE`, *input.ShippingMethodID, scope.TenantID).Scan(&row)
+		if q.Error != nil {
+			return nil, q.Error
 		}
-		if err := tx.Exec(`INSERT INTO public.orders(id,tenant_id,customer_id,shipping_method_id,shipping_address,channel,payment_environment,shipping_cost,idempotency_key) VALUES(?,?,?,?,?,?,?,?::numeric,?)`, id, scope.TenantID, input.CustomerID, input.ShippingMethodID, input.ShippingAddress, input.Channel, input.Environment, shipping, key).Error; err != nil {
-			return nil, 0, err
+		if q.RowsAffected == 0 {
+			return nil, notFound()
 		}
-		for _, item := range input.Items {
-			var product struct {
+		shipping = row.Cost
+	}
+	if err := tx.Exec(`INSERT INTO public.orders(id,tenant_id,customer_id,shipping_method_id,shipping_address,channel,payment_environment,shipping_cost,idempotency_key) VALUES(?,?,?,?,?,?,?,?::numeric,?)`, id, scope.TenantID, input.CustomerID, input.ShippingMethodID, input.ShippingAddress, input.Channel, input.Environment, shipping, key).Error; err != nil {
+		return nil, err
+	}
+	for _, item := range input.Items {
+		var product struct {
+			Name  string
+			Price string
+		}
+		q := tx.Raw(`SELECT p.name,coalesce(tp.price_override,p.base_price)::text price FROM public.tenant_products tp JOIN public.products p ON p.id=tp.product_id WHERE tp.tenant_id=? AND tp.product_id=? AND tp.is_active AND tp.is_available AND p.is_active AND p.brand_id=? FOR SHARE OF p,tp`, scope.TenantID, item.ProductID, scope.BrandID).Scan(&product)
+		if q.Error != nil {
+			return nil, q.Error
+		}
+		if q.RowsAffected == 0 {
+			return nil, conflict("El producto no está disponible en este local")
+		}
+		detailID := uuid.NewString()
+		if err := tx.Exec(`INSERT INTO public.order_details(id,tenant_id,order_id,product_id,product_name,quantity,list_price_unit,discount_unit,final_price_unit,preparation_note) VALUES(?,?,?,?,?,?,?::numeric,0,?::numeric,?)`, detailID, scope.TenantID, id, item.ProductID, product.Name, item.Quantity, product.Price, product.Price, item.Note).Error; err != nil {
+			return nil, err
+		}
+		for _, extra := range item.Extras {
+			var row struct {
 				Name  string
 				Price string
 			}
-			q := tx.Raw(`SELECT p.name,coalesce(tp.price_override,p.base_price)::text price FROM public.tenant_products tp JOIN public.products p ON p.id=tp.product_id WHERE tp.tenant_id=? AND tp.product_id=? AND tp.is_active AND tp.is_available AND p.is_active AND p.brand_id=? FOR SHARE OF p,tp`, scope.TenantID, item.ProductID, scope.BrandID).Scan(&product)
+			q := tx.Raw(`SELECT name,current_price::text price FROM public.extras WHERE id=? AND tenant_id=? AND is_active FOR SHARE`, extra.ExtraID, scope.TenantID).Scan(&row)
 			if q.Error != nil {
-				return nil, 0, q.Error
+				return nil, q.Error
 			}
 			if q.RowsAffected == 0 {
-				return nil, 0, conflict("El producto no está disponible en este local")
+				return nil, conflict("El extra no está disponible en este local")
 			}
-			detailID := uuid.NewString()
-			if err := tx.Exec(`INSERT INTO public.order_details(id,tenant_id,order_id,product_id,product_name,quantity,list_price_unit,discount_unit,final_price_unit) VALUES(?,?,?,?,?,?,?::numeric,0,?::numeric)`, detailID, scope.TenantID, id, item.ProductID, product.Name, item.Quantity, product.Price, product.Price).Error; err != nil {
-				return nil, 0, err
-			}
-			for _, extra := range item.Extras {
-				var row struct {
-					Name  string
-					Price string
-				}
-				q := tx.Raw(`SELECT name,current_price::text price FROM public.extras WHERE id=? AND tenant_id=? AND is_active FOR SHARE`, extra.ExtraID, scope.TenantID).Scan(&row)
-				if q.Error != nil {
-					return nil, 0, q.Error
-				}
-				if q.RowsAffected == 0 {
-					return nil, 0, conflict("El extra no está disponible en este local")
-				}
-				if err := tx.Exec(`INSERT INTO public.order_detail_extras(order_detail_id,extra_id,extra_name,extra_price_charged,quantity) VALUES(?,?,?,?::numeric,?)`, detailID, extra.ExtraID, row.Name, row.Price, extra.Quantity).Error; err != nil {
-					return nil, 0, err
-				}
+			if err := tx.Exec(`INSERT INTO public.order_detail_extras(order_detail_id,extra_id,extra_name,extra_price_charged,quantity) VALUES(?,?,?,?::numeric,?)`, detailID, extra.ExtraID, row.Name, row.Price, extra.Quantity).Error; err != nil {
+				return nil, err
 			}
 		}
-		if err := tx.Exec(`UPDATE public.orders SET subtotal=(SELECT coalesce(sum(d.quantity*(d.final_price_unit+coalesce((SELECT sum(e.extra_price_charged*e.quantity) FROM public.order_detail_extras e WHERE e.order_detail_id=d.id),0))),0) FROM public.order_details d WHERE d.order_id=?) WHERE tenant_id=? AND id=?`, id, scope.TenantID, id).Error; err != nil {
-			return nil, 0, err
-		}
-		data, err := orderJSON(tx, scope.TenantID, id)
-		return data, 201, err
-	})
+	}
+	if err := tx.Exec(`UPDATE public.orders SET subtotal=(SELECT coalesce(sum(d.quantity*(d.final_price_unit+coalesce((SELECT sum(e.extra_price_charged*e.quantity) FROM public.order_detail_extras e WHERE e.order_detail_id=d.id),0))),0) FROM public.order_details d WHERE d.order_id=?) WHERE tenant_id=? AND id=?`, id, scope.TenantID, id).Error; err != nil {
+		return nil, err
+	}
+	data, err := orderJSON(tx, scope.TenantID, id)
+	return data, err
 }
 
 var orderTransitions = map[string][]string{"pending": {"accepted", "rejected", "canceled"}, "accepted": {"preparing", "canceled"}, "preparing": {"ready", "canceled"}, "ready": {"dispatched", "delivered", "canceled"}, "dispatched": {"delivered", "canceled"}}

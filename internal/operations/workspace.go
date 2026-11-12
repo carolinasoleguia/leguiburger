@@ -21,7 +21,7 @@ func (h *Handler) kitchenOrders(r *http.Request, p Principal) (Result, error) {
 	}
 	return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v) ORDER BY v.created_at,v.id),'[]'::jsonb))::text payload FROM (
  SELECT o.id,o.created_at,o.version,s.code status,
- coalesce((SELECT jsonb_agg(jsonb_build_object('product_name',d.product_name,'quantity',d.quantity,'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('name',x.extra_name,'quantity',x.quantity)) FROM public.order_detail_extras x WHERE x.order_detail_id=d.id),'[]'::jsonb))) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb) items
+ coalesce((SELECT jsonb_agg(jsonb_build_object('product_name',d.product_name,'quantity',d.quantity,'note',d.preparation_note,'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('name',x.extra_name,'quantity',x.quantity)) FROM public.order_detail_extras x WHERE x.order_detail_id=d.id),'[]'::jsonb))) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb) items
  FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id WHERE o.tenant_id=? AND o.payment_environment='production' AND s.code IN ('accepted','preparing','ready') ORDER BY o.created_at,o.id LIMIT 100)v`, scope.TenantID))
 }
 func (h *Handler) kitchenStatus(r *http.Request, p Principal) (Result, error) {

@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"leguiburger/internal/auth"
+	"leguiburger/internal/buyeraccess"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 )
 
 type checkout struct {
+	ActorKind         string
 	ID                string
 	Purpose           string
 	ConnectionID      string
@@ -41,7 +43,7 @@ type checkout struct {
 	RequestDigest     string
 }
 
-const checkoutColumns = `id::text,purpose,connection_id::text,connection_version::text,brand_id::text,coalesce(tenant_id::text,'') tenant_id,coalesce(order_id::text,'') order_id,coalesce(invoice_id::text,'') invoice_id,coalesce(subscription_id::text,'') subscription_id,environment,currency,amount::text,target_version,coalesce(interval_months,0) interval_months,coalesce(payer_email,'') payer_email,reference,state,coalesce(claim::text,'') claim,coalesce(remote_id,'') remote_id,coalesce(checkout_url,'') checkout_url,coalesce(reason,'') reason,created_at,expires_at,submitted_at,request_digest`
+const checkoutColumns = `actor_kind,id::text,purpose,connection_id::text,connection_version::text,brand_id::text,coalesce(tenant_id::text,'') tenant_id,coalesce(order_id::text,'') order_id,coalesce(invoice_id::text,'') invoice_id,coalesce(subscription_id::text,'') subscription_id,environment,currency,amount::text,target_version,coalesce(interval_months,0) interval_months,coalesce(payer_email,'') payer_email,reference,state,coalesce(claim::text,'') claim,coalesce(remote_id,'') remote_id,coalesce(checkout_url,'') checkout_url,coalesce(reason,'') reason,created_at,expires_at,submitted_at,request_digest`
 
 type checkoutInput struct {
 	Amount     string `json:"amount,omitempty"`
@@ -67,6 +69,14 @@ func (h *Handler) subscriptionCheckout(w http.ResponseWriter, r *http.Request, p
 	return h.beginCheckout(w, r, p, "subscription")
 }
 func (h *Handler) beginCheckout(w http.ResponseWriter, r *http.Request, p auth.SessionPrincipal, purpose string) error {
+	if p.Kind == "buyer" {
+		if purpose != "order" {
+			return denied()
+		}
+		if e := h.lockBuyer(r, p); e != nil {
+			return e
+		}
+	}
 	if e := h.limitAction(r, "checkout", p.ID, 60); e != nil {
 		return e
 	}
@@ -81,6 +91,9 @@ func (h *Handler) beginCheckout(w http.ResponseWriter, r *http.Request, p auth.S
 	var input checkoutInput
 	if e = decode(r, &input); e != nil {
 		return e
+	}
+	if p.Kind == "buyer" && input.Amount != "" {
+		return bad("El importe lo calcula el servidor")
 	}
 	if input.Amount != "" && !positiveMoney(input.Amount) {
 		return bad("Importe inválido")
@@ -126,11 +139,29 @@ func (h *Handler) beginCheckout(w http.ResponseWriter, r *http.Request, p auth.S
 	var result checkout
 	requestDigest := hash(jsonString(map[string]string{"target": id, "purpose": purpose, "amount": input.Amount, "payer_email": input.PayerEmail}))
 	e = h.db.WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
-		if e := auth.LockSession(r.Context(), tx); e != nil {
-			return e
+
+		if p.Kind == "buyer" {
+			grant, e := buyeraccess.Resolve(r.Context(), tx, buyeraccess.Token(r), true)
+			if e != nil || grant.OrderID != p.ID || grant.TenantID != p.TenantID {
+				return denied()
+			}
+		} else {
+			if e := auth.LockSession(r.Context(), tx); e != nil {
+				return e
+			}
 		}
+
 		if e := tx.Exec(`SELECT pg_advisory_xact_lock(hashtextextended(?,0))`, "mp-checkout:"+purpose+":"+id).Error; e != nil {
 			return e
+		}
+		if p.Kind == "buyer" {
+			var accepted bool
+			if e := tx.Raw(`SELECT s.code NOT IN ('pending','canceled','rejected') AND o.total_due>o.total_paid FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id WHERE o.id=? AND o.tenant_id=? FOR UPDATE OF o`, id, p.TenantID).Scan(&accepted).Error; e != nil {
+				return e
+			}
+			if !accepted {
+				return conflict("El restaurante tiene que aceptar el pedido antes de habilitar el pago online")
+			}
 		}
 		existing := tx.Raw(`SELECT `+checkoutColumns+` FROM legui_private.mp_checkouts WHERE actor_kind=? AND actor_id=? AND purpose=? AND operation_key=?`, p.Kind, p.ID, purpose, operation).Scan(&result)
 		if existing.Error != nil {
@@ -156,6 +187,7 @@ func (h *Handler) beginCheckout(w http.ResponseWriter, r *http.Request, p auth.S
 			PayerEmail     string
 		}
 		var selected *gorm.DB
+
 		switch purpose {
 		case "order":
 			tenant := r.Header.Get("X-Tenant-ID")
@@ -227,6 +259,9 @@ func (h *Handler) beginCheckout(w http.ResponseWriter, r *http.Request, p auth.S
 		if selected.Error != nil {
 			return selected.Error
 		}
+		if p.Kind == "buyer" {
+			return tx.Exec(`INSERT INTO public.activity_events(brand_id,tenant_id,event_name,source,environment,facts) VALUES(?,?,'payments.buyer_checkout','server','production','{}')`, p.BrandID, p.TenantID).Error
+		}
 		return auth.Audit(r.Context(), tx, p, "payments.checkout_prepared", resultID, map[string]string{"purpose": purpose})
 	})
 	if e != nil {
@@ -255,6 +290,9 @@ func (h *Handler) submitCheckout(ctx context.Context, c checkout, account connec
 	}
 	path := "/checkout/preferences"
 	back := h.cfg.PublicOrigin + "/payments/return?checkout=" + url.QueryEscape(c.ID)
+	if c.ActorKind == "buyer" && c.Purpose == "order" {
+		back = h.cfg.PublicOrigin + "/catalogo/" + c.TenantID + "?pedido=" + c.OrderID
+	}
 	var payload map[string]any
 	if c.Purpose == "subscription" {
 		path = "/preapproval"

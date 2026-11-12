@@ -1,0 +1,400 @@
+package operations
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"gorm.io/gorm"
+	"leguiburger/internal/buyeraccess"
+	"math/big"
+	"net/http"
+	"net/mail"
+	"strings"
+	"time"
+)
+
+type BuyerOptions struct {
+	OnlinePaymentAvailable func(context.Context, string) (bool, error)
+}
+type BuyerBasket struct {
+	Items            []OrderItemRequest `json:"items"`
+	Fulfillment      string             `json:"fulfillment"`
+	ShippingMethodID *string            `json:"shipping_method_id,omitempty"`
+}
+type BuyerOrderRequest struct {
+	BuyerBasket
+	QuoteDigest   string `json:"quote_digest"`
+	Name          string `json:"name"`
+	Phone         string `json:"phone"`
+	Email         string `json:"email,omitempty"`
+	Address       string `json:"address,omitempty"`
+	PaymentMethod string `json:"payment_method"`
+}
+type BuyerExtra struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Quantity int    `json:"quantity"`
+	Price    string `json:"price"`
+}
+type BuyerLine struct {
+	ProductID string       `json:"product_id"`
+	Name      string       `json:"name"`
+	Quantity  int          `json:"quantity"`
+	UnitPrice string       `json:"unit_price"`
+	Total     string       `json:"total"`
+	Extras    []BuyerExtra `json:"extras"`
+	Note      string       `json:"note"`
+}
+type BuyerQuote struct {
+	Items        []BuyerLine `json:"items"`
+	Subtotal     string      `json:"subtotal"`
+	Shipping     string      `json:"shipping"`
+	ShippingName string      `json:"shipping_name"`
+	Total        string      `json:"total"`
+	Currency     string      `json:"currency"`
+	Digest       string      `json:"digest"`
+}
+
+func buyerProblem(e error) error {
+	if errors.Is(e, buyeraccess.ErrInvalid) {
+		return notFound()
+	}
+	if errors.Is(e, buyeraccess.ErrRateLimited) {
+		return &apiError{429, "RATE_LIMITED", "Recibimos demasiadas solicitudes. Esperá unos minutos antes de reintentar"}
+	}
+	return e
+}
+func (h *Handler) buyerWrap(fn func(*http.Request) (Result, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+		defer cancel()
+		r = r.WithContext(ctx)
+		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+		if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+			writeError(w, forbidden())
+			return
+		}
+		result, e := fn(r)
+		if e != nil {
+			writeError(w, buyerProblem(e))
+			return
+		}
+		if result.Status == 0 {
+			result.Status = 200
+		}
+		if result.Replayed {
+			w.Header().Set("Idempotent-Replayed", "true")
+		}
+		w.WriteHeader(result.Status)
+		w.Write(result.Data)
+	}
+}
+func validateBuyerBasket(input *BuyerBasket) error {
+	if input.Fulfillment == "" {
+		input.Fulfillment = "pickup"
+	}
+	if !isOneOf(input.Fulfillment, "pickup", "delivery") || (input.Fulfillment == "delivery") != (input.ShippingMethodID != nil) || !optionalID(input.ShippingMethodID) || len(input.Items) < 1 || len(input.Items) > 30 {
+		return badInput("Revisá los productos y la forma de entrega")
+	}
+	total := 0
+	for _, item := range input.Items {
+		total += item.Quantity
+		if !validID(item.ProductID) || item.Quantity < 1 || item.Quantity > 20 || len(item.Extras) > 10 || len([]rune(item.Note)) > 300 {
+			return badInput("Revisá las cantidades y preferencias del producto")
+		}
+		seen := map[string]bool{}
+		for _, x := range item.Extras {
+			if !validID(x.ExtraID) || x.Quantity < 1 || x.Quantity > 5 || seen[x.ExtraID] {
+				return badInput("Extra inválido o repetido")
+			}
+			seen[x.ExtraID] = true
+		}
+	}
+	if total > 100 {
+		return badInput("El pedido admite hasta 100 productos")
+	}
+	return nil
+}
+func priceRat(raw string) (*big.Rat, error) {
+	n, ok := new(big.Rat).SetString(raw)
+	if !ok || n.Sign() < 0 {
+		return nil, badInput("Precio inválido en la carta")
+	}
+	return n, nil
+}
+func buyerLocation(tx *gorm.DB, id string) (Scope, error) {
+	var scope Scope
+	q := tx.Raw(`SELECT t.id::text tenant_id,t.brand_id::text FROM public.tenants t JOIN public.brands b ON b.id=t.brand_id WHERE t.id=? AND t.active AND t.menu_published AND t.ordering_enabled AND b.suspended_at IS NULL AND b.closed_at IS NULL FOR SHARE OF t,b`, id).Scan(&scope)
+	if q.Error != nil {
+		return scope, q.Error
+	}
+	if q.RowsAffected != 1 {
+		return scope, conflict("El local no está recibiendo pedidos online en este momento")
+	}
+	return scope, nil
+}
+func quoteBuyer(tx *gorm.DB, scope Scope, input BuyerBasket) (BuyerQuote, error) {
+	quote := BuyerQuote{Currency: "ARS", Items: []BuyerLine{}, Shipping: "0.00"}
+	subtotal := new(big.Rat)
+	usedProducts, usedExtras := map[string]int64{}, map[string]int64{}
+	for _, item := range input.Items {
+		var p struct {
+			Name, Price  string
+			CurrentStock int64
+			TrackStock   bool
+		}
+		q := tx.Raw(`SELECT p.name,coalesce(tp.price_override,p.base_price)::text price,tp.current_stock,tp.track_stock FROM public.products p JOIN public.tenant_products tp ON tp.product_id=p.id WHERE tp.tenant_id=? AND p.brand_id=? AND p.id=? AND p.is_active AND tp.is_active AND tp.is_available FOR SHARE OF p,tp`, scope.TenantID, scope.BrandID, item.ProductID).Scan(&p)
+		if q.Error != nil {
+			return quote, q.Error
+		}
+		usedProducts[item.ProductID] += int64(item.Quantity)
+		if q.RowsAffected != 1 || p.TrackStock && usedProducts[item.ProductID] > p.CurrentStock {
+			return quote, conflict("Un producto ya no está disponible en esa cantidad. Revisá la carta")
+		}
+		unit, e := priceRat(p.Price)
+		if e != nil {
+			return quote, e
+		}
+		line := BuyerLine{ProductID: item.ProductID, Name: p.Name, Quantity: item.Quantity, Extras: []BuyerExtra{}, Note: strings.TrimSpace(item.Note)}
+		for _, extra := range item.Extras {
+			var x struct {
+				Name, Price  string
+				CurrentStock int64
+				TrackStock   bool
+			}
+			q = tx.Raw(`SELECT name,current_price::text price,current_stock,track_stock FROM public.extras WHERE id=? AND tenant_id=? AND is_active FOR SHARE`, extra.ExtraID, scope.TenantID).Scan(&x)
+			if q.Error != nil {
+				return quote, q.Error
+			}
+			usedExtras[extra.ExtraID] += int64(extra.Quantity * item.Quantity)
+			if q.RowsAffected != 1 || x.TrackStock && usedExtras[extra.ExtraID] > x.CurrentStock {
+				return quote, conflict("Un extra ya no está disponible en esa cantidad")
+			}
+			price, e := priceRat(x.Price)
+			if e != nil {
+				return quote, e
+			}
+			unit.Add(unit, new(big.Rat).Mul(price, big.NewRat(int64(extra.Quantity), 1)))
+			line.Extras = append(line.Extras, BuyerExtra{ID: extra.ExtraID, Name: x.Name, Price: price.FloatString(2), Quantity: extra.Quantity})
+		}
+		line.UnitPrice = unit.FloatString(2)
+		amount := new(big.Rat).Mul(unit, big.NewRat(int64(item.Quantity), 1))
+		line.Total = amount.FloatString(2)
+		subtotal.Add(subtotal, amount)
+		quote.Items = append(quote.Items, line)
+	}
+	shipping := new(big.Rat)
+	if input.ShippingMethodID != nil {
+		var row struct{ Name, Cost string }
+		q := tx.Raw(`SELECT name,cost::text FROM public.shipping_methods WHERE id=? AND tenant_id=? AND is_active FOR SHARE`, *input.ShippingMethodID, scope.TenantID).Scan(&row)
+		if q.Error != nil {
+			return quote, q.Error
+		}
+		if q.RowsAffected != 1 {
+			return quote, conflict("El envío elegido no está disponible para este local")
+		}
+		var e error
+		shipping, e = priceRat(row.Cost)
+		if e != nil {
+			return quote, e
+		}
+		quote.Shipping = shipping.FloatString(2)
+		quote.ShippingName = row.Name
+	}
+	quote.Subtotal = subtotal.FloatString(2)
+	quote.Total = new(big.Rat).Add(subtotal, shipping).FloatString(2)
+	raw, e := canonicalJSON(struct {
+		Tenant string
+		Basket BuyerBasket
+		Quote  BuyerQuote
+	}{scope.TenantID, input, quote})
+	if e != nil {
+		return quote, e
+	}
+	sum := sha256.Sum256(raw)
+	quote.Digest = hex.EncodeToString(sum[:])
+	return quote, nil
+}
+func (h *Handler) buyerQuote(r *http.Request) (Result, error) {
+	id, e := resourceID(r)
+	if e != nil {
+		return Result{}, notFound()
+	}
+	input, e := decode[BuyerBasket](r)
+	if e != nil {
+		return Result{}, e
+	}
+	if e = validateBuyerBasket(&input); e != nil {
+		return Result{}, e
+	}
+	if e = buyeraccess.Rate(r.Context(), h.repo.DB, r, "quote:"+id, 240); e != nil {
+		return Result{}, e
+	}
+	var quote BuyerQuote
+	e = h.repo.DB.WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
+		scope, e := buyerLocation(tx, id)
+		if e != nil {
+			return e
+		}
+		quote, e = quoteBuyer(tx, scope, input)
+		return e
+	})
+	if e != nil {
+		return Result{}, e
+	}
+	data, _ := json.Marshal(quote)
+	return Result{Data: data}, nil
+}
+func (h *Handler) buyerReceiptData(r *http.Request, db *gorm.DB, grant buyeraccess.Grant) (json.RawMessage, error) {
+	data, e := jsonQuery(db, `SELECT jsonb_build_object('id',o.id,'status',s.code,'created_at',o.created_at,'currency',o.currency,'total_due',o.total_due::text,'total_paid',o.total_paid::text,'shipping',o.shipping_cost::text,'fulfillment',o.fulfillment,'payment_method',o.buyer_payment_method,'payment',(SELECT jsonb_build_object('state',x.state,'amount',x.amount::text,'checkout_url',CASE WHEN x.state='created' AND x.expires_at>clock_timestamp() AND o.total_due>o.total_paid AND s.code NOT IN ('pending','canceled','rejected') THEN x.checkout_url ELSE NULL END) FROM legui_private.mp_checkouts x WHERE x.order_id=o.id AND x.tenant_id=o.tenant_id AND x.purpose='order' AND x.state IN ('prepared','submitting','created','review') AND (x.expires_at>clock_timestamp() OR x.state IN ('submitting','review')) ORDER BY x.created_at DESC LIMIT 1),'business',b.name,'location',coalesce(nullif(t.display_name,''),t.subdomain),'tenant_id',t.id,'items',coalesce((SELECT jsonb_agg(jsonb_build_object('name',d.product_name,'quantity',d.quantity,'unit_price',d.final_price_unit::text,'note',d.preparation_note,'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('name',x.extra_name,'quantity',x.quantity,'price',x.extra_price_charged::text)) FROM public.order_detail_extras x WHERE x.order_detail_id=d.id),'[]'::jsonb))) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb))::text payload FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id JOIN public.tenants t ON t.id=o.tenant_id JOIN public.brands b ON b.id=t.brand_id WHERE o.id=? AND o.tenant_id=?`, grant.OrderID, grant.TenantID)
+	if e != nil {
+		return nil, e
+	}
+	var out map[string]any
+	json.Unmarshal(data, &out)
+	online := false
+	if h.buyer.OnlinePaymentAvailable != nil {
+		online, _ = h.buyer.OnlinePaymentAvailable(r.Context(), grant.TenantID)
+	}
+	out["online_available"] = online
+	out["tracking_path"] = "/order#token=" + buyeraccess.TrackingToken(buyeraccess.Token(r))
+	return json.Marshal(out)
+}
+func (h *Handler) buyerReceipt(r *http.Request) (Result, error) {
+	grant, e := buyeraccess.Resolve(r.Context(), h.repo.DB, buyeraccess.Token(r), false)
+	if e != nil {
+		return Result{}, e
+	}
+	return resultJSON(h.buyerReceiptData(r, h.repo.DB, grant))
+}
+func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
+	id, e := resourceID(r)
+	if e != nil {
+		return Result{}, notFound()
+	}
+	secret := buyeraccess.Token(r)
+	key := r.Header.Get("Idempotency-Key")
+	if !buyeraccess.ValidToken(secret) || !validID(key) {
+		return Result{}, badInput("Falta una confirmación de compra válida")
+	}
+	input, e := decode[BuyerOrderRequest](r)
+	if e != nil {
+		return Result{}, e
+	}
+	if e = validateBuyerBasket(&input.BuyerBasket); e != nil {
+		return Result{}, e
+	}
+	input.Name = strings.TrimSpace(input.Name)
+	input.Phone = strings.TrimSpace(input.Phone)
+	input.Address = strings.TrimSpace(input.Address)
+	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
+	if input.PaymentMethod == "" {
+		input.PaymentMethod = "at_local"
+	}
+	digits := 0
+	for _, c := range input.Phone {
+		if c >= '0' && c <= '9' {
+			digits++
+		} else if !strings.ContainsRune(" +()-", c) {
+			return Result{}, badInput("Ingresá un teléfono válido")
+		}
+	}
+	if len([]rune(input.Name)) < 2 || len([]rune(input.Name)) > 100 || len(input.Phone) > 30 || digits < 6 || digits > 20 || len([]rune(input.Address)) > 500 || input.Fulfillment == "delivery" && len([]rune(input.Address)) < 8 || input.Fulfillment == "pickup" && input.Address != "" || !isOneOf(input.PaymentMethod, "at_local", "mercadopago") || len(input.QuoteDigest) != 64 {
+		return Result{}, badInput("Revisá el nombre, teléfono, entrega y resumen del pedido")
+	}
+	if input.Email != "" {
+		email, e := mail.ParseAddress(input.Email)
+		if e != nil || email.Address != input.Email || len(input.Email) > 254 {
+			return Result{}, badInput("Ingresá un correo válido")
+		}
+	}
+	if e = buyeraccess.Rate(r.Context(), h.repo.DB, r, "order:"+id, 30); e != nil {
+		return Result{}, e
+	}
+	encoded, _ := canonicalJSON(input)
+	digest := buyeraccess.Digest(id + "\n" + string(encoded))
+	var result Result
+	e = h.repo.DB.WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
+		if e := tx.Exec(`SET LOCAL lock_timeout='5s'`).Error; e != nil {
+			return e
+		}
+		if e := tx.Exec(`SELECT pg_advisory_xact_lock(hashtextextended(?,0))`, "buyer:"+id+":"+key).Error; e != nil {
+			return e
+		}
+		var prior struct{ OrderID, AccessDigest, RequestDigest string }
+		q := tx.Raw(`SELECT order_id::text,access_digest,request_digest FROM legui_private.buyer_orders WHERE tenant_id=? AND creation_key=?`, id, key).Scan(&prior)
+		if q.Error != nil {
+			return q.Error
+		}
+		if q.RowsAffected == 1 {
+			if prior.AccessDigest != buyeraccess.Digest(secret) {
+				return notFound()
+			}
+			if prior.RequestDigest != digest {
+				return conflict("La confirmación ya se usó con otros datos. Consultá tu pedido")
+			}
+			grant, e := buyeraccess.Resolve(r.Context(), tx, secret, true)
+			if e != nil {
+				return e
+			}
+			data, e := h.buyerReceiptData(r, tx, grant)
+			result = Result{Data: data, Status: 201, Replayed: true}
+			return e
+		}
+		scope, e := buyerLocation(tx, id)
+		if e != nil {
+			return e
+		}
+		quote, e := quoteBuyer(tx, scope, input.BuyerBasket)
+		if e != nil {
+			return e
+		}
+		if quote.Digest != input.QuoteDigest {
+			return conflict("La carta o el precio cambiaron. Revisá el resumen actualizado antes de confirmar")
+		}
+		total, _ := priceRat(quote.Total)
+		if total.Sign() <= 0 {
+			return badInput("El pedido necesita un importe mayor a cero")
+		}
+		if input.PaymentMethod == "mercadopago" {
+			if h.buyer.OnlinePaymentAvailable == nil {
+				return conflict("El local todavía no habilitó el pago online")
+			}
+			enabled, e := h.buyer.OnlinePaymentAvailable(r.Context(), id)
+			if e != nil {
+				return e
+			}
+			if !enabled {
+				return conflict("El pago online no está disponible. Elegí pagar al recibir")
+			}
+		}
+		order, e := writeOrder(tx, scope, CreateOrderRequest{ShippingMethodID: input.ShippingMethodID, ShippingAddress: input.Address, Channel: "web", Environment: "production", Items: input.Items}, "buyer:"+key)
+		if e != nil {
+			return e
+		}
+		orderID, e := idFromJSON(order)
+		if e != nil {
+			return e
+		}
+		if e = tx.Exec(`UPDATE public.orders SET buyer_name=?,buyer_phone=?,buyer_email=?,fulfillment=?,buyer_payment_method=? WHERE id=? AND tenant_id=?`, input.Name, input.Phone, input.Email, input.Fulfillment, input.PaymentMethod, orderID, id).Error; e != nil {
+			return e
+		}
+		if e = tx.Exec(`INSERT INTO legui_private.buyer_orders(order_id,tenant_id,creation_key,access_digest,request_digest) VALUES(?,?,?,?,?)`, orderID, id, key, buyeraccess.Digest(secret), digest).Error; e != nil {
+			return e
+		}
+		if e = tx.Exec(`INSERT INTO legui_private.order_links(digest,order_id,tenant_id) VALUES(?,?,?)`, capabilityDigest(buyeraccess.TrackingToken(secret)), orderID, id).Error; e != nil {
+			return e
+		}
+		if e = tx.Exec(`INSERT INTO public.activity_events(brand_id,tenant_id,event_name,source,environment,facts) VALUES(?,?,'orders.buyer_create','server','production','{}')`, scope.BrandID, id).Error; e != nil {
+			return e
+		}
+		data, e := h.buyerReceiptData(r, tx, buyeraccess.Grant{OrderID: orderID, TenantID: id, BrandID: scope.BrandID})
+		result = Result{Data: data, Status: 201}
+		return e
+	})
+	return result, e
+}

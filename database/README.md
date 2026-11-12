@@ -50,6 +50,11 @@ Los datos operativos sensibles nuevos tienen RLS habilitado y no se conceden per
 
 La aplicación usa el backend Go y su autenticación propia. El backend es quien valida el usuario activo, el rol, la marca y el local antes de consultar con su conexión confiable a PostgreSQL. No se deben entregar al navegador las credenciales de esa conexión.
 
+La migración `202611120001_buyer_checkout` agrega recepción optativa de pedidos,
+contacto del comprador, entrega, preferencias por producto y capacidades privadas
+de compra de 24 horas. Extiende el actor de checkout de Mercado Pago únicamente
+para el propio pedido del comprador. Ver [experiencia de compradores](../docs/experiencia-compradores.md).
+
 ## Reglas operativas
 
 - Un cobro confirmado es inmutable. Se corrige con un reintegro, no editando o borrando el registro.

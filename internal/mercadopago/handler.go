@@ -68,6 +68,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	for route, fn := range routes {
 		mux.HandleFunc(route, auth.AuthMiddlewareWithDB(h.db, h.wrap(fn)))
 	}
+	mux.HandleFunc("POST /api/public/buyer-order/mercadopago", h.wrapPublic(h.buyerOrderCheckout))
 	mux.HandleFunc("GET /api/integrations/mercadopago/callback", h.wrapPublic(h.callback))
 	mux.HandleFunc("POST /api/webhooks/mercadopago/{id}", h.wrapPublic(h.webhook))
 	mux.HandleFunc("POST /api/webhooks/mercadopago/platform", h.wrapPublic(h.platformWebhook))
@@ -147,6 +148,12 @@ func key(r *http.Request) (string, error) {
 	return k, nil
 }
 func (h *Handler) scope(r *http.Request, p auth.SessionPrincipal, tenant string) (string, error) {
+	if p.Kind == "buyer" {
+		if e := h.lockBuyer(r, p); e != nil || tenant != p.TenantID {
+			return "", denied()
+		}
+		return p.BrandID, nil
+	}
 	if tenant == "" {
 		tenant = strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
 	}
