@@ -33,6 +33,38 @@ const workspaceViews = {
 };
 const routes = [
   {
+    path: "/orders/:id/print",
+    component: () => import("../views/shared/OrderPrintView.vue"),
+    meta: {
+      requiresAuth: true,
+      roles: [
+        "owner",
+        "super_admin",
+        "admin",
+        "cashier",
+        "kitchen",
+        "employee",
+      ],
+    },
+  },
+  {
+    path: "/menu-availability",
+    component: () => import("../views/shared/MenuAvailabilityView.vue"),
+    meta: {
+      requiresAuth: true,
+      roles: ["owner", "super_admin", "admin", "cashier"],
+    },
+  },
+  {
+    path: "/delivery-zones",
+    component: () => import("../views/shared/DeliveryZonesView.vue"),
+    meta: {
+      title: "Zonas de delivery",
+      requiresAuth: true,
+      roles: ["owner", "super_admin", "admin"],
+    },
+  },
+  {
     path: "/baja",
     component: () => import("../views/buyers/NewsletterUnsubscribeView.vue"),
     meta: { publicBuyer: true },

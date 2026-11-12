@@ -65,6 +65,13 @@ function add() {
     title="Atención del local"
     description="Definí cuándo recibís pedidos y cuánto tarda tu cocina."
   >
+    <div class="operation-actions">
+      <router-link class="btn-secondary" to="/delivery-zones"
+        >Zonas de delivery</router-link
+      ><router-link class="btn-secondary" to="/menu-availability"
+        >Disponibilidad de la carta</router-link
+      >
+    </div>
     <form v-form-care class="card operation-form" @submit.prevent="save">
       <h2>
         {{

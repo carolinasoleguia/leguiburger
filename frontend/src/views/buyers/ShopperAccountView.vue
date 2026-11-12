@@ -23,6 +23,8 @@ const name = ref(""),
   currentPassword = ref(""),
   orders = ref([]),
   coupons = ref([]),
+  favorites = ref([]),
+  favoriteOffset = ref(0),
   preferences = ref([]),
   selected = ref(null),
   offset = ref(0),
@@ -51,14 +53,18 @@ async function load() {
     profileName.value = shopper.profile.name;
     profilePhone.value = shopper.profile.phone || "";
     profileAddress.value = shopper.profile.delivery_address || "";
-    const [history, wallet, prefs] = await Promise.all([
+    const [history, wallet, prefs, saved] = await Promise.all([
       shopperRequest(`/api/shopper/orders?limit=20&offset=${offset.value}`),
       shopperRequest("/api/shopper/coupons"),
       shopperRequest("/api/shopper/preferences"),
+      shopperRequest(
+        `/api/shopper/favorites?limit=20&offset=${favoriteOffset.value}`,
+      ),
     ]);
     orders.value = history.items || [];
     coupons.value = wallet.items || [];
     preferences.value = prefs.items || [];
+    favorites.value = saved.items || [];
   } catch (e) {
     error.value = e.message;
     if (e.status === 401) shopper.profile = null;
@@ -120,10 +126,25 @@ async function openOrder(order) {
   await nextTick();
   selected.value = order;
 }
+function removeFavorite(item) {
+  return act(async () => {
+    await shopperRequest(
+      `/api/shopper/favorites/${item.tenant_id}/${item.product_id}`,
+      {},
+      "DELETE",
+    );
+    await load();
+  }, "Favorito eliminado.");
+}
+function favoritePage(n) {
+  favoriteOffset.value = n;
+  load();
+}
 function logout() {
   return act(async () => {
     await shopperRequest("/api/public/shopper/logout", {});
     shopper.profile = null;
+    favorites.value = [];
     orders.value = [];
     coupons.value = [];
     preferences.value = [];
@@ -343,6 +364,7 @@ onMounted(async () => {
             <button
               v-for="item in [
                 ['pedidos', 'Mis pedidos'],
+                ['favoritos', 'Mis favoritos'],
                 ['cupones', 'Mis cupones'],
                 ['preferencias', 'Novedades de marcas'],
                 ['perfil', 'Mi perfil'],
@@ -408,8 +430,17 @@ onMounted(async () => {
                   class="btn-secondary"
                   @click="openOrder(order)"
                 >
-                  Ver y seguir pedido
-                </button>
+                  Ver y seguir pedido</button
+                ><router-link
+                  v-if="
+                    ['canceled', 'rejected'].includes(order.status) ||
+                    (order.status === 'delivered' &&
+                      Number(order.total_paid) >= Number(order.total_due))
+                  "
+                  class="btn-secondary"
+                  :to="`/catalogo/${order.tenant_id}?repetir=${order.id}`"
+                  >Pedir lo mismo</router-link
+                >
               </div>
             </article>
             <div class="shopper-pagination">
@@ -434,6 +465,65 @@ onMounted(async () => {
               </button>
             </div>
           </template>
+          <template v-else-if="tab === 'favoritos'"
+            ><div class="shopper-heading">
+              <div>
+                <p class="eyebrow">Los que siempre vuelven</p>
+                <h2>Mis favoritos</h2>
+              </div>
+              <button class="btn-secondary" :disabled="loading" @click="load">
+                Actualizar favoritos
+              </button>
+            </div>
+            <p v-if="loading" role="status" class="shopper-skeleton">
+              Buscando tus favoritos…
+            </p>
+            <p v-else-if="!favorites.length" class="card shopper-empty">
+              Guardá tus hamburguesas favoritas desde la carta de cada local.
+            </p>
+            <article
+              v-for="f in loading ? [] : favorites"
+              :key="f.tenant_id + f.product_id"
+              class="card shopper-order"
+            >
+              <div>
+                <h3>{{ f.name }}</h3>
+                <p>{{ f.business }} · {{ f.location }}</p>
+                <small>{{
+                  f.available ? "Disponible" : "No disponible por ahora"
+                }}</small>
+              </div>
+              <div>
+                <strong>{{ money(f.price) }}</strong
+                ><router-link
+                  class="btn-secondary"
+                  :to="`/catalogo/${f.tenant_id}?producto=${f.product_id}`"
+                  >Elegir en la carta</router-link
+                ><button
+                  class="text-button"
+                  :disabled="busy"
+                  @click="removeFavorite(f)"
+                >
+                  Quitar favorito
+                </button>
+              </div>
+            </article>
+            <div class="shopper-pagination">
+              <button
+                class="btn-secondary"
+                :disabled="favoriteOffset === 0 || loading"
+                @click="favoritePage(Math.max(0, favoriteOffset - 20))"
+              >
+                Favoritos anteriores</button
+              ><button
+                class="btn-secondary"
+                :disabled="favorites.length < 20 || loading"
+                @click="favoritePage(favoriteOffset + 20)"
+              >
+                Más favoritos
+              </button>
+            </div></template
+          >
           <template v-else-if="tab === 'cupones'"
             ><p class="eyebrow">Un buen motivo para volver</p>
             <h2>Mis cupones</h2>
@@ -491,8 +581,7 @@ onMounted(async () => {
               :key="brand.id"
               class="card shopper-preference"
             >
-              <strong>{{ brand.name }}</strong
-              ><label
+              <strong>{{ brand.name }}</strong><label
                 ><span
                   >Novedades por correo<small>{{
                     brand.newsletter

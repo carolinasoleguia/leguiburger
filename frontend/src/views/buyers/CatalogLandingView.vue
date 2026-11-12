@@ -1,8 +1,14 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { shopper, shopperRequest } from "../../composables/useShopper.js";
 import BuyerCheckout from "../../components/BuyerCheckout.vue";
 const checkout = ref(null);
+const favorites = ref([]),
+  favoritesReady = ref(false),
+  favoriteBusy = ref(""),
+  favoriteError = ref("");
+let openedFavorite = "";
 import BrandLogo from "../../components/BrandLogo.vue";
 import ThemeToggle from "../../components/ThemeToggle.vue";
 import AppIcon from "../../components/AppIcon.vue";
@@ -77,6 +83,85 @@ watch([search, category], () => {
   clearTimeout(timer);
   timer = setTimeout(load, 300);
 });
+async function loadFavorites() {
+  const id = tenant.value,
+    account = shopper.profile?.id;
+  favoritesReady.value = false;
+  favorites.value = [];
+  if (!account) return;
+  try {
+    const first = await shopperRequest(
+      `/api/shopper/favorites?tenant_id=${id}&limit=100`,
+    );
+    let all = first.items || [];
+    if (all.length === 100) {
+      const next = await shopperRequest(
+        `/api/shopper/favorites?tenant_id=${id}&limit=100&offset=100`,
+      );
+      all = all.concat(next.items || []);
+    }
+    if (id === tenant.value && account === shopper.profile?.id) {
+      favorites.value = all;
+      favoritesReady.value = true;
+    }
+  } catch (e) {
+    favoriteError.value = e.message;
+  }
+}
+function isFavorite(item) {
+  return favorites.value.some((f) => f.product_id === item.id);
+}
+async function favorite(item) {
+  if (favoriteBusy.value) return;
+  const id = tenant.value;
+  favoriteBusy.value = item.id;
+  favoriteError.value = "";
+  try {
+    const exists = isFavorite(item);
+    await shopperRequest(
+      `/api/shopper/favorites/${id}/${item.id}`,
+      {},
+      exists ? "DELETE" : "PUT",
+    );
+    if (id !== tenant.value) return;
+    if (exists)
+      favorites.value = favorites.value.filter((f) => f.product_id !== item.id);
+    else favorites.value.push({ ...item, product_id: item.id, tenant_id: id });
+  } catch (e) {
+    favoriteError.value = e.message;
+  } finally {
+    favoriteBusy.value = "";
+  }
+}
+watch([tenant, () => shopper.profile?.id], loadFavorites, { immediate: true });
+watch(
+  [
+    () => checkout.value?.ready,
+    () => route.query.producto,
+    favoritesReady,
+    () => data.value,
+    loading,
+  ],
+  () => {
+    const desired = String(route.query.producto || "");
+    if (
+      !desired ||
+      !data.value ||
+      loading.value ||
+      !checkout.value?.ready ||
+      !favoritesReady.value ||
+      openedFavorite === tenant.value + desired
+    )
+      return;
+    const product =
+      data.value?.items?.find((x) => x.id === desired) ||
+      favorites.value.find((x) => x.product_id === desired);
+    if (product) {
+      openedFavorite = tenant.value + desired;
+      checkout.value.open({ ...product, id: product.product_id || product.id });
+    }
+  },
+);
 function page(n) {
   offset.value = n;
   load();
@@ -182,6 +267,9 @@ function image(url) {
                 : ""
           }}</span>
         </div>
+        <p v-if="favoriteError" class="error-msg" role="alert">
+          {{ favoriteError }}
+        </p>
         <div v-if="error" role="alert" class="card menu-message">
           <h2>No pudimos mostrar esta carta</h2>
           <p>{{ error }}</p>
@@ -236,6 +324,17 @@ function image(url) {
                 }}</span>
               </div>
               <button
+                v-if="shopper.profile"
+                class="text-button menu-favorite"
+                :aria-pressed="isFavorite(item)"
+                :disabled="!!favoriteBusy || !favoritesReady"
+                @click="favorite(item)"
+              >
+                {{
+                  isFavorite(item) ? "Quitar de favoritos" : "Guardar favorito"
+                }}
+              </button>
+              <button
                 v-if="data.ordering_ready ?? data.ordering_enabled"
                 class="btn-primary menu-add"
                 :disabled="!item.available || !checkout?.ready"
@@ -268,7 +367,8 @@ function image(url) {
     </main>
     <BuyerCheckout
       v-if="tenant"
-      :key="tenant"
+      :key="tenant + String(route.query.repetir || '')"
+      :repeat-order-id="String(route.query.repetir || '')"
       ref="checkout"
       :tenant="tenant"
       :menu="data"

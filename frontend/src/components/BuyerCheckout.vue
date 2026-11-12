@@ -11,6 +11,7 @@ const props = defineProps({
   tenant: { type: String, required: true },
   menu: Object,
   orderId: String,
+  repeatOrderId: String,
 });
 const emit = defineEmits(["closed"]);
 function closePanel() {
@@ -38,6 +39,10 @@ const fulfillment = ref("pickup"),
 const rememberContact = ref(false);
 const couponCode = ref(String(useRoute().query.cupon || ""));
 const recoveryMissing = ref(false);
+const postalCode = ref(""),
+  zone = ref(""),
+  repeatChanges = ref([]),
+  repeatNotice = ref("");
 const storageKey = "legui-buyer:" + props.tenant;
 let access = null,
   pendingBody = null,
@@ -140,7 +145,10 @@ const estimated = computed(() =>
       (sum, item) =>
         sum +
         (cents(item.price) +
-          item.extras.reduce((n, x) => n + cents(x.price), 0n)) *
+          item.extras.reduce(
+            (n, x) => n + cents(x.price) * BigInt(x.quantity || 1),
+            0n,
+          )) *
           BigInt(item.quantity),
       0n,
     ),
@@ -175,12 +183,17 @@ function basket() {
     items: cart.value.map((x) => ({
       product_id: x.id,
       quantity: x.quantity,
-      extras: x.extras.map((e) => ({ extra_id: e.id, quantity: 1 })),
+      extras: x.extras.map((e) => ({
+        extra_id: e.id,
+        quantity: e.quantity || 1,
+      })),
       note: x.note,
     })),
     fulfillment: fulfillment.value,
     ...(fulfillment.value === "delivery"
-      ? { shipping_method_id: shipping.value }
+      ? props.menu?.delivery_zones_enabled
+        ? { delivery_zone_id: zone.value, postal_code: postalCode.value }
+        : { shipping_method_id: shipping.value }
       : {}),
   };
 }
@@ -233,6 +246,12 @@ const canStartNew = computed(
       (receipt.value.status === "delivered" && !unpaid.value)),
 );
 function open(item) {
+  if (item.available === false) {
+    error.value =
+      "Este producto no está disponible por ahora. Elegí otra opción de la carta.";
+    panel.value = true;
+    return;
+  }
   if (
     !(props.menu?.ordering_ready ?? props.menu?.ordering_enabled) ||
     locked.value ||
@@ -419,6 +438,7 @@ async function newOrder() {
   }
   if (!(await bootstrapBuyer(true))) return;
   receipt.value = null;
+  recoveryMissing.value = true;
   quote.value = null;
   pendingBody = null;
   step.value = "cart";
@@ -429,7 +449,50 @@ async function newOrder() {
   phone.value = "";
   email.value = "";
   address.value = "";
+  if (shopper.profile) {
+    name.value = shopper.profile.name;
+    email.value = shopper.profile.email;
+    phone.value = shopper.profile.phone || "";
+    address.value = shopper.profile.delivery_address || "";
+  }
   panel.value = false;
+}
+async function importRepeat() {
+  if (!props.repeatOrderId || !alive) return;
+  if (receipt.value) {
+    if (canStartNew.value) await newOrder();
+    else {
+      panel.value = true;
+      return;
+    }
+  }
+  if (receipt.value || checkingSession.value || !access) return;
+  busy.value = true;
+  error.value = "";
+  panel.value = true;
+  try {
+    const data = await request(
+      `/api/shopper/orders/${encodeURIComponent(props.repeatOrderId)}/repeat`,
+      {},
+    );
+    if (!alive) return;
+    if (data.tenant_id !== props.tenant)
+      throw new Error("El pedido corresponde a otro local.");
+    cart.value = (data.items || []).map((x) => ({ ...x, id: x.product_id }));
+    quote.value = null;
+    pendingBody = null;
+    fulfillment.value = "pickup";
+    shipping.value = "";
+    zone.value = "";
+    postalCode.value = "";
+    repeatChanges.value = data.changes || [];
+    repeatNotice.value = data.notice;
+    step.value = "cart";
+  } catch (e) {
+    if (alive) error.value = e.message;
+  } finally {
+    if (alive) busy.value = false;
+  }
 }
 loadShopper()
   .then((p) => {
@@ -445,6 +508,7 @@ bootstrapBuyer().then(async (ok) => {
   if (!ok || !alive) return;
   await refreshReceipt(true);
   if (alive && receipt.value) panel.value = true;
+  if (props.repeatOrderId) await importRepeat();
 });
 
 const { live } = useOrderStream({
@@ -585,6 +649,19 @@ defineExpose({
           >
             Reintentar sesión
           </button>
+          <div
+            v-if="!receipt && repeatNotice"
+            class="inline-notice"
+            role="status"
+          >
+            <strong>Volvé a disfrutarlo</strong>
+            <p>{{ repeatNotice }}</p>
+            <ul v-if="repeatChanges.length">
+              <li v-for="(change, i) in repeatChanges" :key="i">
+                {{ change }}
+              </li>
+            </ul>
+          </div>
           <template v-if="receipt">
             <p v-if="!canStartNew" class="inline-notice" role="status">
               {{
@@ -692,7 +769,11 @@ defineExpose({
                   ? "Envío a domicilio"
                   : "Retiro en el local"
               }}
-              · {{ receipt.location }}
+              · {{ receipt.location
+              }}<template v-if="receipt.delivery_zone_name">
+                · {{ receipt.delivery_zone_name }} · CP
+                {{ receipt.delivery_postal_code }}</template
+              >
             </p>
             <div class="buyer-total">
               <span>Total</span><strong>{{ money(receipt.total_due) }}</strong>
@@ -777,7 +858,8 @@ defineExpose({
                   Quitar
                 </button>
               </div>
-              <small v-for="x in item.extras" :key="x.id">+ {{ x.name }}</small
+              <small v-for="x in item.extras" :key="x.id"
+                >+ {{ x.quantity || 1 }} {{ x.name }}</small
               ><small v-if="item.note">{{ item.note }}</small>
             </div>
             <template v-if="cart.length">
@@ -791,18 +873,28 @@ defineExpose({
                     @change="quote = null"
                   />
                   Retiro en el local</label
-                ><label v-if="menu?.shipping_methods?.length"
+                ><label
+                  v-if="
+                    menu?.delivery_zones_enabled
+                      ? menu?.delivery_zones?.length
+                      : menu?.shipping_methods?.length
+                  "
                   ><input
                     v-model="fulfillment"
                     type="radio"
                     value="delivery"
                     @change="
                       quote = null;
-                      shipping ||= menu.shipping_methods[0].id;
+                      if (menu.delivery_zones_enabled)
+                        zone ||= menu.delivery_zones[0]?.id;
+                      else shipping ||= menu.shipping_methods[0].id;
                     "
                   />
                   Envío a domicilio</label
-                ><label v-if="fulfillment === 'delivery'"
+                ><label
+                  v-if="
+                    fulfillment === 'delivery' && !menu?.delivery_zones_enabled
+                  "
                   >Zona de envío<select
                     v-model="shipping"
                     @change="quote = null"
@@ -816,6 +908,49 @@ defineExpose({
                     </option>
                   </select></label
                 >
+                <template
+                  v-if="
+                    fulfillment === 'delivery' && menu?.delivery_zones_enabled
+                  "
+                >
+                  <label
+                    >Código postal<input
+                      v-model="postalCode"
+                      name="delivery-postal-code"
+                      autocomplete="postal-code"
+                      maxlength="12"
+                      placeholder="1896 o B1896ABC"
+                      @input="quote = null"
+                  /></label>
+                  <label
+                    >Zona de entrega<select
+                      v-model="zone"
+                      @change="quote = null"
+                    >
+                      <option value="">Elegí tu zona</option>
+                      <option
+                        v-for="z in menu.delivery_zones"
+                        :key="z.id"
+                        :value="z.id"
+                      >
+                        {{ z.name }} · {{ money(z.price) }} · mínimo
+                        {{ money(z.minimum) }}
+                      </option>
+                    </select></label
+                  >
+                  <p v-if="zone" class="buyer-muted">
+                    {{
+                      menu.delivery_zones.find((z) => z.id === zone)
+                        ?.description
+                    }}
+                    · Códigos postales:
+                    {{
+                      menu.delivery_zones
+                        .find((z) => z.id === zone)
+                        ?.postal_codes?.join(", ")
+                    }}
+                  </p>
+                </template>
               </fieldset>
               <label v-if="shopper.profile" class="buyer-coupon"
                 >¿Tenés un cupón?<input
@@ -847,7 +982,12 @@ defineExpose({
               <button
                 v-if="!quote"
                 class="btn-primary"
-                :disabled="busy"
+                :disabled="
+                  busy ||
+                  (fulfillment === 'delivery' &&
+                    menu?.delivery_zones_enabled &&
+                    (!zone || !postalCode.trim()))
+                "
                 @click="review"
               >
                 {{ busy ? "Consultando precios…" : "Revisar pedido" }}
@@ -1064,7 +1204,7 @@ defineExpose({
   font-size: 14px;
 }
 .buyer-form :is(input:not([type="checkbox"]), textarea, select),
-.buyer-fulfillment select {
+.buyer-fulfillment :is(select, input:not([type="radio"])) {
   border: 1px solid var(--control-border);
   background: var(--field);
   color: var(--text);
@@ -1081,7 +1221,7 @@ defineExpose({
   min-height: 44px;
 }
 .buyer-extra input,
-.buyer-fulfillment input {
+.buyer-fulfillment input[type="radio"] {
   accent-color: var(--accent);
   width: 20px;
   height: 20px;

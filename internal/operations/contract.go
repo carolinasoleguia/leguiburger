@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const requiredMigration = "202611120005_live_storefront_operations"
+const requiredMigration = "202611120007_untracked_menu_availability"
 
 // VerifyDatabase refuses to start the new API against an old or different project.
 func VerifyDatabase(database *gorm.DB, dsn string) error {

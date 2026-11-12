@@ -90,7 +90,13 @@ function advance(item, status) {
           class="card kitchen-ticket"
         >
           <h3>#{{ item.id.slice(0, 8) }}</h3>
-          <small>{{ when(item.created_at) }}</small>
+          <small>{{ when(item.created_at) }}</small><router-link
+            class="text-button"
+            target="_blank"
+            rel="noopener"
+            :to="`/orders/${item.id}/print?tenant=${w.tenant.value}&kind=kitchen`"
+            >Imprimir comanda</router-link
+          >
           <ul>
             <li v-for="(line, i) in item.items" :key="i">
               <strong>{{ line.quantity }} × {{ line.product_name }}</strong>

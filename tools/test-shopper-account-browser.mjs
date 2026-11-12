@@ -163,6 +163,7 @@ try {
           savedCoupon.active = body.active;
           return reply(r, { id: savedCoupon.id, active: savedCoupon.active });
         }
+        if (path === "/api/shopper/favorites") return reply(r, { items: [] });
         if (path === "/api/shopper/profile") {
           savedPhone = body.phone;
           savedAddress = body.delivery_address;

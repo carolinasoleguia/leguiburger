@@ -83,3 +83,5 @@ La migración `202611120003_shopper_accounts` agrega cuentas privadas de comprad
 `202611120004_shopper_personalization` agrega contacto opcional del comprador y personalización por marca desactivada por defecto, con historial de consentimiento. La identidad de cada compra sigue en `shopper_orders`; no agrega DNI ni duplica el perfil en ventas.
 
 La operación en vivo, horarios y campañas está documentada en [operacion-en-vivo.md](../docs/operacion-en-vivo.md); requiere la migración `202611120005_live_storefront_operations`.
+
+Comandas, zonas de delivery, favoritos, recompra y disponibilidad por recetas: [guía de uso](../docs/comandas-delivery-y-recompra.md). Este flujo requiere hasta `202611120007_untracked_menu_availability`.

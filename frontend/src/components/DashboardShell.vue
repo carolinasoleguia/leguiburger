@@ -120,6 +120,11 @@ const navigation = computed(() => {
       ? [
           { label: "Caja y pedidos", to: "/orders", icon: "receipt" },
           { label: "Turnos de caja", to: "/cash", icon: "card" },
+          {
+            label: "Disponibilidad de carta",
+            to: "/menu-availability",
+            icon: "burger",
+          },
           { label: "Clientes", to: "/customers", icon: "users" },
         ]
       : []),
@@ -307,7 +312,9 @@ async function logout() {
           >
             <AppIcon name="menu" /></button
           ><span>Mi negocio</span><span class="breadcrumb-slash">/</span
-          ><strong>{{ activeItem?.label || "Mi espacio" }}</strong>
+          ><strong>{{
+            activeItem?.label || route.meta.title || "Mi espacio"
+          }}</strong>
         </div>
         <div class="workspace-header-actions">
           <span class="workspace-role">{{

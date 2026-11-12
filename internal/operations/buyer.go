@@ -23,6 +23,8 @@ type BuyerOptions struct {
 	OnlinePaymentAvailable func(context.Context, string) (bool, error)
 }
 type BuyerBasket struct {
+	DeliveryZoneID   *string            `json:"delivery_zone_id,omitempty"`
+	PostalCode       string             `json:"postal_code,omitempty"`
 	CouponCode       string             `json:"coupon_code,omitempty"`
 	ShopperID        string             `json:"-"`
 	CouponLock       bool               `json:"-"`
@@ -56,16 +58,20 @@ type BuyerLine struct {
 	Note      string       `json:"note"`
 }
 type BuyerQuote struct {
-	Discount      string      `json:"discount"`
-	CouponID      string      `json:"-"`
-	CouponPercent int         `json:"-"`
-	Items         []BuyerLine `json:"items"`
-	Subtotal      string      `json:"subtotal"`
-	Shipping      string      `json:"shipping"`
-	ShippingName  string      `json:"shipping_name"`
-	Total         string      `json:"total"`
-	Currency      string      `json:"currency"`
-	Digest        string      `json:"digest"`
+	ShippingMethodID *string     `json:"-"`
+	DeliveryZoneID   *string     `json:"delivery_zone_id,omitempty"`
+	DeliveryZoneName string      `json:"delivery_zone_name,omitempty"`
+	PostalCode       string      `json:"postal_code,omitempty"`
+	Discount         string      `json:"discount"`
+	CouponID         string      `json:"-"`
+	CouponPercent    int         `json:"-"`
+	Items            []BuyerLine `json:"items"`
+	Subtotal         string      `json:"subtotal"`
+	Shipping         string      `json:"shipping"`
+	ShippingName     string      `json:"shipping_name"`
+	Total            string      `json:"total"`
+	Currency         string      `json:"currency"`
+	Digest           string      `json:"digest"`
 }
 
 func buyerProblem(e error) error {
@@ -113,7 +119,7 @@ func validateBuyerBasket(input *BuyerBasket) error {
 	if input.Fulfillment == "" {
 		input.Fulfillment = "pickup"
 	}
-	if !isOneOf(input.Fulfillment, "pickup", "delivery") || (input.Fulfillment == "delivery") != (input.ShippingMethodID != nil) || !optionalID(input.ShippingMethodID) || len(input.Items) < 1 || len(input.Items) > 30 {
+	if !isOneOf(input.Fulfillment, "pickup", "delivery") || (input.Fulfillment == "delivery") != (input.ShippingMethodID != nil || input.DeliveryZoneID != nil) || (input.ShippingMethodID != nil && input.DeliveryZoneID != nil) || !optionalID(input.ShippingMethodID) || !optionalID(input.DeliveryZoneID) || len(input.PostalCode) > 16 || len(input.Items) < 1 || len(input.Items) > 30 {
 		return badInput("Revisá los productos y la forma de entrega")
 	}
 	total := 0
@@ -255,23 +261,15 @@ func quoteBuyer(tx *gorm.DB, scope Scope, input BuyerBasket) (BuyerQuote, error)
 		subtotal.Add(subtotal, amount)
 		quote.Items = append(quote.Items, line)
 	}
-	shipping := new(big.Rat)
-	if input.ShippingMethodID != nil {
-		var row struct{ Name, Cost string }
-		q := tx.Raw(`SELECT name,cost::text FROM public.shipping_methods WHERE id=? AND tenant_id=? AND is_active FOR SHARE`, *input.ShippingMethodID, scope.TenantID).Scan(&row)
-		if q.Error != nil {
-			return quote, q.Error
-		}
-		if q.RowsAffected != 1 {
-			return quote, conflict("El envío elegido no está disponible para este local")
-		}
-		var e error
-		shipping, e = priceRat(row.Cost)
-		if e != nil {
-			return quote, e
-		}
-		quote.Shipping = shipping.FloatString(2)
-		quote.ShippingName = row.Name
+	if e := validateRecipeBasket(tx, scope.TenantID, input.Items); e != nil {
+		return quote, e
+	}
+	if e := quoteDelivery(tx, scope, input, subtotal, &quote); e != nil {
+		return quote, e
+	}
+	shipping, e := priceRat(quote.Shipping)
+	if e != nil {
+		return quote, e
 	}
 	if coupon.ID != "" && discounts.Sign() <= 0 {
 		return quote, badInput("El cupón no genera descuento en estos productos")
@@ -335,7 +333,7 @@ func (h *Handler) buyerQuote(r *http.Request) (Result, error) {
 	return Result{Data: data}, nil
 }
 func (h *Handler) buyerReceiptData(r *http.Request, db *gorm.DB, grant buyeraccess.Grant) (json.RawMessage, error) {
-	data, e := jsonQuery(db, `SELECT jsonb_build_object('id',o.id,'status',s.code,'created_at',o.created_at,'pending_deadline',o.pending_deadline,'ended_reason',o.ended_reason,'prep_min',o.prep_min,'prep_max',o.prep_max,'estimated_ready_at',o.estimated_ready_at,'currency',o.currency,'subtotal',o.subtotal::text,'discount',o.total_discounts::text,'total_due',o.total_due::text,'total_paid',o.total_paid::text,'shipping',o.shipping_cost::text,'fulfillment',o.fulfillment,'payment_method',o.buyer_payment_method,'payment',(SELECT jsonb_build_object('state',x.state,'amount',x.amount::text,'checkout_url',CASE WHEN x.state='created' AND x.expires_at>clock_timestamp() AND o.total_due>o.total_paid AND s.code NOT IN ('pending','canceled','rejected') THEN x.checkout_url ELSE NULL END) FROM legui_private.mp_checkouts x WHERE x.order_id=o.id AND x.tenant_id=o.tenant_id AND x.purpose='order' AND x.state IN ('prepared','submitting','created','review') AND (x.expires_at>clock_timestamp() OR x.state IN ('submitting','review')) ORDER BY x.created_at DESC LIMIT 1),'business',b.name,'location',coalesce(nullif(t.display_name,''),t.subdomain),'tenant_id',t.id,'items',coalesce((SELECT jsonb_agg(jsonb_build_object('name',d.product_name,'quantity',d.quantity,'unit_price',d.final_price_unit::text,'note',d.preparation_note,'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('name',x.extra_name,'quantity',x.quantity,'price',x.extra_price_charged::text)) FROM public.order_detail_extras x WHERE x.order_detail_id=d.id),'[]'::jsonb))) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb))::text payload FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id JOIN public.tenants t ON t.id=o.tenant_id JOIN public.brands b ON b.id=t.brand_id WHERE o.id=? AND o.tenant_id=?`, grant.OrderID, grant.TenantID)
+	data, e := jsonQuery(db, `SELECT jsonb_build_object('id',o.id,'status',s.code,'created_at',o.created_at,'pending_deadline',o.pending_deadline,'ended_reason',o.ended_reason,'prep_min',o.prep_min,'prep_max',o.prep_max,'estimated_ready_at',o.estimated_ready_at,'currency',o.currency,'subtotal',o.subtotal::text,'discount',o.total_discounts::text,'total_due',o.total_due::text,'total_paid',o.total_paid::text,'shipping',o.shipping_cost::text,'fulfillment',o.fulfillment,'delivery_zone_name',o.delivery_zone_name,'delivery_postal_code',o.delivery_postal_code,'payment_method',o.buyer_payment_method,'payment',(SELECT jsonb_build_object('state',x.state,'amount',x.amount::text,'checkout_url',CASE WHEN x.state='created' AND x.expires_at>clock_timestamp() AND o.total_due>o.total_paid AND s.code NOT IN ('pending','canceled','rejected') THEN x.checkout_url ELSE NULL END) FROM legui_private.mp_checkouts x WHERE x.order_id=o.id AND x.tenant_id=o.tenant_id AND x.purpose='order' AND x.state IN ('prepared','submitting','created','review') AND (x.expires_at>clock_timestamp() OR x.state IN ('submitting','review')) ORDER BY x.created_at DESC LIMIT 1),'business',b.name,'location',coalesce(nullif(t.display_name,''),t.subdomain),'tenant_id',t.id,'items',coalesce((SELECT jsonb_agg(jsonb_build_object('name',d.product_name,'quantity',d.quantity,'unit_price',d.final_price_unit::text,'note',d.preparation_note,'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('name',x.extra_name,'quantity',x.quantity,'price',x.extra_price_charged::text)) FROM public.order_detail_extras x WHERE x.order_detail_id=d.id),'[]'::jsonb))) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb))::text payload FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id JOIN public.tenants t ON t.id=o.tenant_id JOIN public.brands b ON b.id=t.brand_id WHERE o.id=? AND o.tenant_id=?`, grant.OrderID, grant.TenantID)
 	if e != nil {
 		return nil, e
 	}
@@ -483,7 +481,7 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 				return conflict("El pago online no está disponible. Elegí pagar al recibir")
 			}
 		}
-		order, e := writeOrder(tx, scope, CreateOrderRequest{ShippingMethodID: input.ShippingMethodID, ShippingAddress: input.Address, Channel: "web", Environment: "production", Items: input.Items}, "buyer:"+key)
+		order, e := writeOrder(tx, scope, CreateOrderRequest{ShippingMethodID: quote.ShippingMethodID, ShippingAddress: input.Address, Channel: "web", Environment: "production", Items: input.Items}, "buyer:"+key)
 		if e != nil {
 			return e
 		}
@@ -512,7 +510,7 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 				return e
 			}
 		}
-		if e = tx.Exec(`UPDATE public.orders SET buyer_name=?,buyer_phone=?,buyer_email=?,fulfillment=?,buyer_payment_method=? WHERE id=? AND tenant_id=?`, input.Name, input.Phone, input.Email, input.Fulfillment, input.PaymentMethod, orderID, id).Error; e != nil {
+		if e = tx.Exec(`UPDATE public.orders SET buyer_name=?,buyer_phone=?,buyer_email=?,fulfillment=?,buyer_payment_method=?,delivery_zone_id=?,delivery_zone_name=?,delivery_postal_code=? WHERE id=? AND tenant_id=?`, input.Name, input.Phone, input.Email, input.Fulfillment, input.PaymentMethod, quote.DeliveryZoneID, quote.DeliveryZoneName, quote.PostalCode, orderID, id).Error; e != nil {
 			return e
 		}
 		if e = tx.Exec(`INSERT INTO legui_private.buyer_orders(order_id,tenant_id,creation_key,access_digest,request_digest) VALUES(?,?,?,?,?)`, orderID, id, key, buyeraccess.Digest(secret), digest).Error; e != nil {

@@ -59,6 +59,7 @@ jobs:
           node tools/test-shopper-account-browser.mjs
           node tools/test-order-stream-browser.mjs
           node tools/test-storefront-operations-browser.mjs
+          node tools/test-commerce-experience-browser.mjs
           node tools/test-hierarchy-browser.mjs
           node tools/test-care-browser.mjs
           node tools/test-motion-browser.mjs

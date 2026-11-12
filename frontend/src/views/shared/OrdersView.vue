@@ -437,6 +437,21 @@ function menuPage(n) {
       <h2>
         Pedido #{{ detail.id.slice(0, 8) }} · {{ statusLabels[detail.status] }}
       </h2>
+      <div class="operation-actions">
+        <router-link
+          class="btn-secondary"
+          target="_blank"
+          rel="noopener"
+          :to="`/orders/${detail.id}/print?tenant=${w.tenant.value}&kind=receipt`"
+          >Imprimir comprobante</router-link
+        ><router-link
+          class="btn-secondary"
+          target="_blank"
+          rel="noopener"
+          :to="`/orders/${detail.id}/print?tenant=${w.tenant.value}&kind=kitchen`"
+          >Imprimir comanda</router-link
+        >
+      </div>
       <section v-if="detail.buyer_name" aria-label="Datos del comprador">
         <h3>{{ detail.buyer_name }}</h3>
         <p>

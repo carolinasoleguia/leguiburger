@@ -272,6 +272,22 @@ func postOrderSale(tx *gorm.DB, scope Scope, order, environment string) error {
 			return err
 		}
 	}
+	if environment == "production" {
+		var lines []struct {
+			ProductID string
+			Quantity  int
+		}
+		if e := tx.Raw(`SELECT product_id::text,quantity FROM public.order_details WHERE order_id=?`, order).Scan(&lines).Error; e != nil {
+			return e
+		}
+		items := make([]OrderItemRequest, 0, len(lines))
+		for _, line := range lines {
+			items = append(items, OrderItemRequest{ProductID: line.ProductID, Quantity: line.Quantity})
+		}
+		if e := validateRecipeBasket(tx, scope.TenantID, items); e != nil {
+			return e
+		}
+	}
 	uses := []stockUse{}
 	query := `SELECT 'product' kind,d.product_id::text id,sum(d.quantity)::text quantity FROM public.order_details d JOIN public.tenant_products tp ON tp.tenant_id=d.tenant_id AND tp.product_id=d.product_id WHERE d.order_id=? AND tp.track_stock GROUP BY d.product_id
  UNION ALL SELECT 'extra',e.extra_id::text,sum(e.quantity*d.quantity)::text FROM public.order_detail_extras e JOIN public.order_details d ON d.id=e.order_detail_id JOIN public.extras x ON x.id=e.extra_id AND x.tenant_id=d.tenant_id WHERE d.order_id=? AND x.track_stock GROUP BY e.extra_id

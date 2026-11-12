@@ -47,6 +47,10 @@ func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 	mux.HandleFunc("POST /api/public/buyer-order/cancel", h.buyerWrap(h.buyerCancel))
 	mux.HandleFunc("POST /api/public/newsletter/unsubscribe", h.buyerWrap(h.newsletterUnsubscribe))
 	mux.HandleFunc("POST /api/public/menu/{id}/buyer-session", h.buyerSession)
+	mux.HandleFunc("GET /api/shopper/favorites", h.buyerWrap(h.shopperFavorites))
+	mux.HandleFunc("PUT /api/shopper/favorites/{tenant}/{product}", h.buyerWrap(h.shopperFavorites))
+	mux.HandleFunc("DELETE /api/shopper/favorites/{tenant}/{product}", h.buyerWrap(h.shopperFavorites))
+	mux.HandleFunc("POST /api/shopper/orders/{id}/repeat", h.buyerWrap(h.repeatOrder))
 	mux.HandleFunc("PATCH /api/shopper/profile", h.buyerWrap(h.shopperContact))
 	mux.HandleFunc("GET /api/shopper/orders", h.buyerWrap(h.shopperOrders))
 	mux.HandleFunc("POST /api/shopper/claim", h.buyerWrap(h.claimOrder))
@@ -62,6 +66,10 @@ func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 	mux.HandleFunc("POST /api/public/menu/{id}/orders", h.buyerWrap(h.buyerCreate))
 	mux.HandleFunc("GET /api/public/buyer-order", h.buyerWrap(h.buyerReceipt))
 	routes := map[string]endpoint{
+		"GET /api/orders/{id}/ticket": h.orderTicket,
+		"GET /api/delivery/settings":  h.deliverySettings, "PATCH /api/delivery/settings": h.deliverySettings,
+		"GET /api/delivery/zones": h.deliveryZones, "POST /api/delivery/zones": h.deliveryZones, "PATCH /api/delivery/zones/{id}": h.deliveryZones,
+		"GET /api/menu/availability": h.menuAvailability, "PATCH /api/menu/products/{id}/availability": h.menuAvailability,
 		"GET /api/ordering/settings": h.orderingSettings, "PATCH /api/ordering/settings": h.orderingSettings,
 		"GET /api/orders/inbox":        h.orderInbox,
 		"GET /api/marketing/campaigns": h.campaigns, "POST /api/marketing/campaigns": h.campaigns,
