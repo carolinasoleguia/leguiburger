@@ -109,6 +109,9 @@ func run() error {
 		if e != nil {
 			return e
 		}
+		if strings.Contains(string(content), "\r\n") {
+			return fmt.Errorf("migration must use LF before applying: %s", file)
+		}
 		sum := sha256.Sum256(content)
 		checksum := hex.EncodeToString(sum[:])
 		version := strings.TrimSuffix(filepath.Base(file), ".sql")

@@ -31,7 +31,9 @@ jobs:
       - name: Verify Go dependencies
         run: go mod verify
       - name: Backend tests
-        run: go test -count=1 ./...
+        run: |
+          go test -count=1 ./...
+          go test -race ./internal/orderstream
       - name: Static checks
         run: go vet ./...
       - name: Go vulnerability check
@@ -53,6 +55,7 @@ jobs:
           node tools/test-workspace-browser.mjs
           node tools/test-menu-cash-browser.mjs
           node tools/test-buyer-browser.mjs
+          node tools/test-order-stream-browser.mjs
           node tools/test-hierarchy-browser.mjs
           node tools/test-care-browser.mjs
           node tools/test-motion-browser.mjs

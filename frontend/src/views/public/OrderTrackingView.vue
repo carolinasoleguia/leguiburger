@@ -1,5 +1,8 @@
 <script setup>
-import { onMounted, onBeforeUnmount, ref } from "vue";
+import { onMounted, ref } from "vue";
+import { useOrderStream } from "../../composables/useOrderStream.js";
+import { notifyOrderChange } from "../../composables/useOrderSound.js";
+import OrderSoundToggle from "../../components/OrderSoundToggle.vue";
 import BrandLogo from "../../components/BrandLogo.vue";
 import { money, when, statusLabels } from "../../composables/useWorkspace.js";
 const token = new URLSearchParams(location.hash.slice(1)).get("token") || "";
@@ -7,7 +10,7 @@ history.replaceState(null, "", location.pathname);
 const order = ref(null),
   error = ref(""),
   loading = ref(true);
-let timer;
+
 async function load() {
   error.value = "";
   try {
@@ -20,7 +23,9 @@ async function load() {
       throw new Error(
         "El enlace venció, fue revocado o no es válido. Pedí uno nuevo al local.",
       );
-    order.value = await response.json();
+    const result = await response.json();
+    notifyOrderChange(order.value, result);
+    order.value = result;
   } catch (e) {
     order.value = null;
     error.value = e.message;
@@ -28,13 +33,19 @@ async function load() {
     loading.value = false;
   }
 }
-onMounted(() => {
-  load();
-  timer = setInterval(() => {
-    if (!document.hidden) load();
-  }, 30000);
+onMounted(load);
+const { live } = useOrderStream({
+  path: "/api/public/order/events",
+  token: () => token,
+  enabled: () =>
+    !!order.value &&
+    !(
+      ["canceled", "rejected"].includes(order.value.status) ||
+      (order.value.status === "delivered" &&
+        Number(order.value.total_paid) >= Number(order.value.total_due))
+    ),
+  refresh: load,
 });
-onBeforeUnmount(() => clearInterval(timer));
 </script>
 <template>
   <main class="public-order">
@@ -44,6 +55,14 @@ onBeforeUnmount(() => clearInterval(timer));
       <h1>{{ order?.business || "Seguimiento de tu pedido" }}</h1>
       <p v-if="loading" role="status">Consultando el estado…</p>
       <p v-if="error" role="alert">{{ error }}</p>
+      <OrderSoundToggle v-if="order" />
+      <p v-if="order" role="status">
+        {{
+          live
+            ? "Seguimiento en vivo"
+            : "Seguimiento con actualización automática"
+        }}
+      </p>
       <template v-if="order"
         ><p v-if="order.environment === 'sandbox'" class="inline-notice">
           Pedido de prueba. No representa una compra real.

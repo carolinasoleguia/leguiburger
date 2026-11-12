@@ -380,6 +380,22 @@ try {
         !(await page.$(".buyer-sheet .buyer-actions .btn-primary")),
         "paid order cannot be paid again",
       );
+      check(
+        !(await page.$eval(".buyer-sheet", (el) =>
+          [...el.querySelectorAll("button")].some((b) =>
+            b.textContent.includes("Armar otro pedido"),
+          ),
+        )),
+        "paid but undelivered order blocks new purchase",
+      );
+      check(
+        (await page.$eval(".buyer-sheet", (el) => el.textContent)).includes(
+          "Ya tenés un pedido en curso",
+        ),
+        "active order explains purchase restriction",
+      );
+      status = "delivered";
+      await button(page, "Actualizar estado");
       await button(page, "Armar otro pedido");
       await page.goto(origin + "/catalogo/" + otherTenant, {
         waitUntil: "networkidle0",

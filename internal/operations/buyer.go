@@ -8,6 +8,7 @@ import (
 	"errors"
 	"gorm.io/gorm"
 	"leguiburger/internal/buyeraccess"
+	"leguiburger/internal/orderstream"
 	"math/big"
 	"net/http"
 	"net/mail"
@@ -16,6 +17,7 @@ import (
 )
 
 type BuyerOptions struct {
+	Stream                 *orderstream.Hub
 	OnlinePaymentAvailable func(context.Context, string) (bool, error)
 }
 type BuyerBasket struct {

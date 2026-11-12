@@ -1,7 +1,9 @@
 package operations
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -18,6 +20,7 @@ import (
 	"leguiburger/internal/buyeraccess"
 	"leguiburger/internal/db"
 	"leguiburger/internal/mercadopago"
+	"leguiburger/internal/orderstream"
 	"leguiburger/internal/products"
 	"leguiburger/internal/recipes"
 	"leguiburger/internal/supplies"
@@ -28,6 +31,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Guest purchase through real handlers against two unrelated restaurant fixtures.
@@ -93,7 +97,18 @@ func TestBuyerCheckoutIntegration(t *testing.T) {
 	}
 	tokens := map[string]string{"owner": token(owner, "user", "owner", "", ""), "admin_a": token(a1, "user", "admin", b1, ""), "admin_b": token(a2, "user", "admin", b2, ""), "cashier": token(cashier, "employee", "cashier", b1, t1), "kitchen": token(kitchen, "employee", "kitchen", b1, t1)}
 	mux := http.NewServeMux()
-	RegisterRoutes(mux, tx)
+	hub := orderstream.New()
+	streamCtx, stopStream := context.WithCancel(context.Background())
+	defer stopStream()
+	go hub.Run(streamCtx, os.Getenv("DATABASE_URL"))
+	streamWait := time.Now().Add(15 * time.Second)
+	for !hub.Ready() && time.Now().Before(streamWait) {
+		time.Sleep(100 * time.Millisecond)
+	}
+	if !hub.Ready() {
+		t.Fatal("dedicated SSE listener unavailable")
+	}
+	RegisterRoutes(mux, tx, BuyerOptions{Stream: hub})
 	businesscare.Register(mux, tx)
 	mercadopago.NewHandler(tx, mercadopago.Config{}, nil).Register(mux)
 	auth.RegisterSecurityRoutes(mux, tx, nil)
@@ -184,6 +199,57 @@ func TestBuyerCheckoutIntegration(t *testing.T) {
 	must(`UPDATE public.products SET base_price=100 WHERE id=?`, p1)
 	order := parse(request("POST", path+"/orders", "", "", headers, payload, 201))
 	oid := order["id"].(string)
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	client := &http.Client{Timeout: 10 * time.Second}
+	openStream := func(path, cap string, want int) *http.Response {
+		t.Helper()
+		r, _ := http.NewRequest("GET", server.URL+path, nil)
+		r.Header.Set("Authorization", "Bearer "+cap)
+		response, e := client.Do(r)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if response.StatusCode != want {
+			t.Fatalf("SSE status want %d got %d", want, response.StatusCode)
+		}
+		return response
+	}
+	bad := openStream("/api/public/buyer-order/events", other, 404)
+	bad.Body.Close()
+	denied := openStream("/api/public/buyer-order/events", buyeraccess.TrackingToken(guest), 404)
+	denied.Body.Close()
+	stream := openStream("/api/public/buyer-order/events", guest, 200)
+	reader := bufio.NewReader(stream.Body)
+	readEvent := func(want string) {
+		t.Helper()
+		for {
+			line, e := reader.ReadString('\n')
+			if e != nil {
+				t.Fatal(e)
+			}
+			if strings.HasPrefix(line, "event:") {
+				if strings.TrimSpace(line) != "event: "+want {
+					t.Fatalf("wrong SSE event %q", line)
+				}
+				return
+			}
+		}
+	}
+	readEvent("ready")
+	// NOTIFY commits without modifying any production rows. The order fixture stays
+	// inside its rollback transaction; notification carries only the opaque ID.
+	rolled := database.Begin()
+	rolled.Exec(`SELECT pg_notify('legui_order_changed',?)`, oid)
+	rolled.Rollback()
+	if e := database.Exec(`SELECT pg_notify('legui_order_changed',?)`, oid).Error; e != nil {
+		t.Fatal(e)
+	}
+	readEvent("changed")
+	stream.Body.Close()
+	trackingStream := openStream("/api/public/order/events", buyeraccess.TrackingToken(guest), 200)
+	trackingStream.Body.Close()
 	if order["status"] != "pending" || order["total_due"] != "220.50" || order["total_paid"] != "0.00" {
 		t.Fatalf("wrong buyer receipt: %v", order)
 	}

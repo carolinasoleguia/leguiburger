@@ -1,5 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from "vue";
+import { useOrderStream } from "../composables/useOrderStream.js";
+import { notifyOrderChange } from "../composables/useOrderSound.js";
+import OrderSoundToggle from "./OrderSoundToggle.vue";
 import { money, statusLabels } from "../composables/useWorkspace.js";
 const props = defineProps({
   tenant: { type: String, required: true },
@@ -132,6 +135,13 @@ async function request(path, body, authenticated = false, key = "") {
     controllers.delete(controller);
   }
 }
+const canStartNew = computed(
+  () =>
+    !!receipt.value &&
+    !unresolvedPayment.value &&
+    (["canceled", "rejected"].includes(receipt.value.status) ||
+      (receipt.value.status === "delivered" && !unpaid.value)),
+);
 function open(item) {
   if (!props.menu?.ordering_enabled || locked.value || receipt.value) {
     panel.value = true;
@@ -190,6 +200,7 @@ async function refreshReceipt(silent = false) {
     if (!alive) return;
     if (result.tenant_id !== props.tenant)
       throw new Error("El pedido pertenece a otro local.");
+    notifyOrderChange(receipt.value, result);
     receipt.value = result;
     cart.value = [];
     pendingBody = null;
@@ -245,6 +256,7 @@ async function confirm() {
       access.key,
     );
     if (alive) {
+      notifyOrderChange(receipt.value, result);
       receipt.value = result;
       pendingBody = null;
       cart.value = [];
@@ -312,8 +324,7 @@ async function pay() {
   }
 }
 function newOrder() {
-  if (unpaid.value && !["canceled", "rejected"].includes(receipt.value?.status))
-    return;
+  if (!canStartNew.value) return;
   access = null;
   receipt.value = null;
   quote.value = null;
@@ -330,13 +341,22 @@ if (access) {
   panel.value = true;
   refreshReceipt();
 }
-const poll = setInterval(() => {
-  if (!document.hidden && !busy.value && access && receipt.value)
-    refreshReceipt(true);
-}, 30000);
+const { live } = useOrderStream({
+  path: "/api/public/buyer-order/events",
+  token: () => access?.secret || "",
+  enabled: () =>
+    !!receipt.value &&
+    !(
+      ["canceled", "rejected"].includes(receipt.value.status) ||
+      (receipt.value.status === "delivered" &&
+        !unpaid.value &&
+        !unresolvedPayment.value)
+    ),
+  refresh: () => refreshReceipt(true),
+});
 onBeforeUnmount(() => {
   alive = false;
-  clearInterval(poll);
+
   for (const controller of controllers) controller.abort();
 });
 defineExpose({ open });
@@ -437,6 +457,18 @@ defineExpose({ open });
           </button>
           <p v-if="error" role="alert" class="error-msg">{{ error }}</p>
           <template v-if="receipt">
+            <p v-if="!canStartNew" class="inline-notice" role="status">
+              {{
+                receipt.status === "delivered"
+                  ? "Tu pedido ya fue entregado. Completá el pago pendiente antes de hacer otro."
+                  : "Ya tenés un pedido en curso en este local. Podrás hacer otro cuando lo recibas."
+              }}
+            </p>
+            <OrderSoundToggle /><small role="status">{{
+              live
+                ? "Seguimiento en vivo"
+                : "Seguimiento con actualización automática"
+            }}</small>
             <div class="buyer-receipt-status" role="status">
               <small>Pedido #{{ receipt.id.slice(0, 8) }}</small>
               <h3>{{ statusLabels[receipt.status] || receipt.status }}</h3>
@@ -512,9 +544,7 @@ defineExpose({ open });
                 :href="receipt.tracking_path"
                 >Abrir seguimiento</a
               ><button
-                v-if="
-                  !unpaid || ['canceled', 'rejected'].includes(receipt.status)
-                "
+                v-if="canStartNew"
                 class="btn-secondary"
                 @click="newOrder"
               >

@@ -43,6 +43,8 @@ func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 	if len(options) > 0 {
 		h.buyer = options[0]
 	}
+	mux.HandleFunc("GET /api/public/order/events", func(w http.ResponseWriter, r *http.Request) { h.orderStream(w, r, true) })
+	mux.HandleFunc("GET /api/public/buyer-order/events", func(w http.ResponseWriter, r *http.Request) { h.orderStream(w, r, false) })
 	mux.HandleFunc("GET /api/public/order", h.publicOrder)
 	mux.HandleFunc("GET /api/public/menu/{id}", h.publicMenu)
 	mux.HandleFunc("POST /api/public/menu/{id}/quote", h.buyerWrap(h.buyerQuote))

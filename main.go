@@ -22,6 +22,7 @@ import (
 	"leguiburger/internal/mercadopago"
 	"leguiburger/internal/observability"
 	"leguiburger/internal/operations"
+	"leguiburger/internal/orderstream"
 	"leguiburger/internal/production"
 	"leguiburger/internal/products"
 	"leguiburger/internal/recipes"
@@ -167,8 +168,14 @@ func main() {
 	}
 	auth.RegisterSecurityRoutes(http.DefaultServeMux, db.DB, authSvc)
 
+	stream := orderstream.New()
+	streamDSN := os.Getenv("SSE_DATABASE_URL")
+	if streamDSN == "" {
+		streamDSN = os.Getenv("DATABASE_URL")
+	}
+	go stream.Run(ctx, streamDSN)
 	mp := mercadopago.NewHandler(db.DB, mercadopago.LoadConfig(), nil)
-	operations.RegisterRoutes(http.DefaultServeMux, db.DB, operations.BuyerOptions{OnlinePaymentAvailable: mp.BuyerPaymentAvailable})
+	operations.RegisterRoutes(http.DefaultServeMux, db.DB, operations.BuyerOptions{Stream: stream, OnlinePaymentAvailable: mp.BuyerPaymentAvailable})
 	businesscare.Register(http.DefaultServeMux, db.DB)
 	observability.Report = func(ctx context.Context, code, id string) { _ = businesscare.Record(ctx, db.DB, "api", code, id) }
 	mp.Register(http.DefaultServeMux)
