@@ -50,6 +50,10 @@ Los patrones visuales de Al Toque se trasladan a Vue: entrada de datos de 480 ms
 
 El control de animaciones junto al cambio de tema permite activarlas o pausarlas explícitamente. La preferencia se conserva en ese navegador; mientras no se elige, se respeta la configuración del sistema. La prueba `tools/test-motion-browser.mjs` verifica cargas concurrentes, errores, conservación del formulario, entrada de paneles, modales y preferencias de movimiento con API simulada.
 
+Durante la carga se conservan los contenedores reales: encabezados, columnas, formularios y controles mantienen su geometría. Las filas de skeleton usan las columnas de cada tabla; los listados largos tienen un viewport con scroll interno. Los dashboards reservan el tamaño de métricas y gráficos, y la actualización de los datos usa un fundido de 220 ms sin desplazamiento vertical. El encabezado se alinea arriba, sin centrado vertical dependiente del contenido. Se conservan también los espacios de avisos y fechas que llegan con la respuesta.
+
+`tools/test-loading-layout-browser.mjs` compara anclas y tamaños antes/después de responder a la API simulada, observa CLS y comprueba el fundido en 80 escenarios: 20 pantallas, escritorio/móvil y listas vacías/con 25 registros. Las secciones de soporte que dependen de la cuenta pueden ampliar el documento debajo del primer viewport; se comprueba que sus paneles visibles y el scroll no salten. No se insertan registros ni se usa información real del negocio.
+
 ```powershell
 go test ./...
 go vet ./...
@@ -57,6 +61,7 @@ go test ./internal/operations -run 'TestBusinessHierarchyIntegration|TestSecurit
 go test ./internal/businesscare -run TestPrivateBackupStorageIntegration -count=1 -v -args -care-storage-integration
 npm --prefix frontend run build
 node tools/test-care-browser.mjs
+node tools/test-loading-layout-browser.mjs
 ```
 
 La prueba de DB hace rollback de fixtures. La de storage crea un único objeto de prueba sin datos reales en el bucket privado, comprueba lectura y rechazo público y lo elimina. Los navegadores usan una API simulada y revisan reintentos, formularios, roles, cierre pendiente de conciliación, accesibilidad y layouts de 1440/390 píxeles.

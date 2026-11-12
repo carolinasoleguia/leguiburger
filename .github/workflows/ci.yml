@@ -52,3 +52,4 @@ jobs:
           node tools/test-hierarchy-browser.mjs
           node tools/test-care-browser.mjs
           node tools/test-motion-browser.mjs
+          node tools/test-loading-layout-browser.mjs

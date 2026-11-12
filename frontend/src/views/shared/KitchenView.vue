@@ -38,8 +38,12 @@ function advance(item, status) {
     :workspace="w"
     title="La cocina"
     description="Cada pedido, en su punto. La vista se actualiza cada 30 segundos."
-    ><p v-if="updated">
-      Última actualización: {{ updated }} · Hasta 100 pedidos activos.
+    ><p class="kitchen-update">
+      {{
+        updated
+          ? `Última actualización: ${updated} · Hasta 100 pedidos activos.`
+          : "Consultando los pedidos activos…"
+      }}
     </p>
     <div class="kitchen-board">
       <section

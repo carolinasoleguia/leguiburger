@@ -135,8 +135,8 @@ try {
     "true",
   );
   assert(
-    await page.$eval(".skeleton-bone", (el) =>
-      getComputedStyle(el).animationName.includes("skeleton-pulse"),
+    await page.$eval(".stable-content input", (el) =>
+      getComputedStyle(el).animationName.includes("stable-shimmer"),
     ),
   );
   await page.waitForSelector(".app-progress", { visible: true });
@@ -158,7 +158,7 @@ try {
   ]);
   assert.equal(
     await page.$eval(
-      ".skeleton-bone",
+      ".stable-content input",
       (el) => getComputedStyle(el).animationName,
     ),
     "none",
@@ -181,9 +181,8 @@ try {
   await page.evaluate(() => {
     document.documentElement.dataset.theme = "dark";
     window.__panelTransitions = 0;
-    document.addEventListener("transitionrun", (event) => {
-      if (event.target.classList.contains("data-stage-content"))
-        window.__panelTransitions++;
+    document.addEventListener("animationstart", (event) => {
+      if (event.animationName === "stable-fade-in") window.__panelTransitions++;
     });
   });
   await release();

@@ -1,4 +1,5 @@
 <script setup>
+import LoadingRows from "../../components/LoadingRows.vue";
 import { computed, ref } from "vue";
 import WorkspaceFrame from "../../components/WorkspaceFrame.vue";
 import { useWorkspace } from "../../composables/useWorkspace.js";
@@ -120,7 +121,7 @@ function save() {
             <th></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody><LoadingRows v-if="w.loading.value" :columns="6" />
           <tr v-for="item in shown" :key="item.id">
             <td>
               {{ item.display_name || item.subdomain

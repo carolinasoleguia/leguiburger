@@ -1,4 +1,5 @@
 <script setup>
+import LoadingRows from "../../components/LoadingRows.vue";
 import { ref, watch } from "vue";
 import WorkspaceFrame from "../../components/WorkspaceFrame.vue";
 import ListPager from "../../components/ListPager.vue";
@@ -87,7 +88,7 @@ function page(n) {
             <th></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody><LoadingRows v-if="w.loading.value" :columns="5" />
           <tr v-for="item in items" :key="item.id">
             <td>{{ item.first_name }} {{ item.last_name }}</td>
             <td>

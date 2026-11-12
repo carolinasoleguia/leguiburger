@@ -1,4 +1,5 @@
 <script setup>
+import LoadingRows from "../../components/LoadingRows.vue";
 import { computed, ref, watch } from "vue";
 import WorkspaceFrame from "../../components/WorkspaceFrame.vue";
 import ListPager from "../../components/ListPager.vue";
@@ -263,7 +264,7 @@ function menuPage(n) {
             <th></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody><LoadingRows v-if="w.loading.value" :columns="6" />
           <tr v-for="item in orders" :key="item.id">
             <td>#{{ item.id.slice(0, 8) }}</td>
             <td>{{ when(item.created_at) }}</td>

@@ -1,15 +1,26 @@
 <script setup>
+import LoadingRows from "./LoadingRows.vue";
 import { computed, ref } from "vue";
-import DashboardSkeleton from "./DashboardSkeleton.vue";
+import StableContent from "./StableContent.vue";
 import {
   useWorkspace,
   money,
   statusLabels,
 } from "../composables/useWorkspace.js";
 defineProps({ role: String });
-const report = ref(null),
+const response = ref(null),
   currency = ref("ARS"),
   showDaily = ref(false);
+const report = computed(
+  () =>
+    response.value || {
+      money: [],
+      subscriptions: {},
+      top_products: [],
+      recent_orders: [],
+      activity_by_feature: [],
+    },
+);
 const day = (d) =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Argentina/Buenos_Aires",
@@ -17,12 +28,14 @@ const day = (d) =>
 const to = ref(day(new Date())),
   from = ref(day(new Date(Date.now() - 6 * 86400000)));
 const w = useWorkspace(async ({ request, tenant, platform, current }) => {
-  report.value = null;
-  if (!platform && !tenant) return;
+  if (!platform && !tenant) {
+    response.value = null;
+    return;
+  }
   const data = await request(
     `/analytics/${platform ? "platform" : "restaurant"}?from=${from.value}&to=${to.value}`,
   );
-  if (current()) report.value = data;
+  if (current()) response.value = data;
 });
 const amounts = computed(
   () => report.value?.money?.find((x) => x.currency === currency.value) || {},
@@ -179,68 +192,81 @@ function preset(count) {
       {{ w.error.value }}
       <button class="text-button" @click="w.refresh">Reintentar</button>
     </div>
-    <DashboardSkeleton v-if="w.loading.value" view="overview" label="Consultando la actividad…" />
-    <template v-else-if="report"
+    <StableContent
+      v-if="w.loading.value || response"
+      class="stable-overview"
+      :loading="w.loading.value"
+      label="Consultando la actividad…"
+      view="overview"
       ><div class="metric-grid">
         <article v-for="card in cards" :key="card[0]" class="card">
           <h3>{{ card[0] }}</h3>
-          <strong>{{ card[1] }}</strong
-          ><small>{{ card[2] }}</small>
+          <strong>{{ card[1] }}</strong><small>{{ card[2] }}</small>
         </article>
       </div>
-      <p
-        v-if="w.platform.value && report.businesses?.unclassified"
-        class="inline-notice"
-      >
-        Hay {{ report.businesses.unclassified }} marcas sin clasificar. Sus
-        cobros no se incluyen en la facturación de producción.
+      <p v-if="w.platform.value" class="inline-notice">
+        <span v-if="report.businesses?.unclassified"
+          >Hay {{ report.businesses.unclassified }} marcas sin clasificar. Sus
+          cobros no se suman a producción.</span
+        ><span v-else
+          >Solo se incluyen cobros de restaurantes clasificados como
+          producción.</span
+        >
       </p>
       <div class="report-grid">
-        <section class="card">
+        <section class="card" :class="{ 'is-expanded': showDaily }">
           <h2>{{ w.platform.value ? "Nuevos negocios" : "Ventas por día" }}</h2>
-          <p v-if="!days.length" class="no-data">
-            Todavía no hay actividad para este período.
-          </p>
-          <template v-else
-            ><div
-              class="bar-chart"
-              role="img"
-              aria-label="Actividad por día. Consultá el detalle debajo."
-            >
-              <div
-                v-for="d in days"
-                :key="d.day"
-                class="bar"
-                :style="{
-                  height: `${(Number(w.platform.value ? d.registered : d.total) / max) * 100}%`,
-                }"
-                :title="`${d.day}: ${w.platform.value ? d.registered : money(d.total, currency)}`"
-              />
-            </div>
-            <div class="chart-labels">
-              <span>{{ days[0]?.day }}</span
-              ><span>{{ days.at(-1)?.day }}</span>
-            </div>
-            <button
-              class="text-button"
-              :aria-expanded="showDaily"
-              @click="showDaily = !showDaily"
-            >
-              {{ showDaily ? "Ocultar" : "Ver" }} detalle diario
-            </button>
-            <table v-if="showDaily" class="data-table">
-              <tbody>
-                <tr v-for="d in days" :key="d.day">
-                  <td>{{ d.day }}</td>
-                  <td>
-                    {{
-                      w.platform.value ? d.registered : money(d.total, currency)
-                    }}
-                  </td>
-                </tr>
-              </tbody>
-            </table></template
+          <div
+            class="overview-chart-area"
+            :class="{ 'is-expanded': showDaily }"
           >
+            <p v-if="!days.length" class="no-data">
+              Todavía no hay actividad para este período.
+            </p>
+            <template v-else
+              ><div
+                class="bar-chart"
+                role="img"
+                aria-label="Actividad por día. Consultá el detalle debajo."
+              >
+                <div
+                  v-for="d in days"
+                  :key="d.day"
+                  class="bar"
+                  :style="{
+                    height: `${(Number(w.platform.value ? d.registered : d.total) / max) * 100}%`,
+                  }"
+                  :title="`${d.day}: ${w.platform.value ? d.registered : money(d.total, currency)}`"
+                />
+              </div>
+              <div class="chart-labels">
+                <span>{{ days[0]?.day }}</span><span>{{
+                  days.at(-1)?.day
+                }}</span>
+              </div>
+              <button
+                class="text-button"
+                :aria-expanded="showDaily"
+                @click="showDaily = !showDaily"
+              >
+                {{ showDaily ? "Ocultar" : "Ver" }} detalle diario
+              </button>
+              <table v-if="showDaily" class="data-table">
+                <tbody>
+                  <tr v-for="d in days" :key="d.day">
+                    <td>{{ d.day }}</td>
+                    <td>
+                      {{
+                        w.platform.value
+                          ? d.registered
+                          : money(d.total, currency)
+                      }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table></template
+            >
+          </div>
         </section>
         <section class="card">
           <h2>{{ w.platform.value ? "Suscripciones" : "Los más pedidos" }}</h2>
@@ -258,8 +284,7 @@ function preset(count) {
               :key="label"
               class="report-row"
             >
-              <span>{{ label }}</span
-              ><strong>{{ value || 0 }}</strong>
+              <span>{{ label }}</span><strong>{{ value || 0 }}</strong>
             </div></template
           ><template v-else
             ><div
@@ -269,8 +294,7 @@ function preset(count) {
               :key="p.product_id"
               class="report-row"
             >
-              <span>{{ p.product_name }}</span
-              ><strong>{{ p.units }} u.</strong>
+              <span>{{ p.product_name }}</span><strong>{{ p.units }} u.</strong>
             </div>
             <p v-if="!report.top_products?.length" class="no-data">
               Tus productos aparecerán con las primeras ventas.
@@ -289,7 +313,7 @@ function preset(count) {
               <th>{{ w.platform.value ? "Negocios" : "Total" }}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody><LoadingRows v-if="w.loading.value" :columns="3" />
             <tr
               v-for="item in w.platform.value
                 ? report.activity_by_feature
@@ -310,7 +334,7 @@ function preset(count) {
             </tr>
           </tbody>
         </table>
-      </section></template
+      </section></StableContent
     >
     <p v-else-if="!w.error.value" class="no-data">
       Creá un local activo para empezar a ver tus números.

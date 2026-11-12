@@ -1,4 +1,5 @@
 <script setup>
+import LoadingRows from "../../components/LoadingRows.vue";
 import { computed, ref, watch } from "vue";
 import WorkspaceFrame from "../../components/WorkspaceFrame.vue";
 import ListPager from "../../components/ListPager.vue";
@@ -118,7 +119,7 @@ function page(n) {
               <th></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody><LoadingRows v-if="w.loading.value" :columns="6" />
             <tr v-for="item in visible" :key="item.kind + item.id">
               <td>
                 {{ item.name
@@ -168,7 +169,7 @@ function page(n) {
             <th>Antes → Después</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody><LoadingRows v-if="w.loading.value" :columns="5" />
           <tr v-for="item in movements" :key="item.id">
             <td>{{ when(item.occurred_at) }}</td>
             <td>{{ item.item_kind }}</td>

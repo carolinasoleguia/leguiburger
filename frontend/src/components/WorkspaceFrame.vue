@@ -1,7 +1,7 @@
 <script setup>
 import DashboardShell from "./DashboardShell.vue";
 import PageHeading from "./PageHeading.vue";
-import DashboardSkeleton from "./DashboardSkeleton.vue";
+import StableContent from "./StableContent.vue";
 defineProps({
   workspace: Object,
   title: String,
@@ -35,9 +35,13 @@ defineProps({
               {{ item.name || item.subdomain }}
             </option>
           </select></label
-        ><span v-if="!workspace.tenants.value.length"
-          >Todavía no hay locales activos.</span
-        >
+        ><span class="workspace-local-hint">{{
+          workspace.loading.value
+            ? "Consultando tus locales…"
+            : !workspace.tenants.value.length
+              ? "Todavía no hay locales activos."
+              : "Datos del local seleccionado."
+        }}</span>
       </div>
       <div v-if="workspace.error.value" class="error-msg" role="alert">
         {{ workspace.error.value }}
@@ -52,21 +56,10 @@ defineProps({
       <p v-if="workspace.notice.value" class="status-notice" role="status">
         {{ workspace.notice.value }}
       </p>
-      <div
-        class="data-stage"
-        :aria-busy="workspace.loading.value || workspace.busy.value"
-      >
-        <Transition name="panel"
-          ><DashboardSkeleton v-if="workspace.loading.value"
-        /></Transition>
-        <Transition name="panel"
-          ><div
-            v-show="!workspace.loading.value"
-            class="data-stage-content"
-            :aria-busy="workspace.busy.value"
-          >
-            <slot /></div
-        ></Transition>
-      </div></section
+      <StableContent
+        :loading="workspace.loading.value"
+        :busy="workspace.busy.value"
+        ><slot
+      /></StableContent></section
   ></DashboardShell>
 </template>

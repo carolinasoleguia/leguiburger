@@ -1,14 +1,14 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import DashboardShell from "../../components/DashboardShell.vue";
-import DashboardSkeleton from "../../components/DashboardSkeleton.vue";
+import StableContent from "../../components/StableContent.vue";
 import { useAuth } from "../../composables/useAuth.js";
 import { apiFetch, getJSON, postJSON } from "../../services/api.js";
 const auth = useAuth(),
   sessions = ref([]),
   error = ref(""),
   busy = ref(false);
-const loading=ref(true);
+const loading = ref(true);
 const newEmail = ref(""),
   emailPassword = ref(""),
   emailNotice = ref("");
@@ -26,7 +26,9 @@ async function load() {
     sessions.value = (await getJSON("/auth/sessions")) || [];
   } catch {
     error.value = "No pudimos cargar las sesiones";
-  } finally {loading.value=false;}
+  } finally {
+    loading.value = false;
+  }
 }
 async function revoke(item) {
   busy.value = true;
@@ -112,30 +114,34 @@ onMounted(load);
         <section class="card">
           <h3>Sesiones activas</h3>
           <p>Se cierran después de 30 minutos sin actividad.</p>
-          <DashboardSkeleton v-if="loading" view="table" label="Cargando tus sesiones…" compact />
-          <ul v-else class="session-list">
-            <li v-for="item in sessions" :key="item.id">
-              <div>
-                <strong>{{
-                  item.current ? "Esta sesión" : "Otro dispositivo"
-                }}</strong>
-                <p>{{ item.user_agent || "Dispositivo sin identificar" }}</p>
-                <small
-                  >Última actividad:
-                  {{
-                    new Date(item.last_seen_at).toLocaleString("es-AR")
-                  }}</small
+          <StableContent
+            :loading="loading"
+            label="Cargando tus sesiones…"
+            view="sessions"
+            ><ul class="session-list">
+              <li v-for="item in sessions" :key="item.id">
+                <div>
+                  <strong>{{
+                    item.current ? "Esta sesión" : "Otro dispositivo"
+                  }}</strong>
+                  <p>{{ item.user_agent || "Dispositivo sin identificar" }}</p>
+                  <small
+                    >Última actividad:
+                    {{
+                      new Date(item.last_seen_at).toLocaleString("es-AR")
+                    }}</small
+                  >
+                </div>
+                <button
+                  class="btn-secondary"
+                  :disabled="busy"
+                  @click="revoke(item)"
                 >
-              </div>
-              <button
-                class="btn-secondary"
-                :disabled="busy"
-                @click="revoke(item)"
-              >
-                Cerrar
-              </button>
-            </li>
-          </ul>
+                  Cerrar
+                </button>
+              </li>
+            </ul></StableContent
+          >
           <button class="btn-danger" :disabled="busy" @click="logoutAll">
             Cerrar todas las sesiones
           </button>

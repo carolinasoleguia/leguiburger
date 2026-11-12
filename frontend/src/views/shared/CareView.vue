@@ -1,4 +1,5 @@
 <script setup>
+import LoadingRows from "../../components/LoadingRows.vue";
 import { ref, watch } from "vue";
 import WorkspaceFrame from "../../components/WorkspaceFrame.vue";
 import StatePanel from "../../components/StatePanel.vue";
@@ -270,7 +271,7 @@ async function closeAccount() {
           </select></label
         >
       </div>
-      <section v-if="brand" class="card care-card">
+      <section class="card care-card">
         <h2>Respaldos del restaurante</h2>
         <p>
           Exportación de datos operativos, sin contraseñas ni credenciales de
@@ -300,7 +301,7 @@ async function closeAccount() {
                 <th>Archivo</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody><LoadingRows v-if="w.loading.value" :columns="4" />
               <tr v-for="item in backups" :key="item.id">
                 <td>{{ when(item.created_at) }}</td>
                 <td>{{ backupState[item.state] }}</td>
@@ -381,7 +382,7 @@ async function closeAccount() {
                 <th>Renovación</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody><LoadingRows v-if="w.loading.value" :columns="2" />
               <tr v-for="renewal in closure.renewals" :key="renewal.id">
                 <td>{{ renewal.provider || "Gestión manual" }}</td>
                 <td>
@@ -421,7 +422,7 @@ async function closeAccount() {
               <th>Última vez</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody><LoadingRows v-if="w.loading.value" :columns="4" />
             <tr v-for="item in issues" :key="`${item.component}:${item.code}`">
               <td>{{ item.component }}</td>
               <td>{{ item.code }}</td>

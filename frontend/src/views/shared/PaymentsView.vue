@@ -1,7 +1,8 @@
 <script setup>
+import LoadingRows from "../../components/LoadingRows.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import DashboardShell from "../../components/DashboardShell.vue";
-import DashboardSkeleton from "../../components/DashboardSkeleton.vue";
+import StableContent from "../../components/StableContent.vue";
 import { useAuth } from "../../composables/useAuth.js";
 import { apiFetch, getJSON } from "../../services/api.js";
 const auth = useAuth();
@@ -389,565 +390,610 @@ onMounted(async () => {
           Actualizar
         </button>
       </div>
-      <Transition name="panel"><DashboardSkeleton v-if="loading" view="table" label="Cargando cobros y membresías…" /></Transition>
-      <Transition name="panel"><div v-show="!loading" :aria-busy="busy">
-      <div v-if="!config.enabled && !loading" class="card setup-notice">
-        <strong>Mercado Pago todavía no está habilitado.</strong>
-        <p>
-          La administración de LeguiBurger debe completar la configuración de
-          cobros. Tus registros existentes siguen disponibles.
-        </p>
-      </div>
-      <p v-if="config.environment === 'sandbox'" class="test-mode">
-        Modo de prueba · Estos movimientos no acreditan dinero real.
-      </p>
-      <p v-if="error" class="error-msg" role="alert">{{ error }}</p>
-      <p v-if="notice" class="status-notice" role="status">{{ notice }}</p>
-      <p v-if="suspended" class="error-msg">
-        Tu restaurante está suspendido. Podés consultar tu membresía y contactar
-        a LeguiBurger para reactivar la operación.
-      </p>
-      <div v-if="isManager && !suspended" class="payment-filters">
-        <div v-if="isPlatform" class="input-group">
-          <label for="payments-brand">Marca</label
-          ><select id="payments-brand" v-model="brand">
-            <option v-for="item in brands" :key="item.id" :value="item.id">
-              {{ item.name }}
-            </option>
-          </select>
+      <StableContent
+        :loading="loading"
+        :busy="busy"
+        label="Cargando cobros y membresías…"
+      >
+        <div class="card setup-notice">
+          <strong v-if="loading">Consultando la configuración de cobros…</strong
+          ><strong v-else-if="!config.enabled"
+            >Mercado Pago todavía no está habilitado.</strong
+          ><strong v-else>Gestioná tus cobros en un mismo lugar.</strong>
+          <p v-if="!config.enabled">
+            La administración de LeguiBurger debe completar la configuración de
+            cobros. Tus registros existentes siguen disponibles.
+          </p>
+          <p v-else>
+            Seguí los movimientos, links de pago y membresías de tu negocio.
+          </p>
         </div>
-        <div class="input-group">
-          <label for="payments-tenant">Local</label
-          ><select id="payments-tenant" v-model="tenant">
-            <option value="">Toda la marca</option>
-            <option
-              v-for="item in visibleTenants"
-              :key="item.id"
-              :value="item.id"
-            >
-              {{ item.subdomain }}
-            </option>
-          </select>
-        </div>
-      </div>
-      <nav class="payment-tabs" aria-label="Secciones de cobros">
-        <button
-          v-for="item in suspended
-            ? ['membership']
-            : isManager
-              ? [
-                  'transactions',
-                  'checkouts',
-                  'connections',
-                  'membership',
-                  'reviews',
-                ]
-              : ['checkouts']"
-          :key="item"
-          class="btn-secondary"
-          :aria-pressed="tab === item"
-          @click="tab = item"
-        >
+        <p class="test-mode">
           {{
-            {
-              transactions: "Movimientos",
-              checkouts: "Links de cobro",
-              connections: "Cuentas conectadas",
-              membership: "Mi membresía",
-              reviews: `Revisiones (${openReviews.length})`,
-            }[item]
+            loading
+              ? "Consultando el entorno de cobros…"
+              : config.environment === "sandbox"
+                ? "Modo de prueba · Estos movimientos no acreditan dinero real."
+                : "Movimientos del entorno configurado para tu negocio."
           }}
-        </button>
-      </nav>
-      <div v-if="link" class="card share-checkout">
-        <label for="checkout-link">Link de pago</label
-        ><input
-          id="checkout-link"
-          :value="link"
-          readonly
-          @focus="$event.target.select()"
-        /><a :href="link" target="_blank" rel="noopener noreferrer"
-          >Abrir checkout</a
-        >
-      </div>
-      <template v-if="tab === 'transactions' && isManager"
-        ><div class="card payment-table">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Pago</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-                <th>Bruto</th>
-                <th>Comisiones</th>
-                <th>Neto informado</th>
-                <th>Disponibilidad</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in transactions" :key="item.id">
-                <td>
-                  {{ item.payment_id
-                  }}<small
-                    >{{ item.scope === "platform" ? "Membresía" : "Pedido" }} ·
-                    {{ item.environment }}</small
-                  >
-                </td>
-                <td>{{ when(item.paid_at) }}</td>
-                <td>
-                  {{ labels[item.provider_status] || item.provider_status
-                  }}<small v-if="Number(item.refunded_amount) > 0"
-                    >Devuelto:
-                    {{ money(item.refunded_amount, item.currency) }}</small
-                  ><small v-if="item.under_review">En revisión</small
-                  ><small v-else-if="!item.allocated"
-                    >Sin aplicar al saldo</small
-                  >
-                </td>
-                <td>{{ money(item.amount, item.currency) }}</td>
-                <td>{{ money(item.fee_amount, item.currency) }}</td>
-                <td>{{ money(item.net_received, item.currency) }}</td>
-                <td>{{ when(item.available_at) }}</td>
-                <td>
-                  <button
-                    v-if="
-                      item.allocated &&
-                      !item.under_review &&
-                      (isPlatform || item.scope === 'business') &&
-                      Number(item.amount) > Number(item.refunded_amount)
-                    "
-                    class="btn-secondary"
-                    @click="
-                      refundPayment = item.id;
-                      refundAmount = '';
-                    "
-                  >
-                    Devolver
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="!transactions.length">
-                <td colspan="8">Todavía no hay pagos verificados.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <form v-form-care
-          v-if="refundPayment"
-          class="card action-form"
-          @submit.prevent="refund"
-        >
-          <h3>Devolución parcial o total</h3>
-          <p>
-            El importe se devuelve desde la cuenta receptora original y se
-            registra después de confirmarlo.
-          </p>
-          <div class="input-group">
-            <label for="refund-amount">Importe a devolver</label
-            ><input
-              id="refund-amount"
-              v-model="refundAmount"
-              type="text"
-              inputmode="decimal"
-              pattern="[0-9]+([.][0-9]{1,2})?"
-              required
-            />
-          </div>
-          <button class="btn-danger" :disabled="busy || !config.enabled">
-            Confirmar devolución</button
-          ><button
-            class="btn-secondary"
-            type="button"
-            @click="refundPayment = ''"
-          >
-            Cancelar
-          </button>
-        </form></template
-      >
-      <template v-if="tab === 'checkouts'"
-        ><form v-form-care class="card action-form" @submit.prevent="createOrderCheckout">
-          <h3>Cobrar un pedido</h3>
-          <div class="input-group">
-            <label for="checkout-order">Pedido con saldo pendiente</label
-            ><select id="checkout-order" v-model="selectedOrder" required>
-              <option v-for="item in orders" :key="item.id" :value="item.id">
-                {{ item.id.slice(0, 8) }} ·
-                {{
-                  money(
-                    Number(item.total_due) - Number(item.total_paid),
-                    item.currency,
-                  )
-                }}
+        </p>
+        <p v-if="error" class="error-msg" role="alert">{{ error }}</p>
+        <p v-if="notice" class="status-notice" role="status">{{ notice }}</p>
+        <p v-if="suspended" class="error-msg">
+          Tu restaurante está suspendido. Podés consultar tu membresía y
+          contactar a LeguiBurger para reactivar la operación.
+        </p>
+        <div v-if="isManager && !suspended" class="payment-filters">
+          <div v-if="isPlatform" class="input-group">
+            <label for="payments-brand">Marca</label
+            ><select id="payments-brand" v-model="brand">
+              <option v-for="item in brands" :key="item.id" :value="item.id">
+                {{ item.name }}
               </option>
             </select>
           </div>
           <div class="input-group">
-            <label for="partial-payment">Importe parcial (opcional)</label
-            ><input
-              id="partial-payment"
-              v-model="partialAmount"
-              type="text"
-              inputmode="decimal"
-              pattern="[0-9]+([.][0-9]{1,2})?"
-              placeholder="Todo el saldo pendiente"
-            />
-          </div>
-          <button
-            class="btn-primary"
-            :disabled="busy || !config.enabled || !selectedOrder || !tenant"
-          >
-            Crear link de cobro
-          </button>
-        </form>
-        <div class="card payment-table">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Creado</th>
-                <th>Concepto</th>
-                <th>Importe</th>
-                <th>Estado</th>
-                <th>Link</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in checkouts" :key="item.id">
-                <td>{{ when(item.created_at) }}</td>
-                <td>{{ item.purpose === "order" ? "Pedido" : "Membresía" }}</td>
-                <td>{{ money(item.amount, item.currency) }}</td>
-                <td>
-                  {{ labels[item.state] || item.state
-                  }}<small v-if="item.reason">Necesita conciliación</small>
-                </td>
-                <td>
-                  <a
-                    v-if="item.checkout_url"
-                    :href="item.checkout_url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >Abrir</a
-                  ><span v-else>Por confirmar</span>
-                </td>
-              </tr>
-              <tr v-if="!checkouts.length">
-                <td colspan="5">Todavía no generaste links de cobro.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div></template
-      >
-      <template v-if="tab === 'connections' && isManager"
-        ><div class="card action-form">
-          <h3>Tu cuenta de cobro</h3>
-          <p>
-            Conectá Mercado Pago para que el dinero de los pedidos llegue a tu
-            negocio. Elegí un local o toda la marca antes de continuar.
-          </p>
-          <button
-            class="btn-primary"
-            :disabled="busy || !config.oauth_configured || !brand"
-            @click="connect"
-          >
-            Conectar Mercado Pago
-          </button>
-        </div>
-        <div
-          v-for="item in connections"
-          :key="item.id"
-          class="card connection-row"
-        >
-          <div>
-            <strong>{{
-              item.scope === "platform"
-                ? "Cuenta de LeguiBurger"
-                : item.tenant_id
-                  ? "Cuenta de local"
-                  : "Cuenta de marca"
-            }}</strong>
-            <p>
-              {{ labels[item.state] || item.state }} · {{ item.environment
-              }}<span v-if="item.collector_id">
-                · Cuenta {{ item.collector_id }}</span
+            <label for="payments-tenant">Local</label
+            ><select id="payments-tenant" v-model="tenant">
+              <option value="">Toda la marca</option>
+              <option
+                v-for="item in visibleTenants"
+                :key="item.id"
+                :value="item.id"
               >
-            </p>
-          </div>
-          <div>
-            <button
-              v-if="item.state === 'connected'"
-              class="btn-secondary"
-              :disabled="busy || !config.enabled"
-              @click="reconcile(item)"
-            >
-              Conciliar</button
-            ><button
-              v-if="item.scope === 'business' && item.state !== 'disconnected'"
-              class="btn-secondary"
-              :disabled="busy"
-              @click="disconnect(item)"
-            >
-              Desconectar
-            </button>
-          </div>
-        </div></template
-      >
-      <template v-if="tab === 'membership' && isManager"
-        ><form v-form-care class="card action-form" @submit.prevent="startSubscription">
-          <h3>Elegí tu membresía</h3>
-          <p>La membresía se activa cuando Mercado Pago confirma el cobro.</p>
-          <div class="input-group">
-            <label for="membership-plan">Plan</label
-            ><select id="membership-plan" v-model="plan" required>
-              <option v-for="item in plans" :key="item.id" :value="item.id">
-                {{ item.name }} · {{ money(item.amount, item.currency) }} cada
-                {{ item.interval_months }} mes(es) ·
-                {{ item.billing_unit === "tenant" ? "por local" : "por marca" }}
+                {{ item.subdomain }}
               </option>
             </select>
           </div>
-          <div class="input-group">
-            <label for="membership-email">Correo del pagador</label
-            ><input
-              id="membership-email"
-              v-model="email"
-              type="email"
-              required
-            />
-          </div>
+        </div>
+        <nav class="payment-tabs" aria-label="Secciones de cobros">
           <button
-            class="btn-primary"
-            :disabled="busy || !config.platform_configured || !plan"
-          >
-            Continuar con Mercado Pago
-          </button>
-          <p v-if="!plans.length">Todavía no hay planes publicados.</p>
-        </form>
-        <div
-          v-for="item in billing.subscriptions || []"
-          :key="item.id"
-          class="card connection-row"
-        >
-          <div>
-            <strong>{{ labels[item.status] || item.status }}</strong>
-            <p>
-              {{
-                money(
-                  Number(item.contracted_amount) * item.quantity,
-                  item.currency,
-                )
-              }}
-              · Período hasta {{ when(item.current_period_end) }}
-            </p>
-            <small v-if="item.cancel_at_period_end"
-              >La renovación está cancelada.</small
-            >
-          </div>
-          <button
-            v-if="!item.provider_reference && item.status !== 'canceled'"
-            class="btn-primary"
-            :disabled="busy || !config.platform_configured"
-            @click="continueSubscription(item)"
-          >
-            Completar contratación</button
-          ><button
-            v-else-if="
-              item.provider_reference &&
-              item.status !== 'canceled' &&
-              !item.cancel_at_period_end
-            "
+            v-for="item in suspended
+              ? ['membership']
+              : isManager
+                ? [
+                    'transactions',
+                    'checkouts',
+                    'connections',
+                    'membership',
+                    'reviews',
+                  ]
+                : ['checkouts']"
+            :key="item"
             class="btn-secondary"
-            :disabled="busy || !config.platform_configured"
-            @click="cancelSubscription(item)"
+            :aria-pressed="tab === item"
+            @click="tab = item"
           >
-            Cancelar renovación
+            {{
+              {
+                transactions: "Movimientos",
+                checkouts: "Links de cobro",
+                connections: "Cuentas conectadas",
+                membership: "Mi membresía",
+                reviews: `Revisiones (${openReviews.length})`,
+              }[item]
+            }}
           </button>
+        </nav>
+        <div v-if="link" class="card share-checkout">
+          <label for="checkout-link">Link de pago</label
+          ><input
+            id="checkout-link"
+            :value="link"
+            readonly
+            @focus="$event.target.select()"
+          /><a :href="link" target="_blank" rel="noopener noreferrer"
+            >Abrir checkout</a
+          >
         </div>
-        <div class="card payment-table">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Factura de membresía</th>
-                <th>Importe</th>
-                <th>Saldo</th>
-                <th>Estado</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in billing.invoices || []" :key="item.id">
-                <td>{{ item.description || item.id.slice(0, 8) }}</td>
-                <td>{{ money(item.amount_total, item.currency) }}</td>
-                <td>{{ money(item.balance_due, item.currency) }}</td>
-                <td>{{ item.status }}</td>
-                <td>
-                  <button
-                    v-if="
-                      item.status === 'open' && Number(item.balance_due) > 0
-                    "
-                    class="btn-primary"
-                    :disabled="busy || !config.platform_configured"
-                    @click="payInvoice(item)"
-                  >
-                    Pagar
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <template v-if="isPlatform"
-          ><form v-form-care class="card action-form" @submit.prevent="createPlan">
-            <h3>Publicar planes de LeguiBurger</h3>
-            <div class="input-group">
-              <label for="new-plan-name">Nombre del nuevo plan</label
-              ><input
-                id="new-plan-name"
-                v-model="newPlanName"
-                minlength="2"
-                maxlength="120"
-                required
-              />
-            </div>
-            <button class="btn-primary" :disabled="busy">Crear plan</button>
-          </form>
-          <form v-form-care class="card action-form" @submit.prevent="publishPrice">
-            <h3>Agregar un precio</h3>
+        <template v-if="tab === 'transactions' && isManager"
+          ><div class="card payment-table">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Pago</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                  <th>Bruto</th>
+                  <th>Comisiones</th>
+                  <th>Neto informado</th>
+                  <th>Disponibilidad</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody><LoadingRows v-if="loading" :columns="8" />
+                <tr v-for="item in transactions" :key="item.id">
+                  <td>
+                    {{ item.payment_id
+                    }}<small
+                      >{{
+                        item.scope === "platform" ? "Membresía" : "Pedido"
+                      }}
+                      · {{ item.environment }}</small
+                    >
+                  </td>
+                  <td>{{ when(item.paid_at) }}</td>
+                  <td>
+                    {{ labels[item.provider_status] || item.provider_status
+                    }}<small v-if="Number(item.refunded_amount) > 0"
+                      >Devuelto:
+                      {{ money(item.refunded_amount, item.currency) }}</small
+                    ><small v-if="item.under_review">En revisión</small
+                    ><small v-else-if="!item.allocated"
+                      >Sin aplicar al saldo</small
+                    >
+                  </td>
+                  <td>{{ money(item.amount, item.currency) }}</td>
+                  <td>{{ money(item.fee_amount, item.currency) }}</td>
+                  <td>{{ money(item.net_received, item.currency) }}</td>
+                  <td>{{ when(item.available_at) }}</td>
+                  <td>
+                    <button
+                      v-if="
+                        item.allocated &&
+                        !item.under_review &&
+                        (isPlatform || item.scope === 'business') &&
+                        Number(item.amount) > Number(item.refunded_amount)
+                      "
+                      class="btn-secondary"
+                      @click="
+                        refundPayment = item.id;
+                        refundAmount = '';
+                      "
+                    >
+                      Devolver
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="!transactions.length">
+                  <td colspan="8">Todavía no hay pagos verificados.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <form
+            v-form-care
+            v-if="refundPayment"
+            class="card action-form"
+            @submit.prevent="refund"
+          >
+            <h3>Devolución parcial o total</h3>
             <p>
-              Cada precio nuevo conserva intactos los contratos ya vendidos.
+              El importe se devuelve desde la cuenta receptora original y se
+              registra después de confirmarlo.
             </p>
             <div class="input-group">
-              <label for="pricing-plan">Plan</label
-              ><select id="pricing-plan" v-model="pricingPlan" required>
-                <option
-                  v-for="item in platformPlans"
-                  :key="item.id"
-                  :value="item.id"
-                >
-                  {{ item.name }}
-                </option>
-              </select>
-            </div>
-            <div class="input-group">
-              <label for="new-plan-price">Importe en pesos</label
+              <label for="refund-amount">Importe a devolver</label
               ><input
-                id="new-plan-price"
-                v-model="newPrice"
+                id="refund-amount"
+                v-model="refundAmount"
                 type="text"
                 inputmode="decimal"
                 pattern="[0-9]+([.][0-9]{1,2})?"
                 required
               />
             </div>
-            <div class="input-group">
-              <label for="plan-locations">Límite de locales del negocio</label
-              ><input
-                id="plan-locations"
-                v-model="maximumLocations"
-                type="number"
-                min="1"
-                max="10000"
-                placeholder="Sin límite"
-              />
-            </div>
-            <div class="input-group">
-              <label for="plan-collaborators"
-                >Límite de colaboradores del negocio</label
-              ><input
-                id="plan-collaborators"
-                v-model="maximumCollaborators"
-                type="number"
-                min="1"
-                max="100000"
-                placeholder="Sin límite"
-              />
-            </div>
-            <div class="input-group">
-              <label for="plan-period">Frecuencia</label
-              ><select id="plan-period" v-model="newInterval">
-                <option :value="1">Mensual</option>
-                <option :value="12">Anual</option>
-              </select>
-            </div>
-            <div class="input-group">
-              <label for="plan-unit">Alcance</label
-              ><select id="plan-unit" v-model="newBillingUnit">
-                <option value="brand">Por marca</option>
-                <option value="tenant">Por local</option>
-              </select>
-            </div>
-            <button class="btn-primary" :disabled="busy || !pricingPlan">
-              Publicar precio
+            <button class="btn-danger" :disabled="busy || !config.enabled">
+              Confirmar devolución</button
+            ><button
+              class="btn-secondary"
+              type="button"
+              @click="refundPayment = ''"
+            >
+              Cancelar
             </button>
           </form></template
         >
-      </template>
-      <template v-if="tab === 'reviews' && isManager"
-        ><div class="card payment-table">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Recurso</th>
-                <th>Motivo</th>
-                <th>Última observación</th>
-                <th>Estado</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in reviews" :key="item.id">
-                <td>{{ item.resource_id }}</td>
-                <td>
+        <template v-if="tab === 'checkouts'"
+          ><form
+            v-form-care
+            class="card action-form"
+            @submit.prevent="createOrderCheckout"
+          >
+            <h3>Cobrar un pedido</h3>
+            <div class="input-group">
+              <label for="checkout-order">Pedido con saldo pendiente</label
+              ><select id="checkout-order" v-model="selectedOrder" required>
+                <option v-for="item in orders" :key="item.id" :value="item.id">
+                  {{ item.id.slice(0, 8) }} ·
                   {{
-                    reviewLabels[item.reason] || "Requiere revisión del cobro"
+                    money(
+                      Number(item.total_due) - Number(item.total_paid),
+                      item.currency,
+                    )
                   }}
-                </td>
-                <td>{{ when(item.last_seen_at) }}</td>
-                <td>{{ item.resolved_at ? "Resuelta" : "Pendiente" }}</td>
-                <td>
-                  <button
-                    v-if="!item.resolved_at"
-                    class="btn-secondary"
-                    @click="reviewSelection = item.id"
-                  >
-                    Revisar
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="!reviews.length">
-                <td colspan="5">No hay inconsistencias registradas.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <form v-form-care
-          v-if="reviewSelection"
-          class="card action-form"
-          @submit.prevent="resolveReview"
+                </option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="partial-payment">Importe parcial (opcional)</label
+              ><input
+                id="partial-payment"
+                v-model="partialAmount"
+                type="text"
+                inputmode="decimal"
+                pattern="[0-9]+([.][0-9]{1,2})?"
+                placeholder="Todo el saldo pendiente"
+              />
+            </div>
+            <button
+              class="btn-primary"
+              :disabled="busy || !config.enabled || !selectedOrder || !tenant"
+            >
+              Crear link de cobro
+            </button>
+          </form>
+          <div class="card payment-table">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Creado</th>
+                  <th>Concepto</th>
+                  <th>Importe</th>
+                  <th>Estado</th>
+                  <th>Link</th>
+                </tr>
+              </thead>
+              <tbody><LoadingRows v-if="loading" :columns="5" />
+                <tr v-for="item in checkouts" :key="item.id">
+                  <td>{{ when(item.created_at) }}</td>
+                  <td>
+                    {{ item.purpose === "order" ? "Pedido" : "Membresía" }}
+                  </td>
+                  <td>{{ money(item.amount, item.currency) }}</td>
+                  <td>
+                    {{ labels[item.state] || item.state
+                    }}<small v-if="item.reason">Necesita conciliación</small>
+                  </td>
+                  <td>
+                    <a
+                      v-if="item.checkout_url"
+                      :href="item.checkout_url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      >Abrir</a
+                    ><span v-else>Por confirmar</span>
+                  </td>
+                </tr>
+                <tr v-if="!checkouts.length">
+                  <td colspan="5">Todavía no generaste links de cobro.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></template
         >
-          <h3>Registrar resolución</h3>
-          <div class="input-group">
-            <label for="review-resolution">Acción</label
-            ><select id="review-resolution" v-model="resolution">
-              <option value="reprocess">Volver a verificar Mercado Pago</option>
-              <option value="acknowledged">Cerrar revisión con una nota</option>
-            </select>
+        <template v-if="tab === 'connections' && isManager"
+          ><div class="card action-form">
+            <h3>Tu cuenta de cobro</h3>
+            <p>
+              Conectá Mercado Pago para que el dinero de los pedidos llegue a tu
+              negocio. Elegí un local o toda la marca antes de continuar.
+            </p>
+            <button
+              class="btn-primary"
+              :disabled="busy || !config.oauth_configured || !brand"
+              @click="connect"
+            >
+              Conectar Mercado Pago
+            </button>
           </div>
-          <div class="input-group">
-            <label for="review-note">Motivo de la resolución</label
-            ><textarea
-              id="review-note"
-              v-model="reviewNote"
-              minlength="10"
-              maxlength="500"
-              required
-            />
+          <div
+            v-for="item in connections"
+            :key="item.id"
+            class="card connection-row"
+          >
+            <div>
+              <strong>{{
+                item.scope === "platform"
+                  ? "Cuenta de LeguiBurger"
+                  : item.tenant_id
+                    ? "Cuenta de local"
+                    : "Cuenta de marca"
+              }}</strong>
+              <p>
+                {{ labels[item.state] || item.state }} · {{ item.environment
+                }}<span v-if="item.collector_id">
+                  · Cuenta {{ item.collector_id }}</span
+                >
+              </p>
+            </div>
+            <div>
+              <button
+                v-if="item.state === 'connected'"
+                class="btn-secondary"
+                :disabled="busy || !config.enabled"
+                @click="reconcile(item)"
+              >
+                Conciliar</button
+              ><button
+                v-if="
+                  item.scope === 'business' && item.state !== 'disconnected'
+                "
+                class="btn-secondary"
+                :disabled="busy"
+                @click="disconnect(item)"
+              >
+                Desconectar
+              </button>
+            </div>
+          </div></template
+        >
+        <template v-if="tab === 'membership' && isManager"
+          ><form
+            v-form-care
+            class="card action-form"
+            @submit.prevent="startSubscription"
+          >
+            <h3>Elegí tu membresía</h3>
+            <p>La membresía se activa cuando Mercado Pago confirma el cobro.</p>
+            <div class="input-group">
+              <label for="membership-plan">Plan</label
+              ><select id="membership-plan" v-model="plan" required>
+                <option v-for="item in plans" :key="item.id" :value="item.id">
+                  {{ item.name }} · {{ money(item.amount, item.currency) }} cada
+                  {{ item.interval_months }} mes(es) ·
+                  {{
+                    item.billing_unit === "tenant" ? "por local" : "por marca"
+                  }}
+                </option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="membership-email">Correo del pagador</label
+              ><input
+                id="membership-email"
+                v-model="email"
+                type="email"
+                required
+              />
+            </div>
+            <button
+              class="btn-primary"
+              :disabled="busy || !config.platform_configured || !plan"
+            >
+              Continuar con Mercado Pago
+            </button>
+            <p v-if="!plans.length">Todavía no hay planes publicados.</p>
+          </form>
+          <div
+            v-for="item in billing.subscriptions || []"
+            :key="item.id"
+            class="card connection-row"
+          >
+            <div>
+              <strong>{{ labels[item.status] || item.status }}</strong>
+              <p>
+                {{
+                  money(
+                    Number(item.contracted_amount) * item.quantity,
+                    item.currency,
+                  )
+                }}
+                · Período hasta {{ when(item.current_period_end) }}
+              </p>
+              <small v-if="item.cancel_at_period_end"
+                >La renovación está cancelada.</small
+              >
+            </div>
+            <button
+              v-if="!item.provider_reference && item.status !== 'canceled'"
+              class="btn-primary"
+              :disabled="busy || !config.platform_configured"
+              @click="continueSubscription(item)"
+            >
+              Completar contratación</button
+            ><button
+              v-else-if="
+                item.provider_reference &&
+                item.status !== 'canceled' &&
+                !item.cancel_at_period_end
+              "
+              class="btn-secondary"
+              :disabled="busy || !config.platform_configured"
+              @click="cancelSubscription(item)"
+            >
+              Cancelar renovación
+            </button>
           </div>
-          <button class="btn-primary" :disabled="busy">
-            Guardar resolución
-          </button>
-        </form></template
-      >
-      </div></Transition>
+          <div class="card payment-table">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Factura de membresía</th>
+                  <th>Importe</th>
+                  <th>Saldo</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody><LoadingRows v-if="loading" :columns="5" />
+                <tr v-for="item in billing.invoices || []" :key="item.id">
+                  <td>{{ item.description || item.id.slice(0, 8) }}</td>
+                  <td>{{ money(item.amount_total, item.currency) }}</td>
+                  <td>{{ money(item.balance_due, item.currency) }}</td>
+                  <td>{{ item.status }}</td>
+                  <td>
+                    <button
+                      v-if="
+                        item.status === 'open' && Number(item.balance_due) > 0
+                      "
+                      class="btn-primary"
+                      :disabled="busy || !config.platform_configured"
+                      @click="payInvoice(item)"
+                    >
+                      Pagar
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <template v-if="isPlatform"
+            ><form
+              v-form-care
+              class="card action-form"
+              @submit.prevent="createPlan"
+            >
+              <h3>Publicar planes de LeguiBurger</h3>
+              <div class="input-group">
+                <label for="new-plan-name">Nombre del nuevo plan</label
+                ><input
+                  id="new-plan-name"
+                  v-model="newPlanName"
+                  minlength="2"
+                  maxlength="120"
+                  required
+                />
+              </div>
+              <button class="btn-primary" :disabled="busy">Crear plan</button>
+            </form>
+            <form
+              v-form-care
+              class="card action-form"
+              @submit.prevent="publishPrice"
+            >
+              <h3>Agregar un precio</h3>
+              <p>
+                Cada precio nuevo conserva intactos los contratos ya vendidos.
+              </p>
+              <div class="input-group">
+                <label for="pricing-plan">Plan</label
+                ><select id="pricing-plan" v-model="pricingPlan" required>
+                  <option
+                    v-for="item in platformPlans"
+                    :key="item.id"
+                    :value="item.id"
+                  >
+                    {{ item.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label for="new-plan-price">Importe en pesos</label
+                ><input
+                  id="new-plan-price"
+                  v-model="newPrice"
+                  type="text"
+                  inputmode="decimal"
+                  pattern="[0-9]+([.][0-9]{1,2})?"
+                  required
+                />
+              </div>
+              <div class="input-group">
+                <label for="plan-locations">Límite de locales del negocio</label
+                ><input
+                  id="plan-locations"
+                  v-model="maximumLocations"
+                  type="number"
+                  min="1"
+                  max="10000"
+                  placeholder="Sin límite"
+                />
+              </div>
+              <div class="input-group">
+                <label for="plan-collaborators"
+                  >Límite de colaboradores del negocio</label
+                ><input
+                  id="plan-collaborators"
+                  v-model="maximumCollaborators"
+                  type="number"
+                  min="1"
+                  max="100000"
+                  placeholder="Sin límite"
+                />
+              </div>
+              <div class="input-group">
+                <label for="plan-period">Frecuencia</label
+                ><select id="plan-period" v-model="newInterval">
+                  <option :value="1">Mensual</option>
+                  <option :value="12">Anual</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label for="plan-unit">Alcance</label
+                ><select id="plan-unit" v-model="newBillingUnit">
+                  <option value="brand">Por marca</option>
+                  <option value="tenant">Por local</option>
+                </select>
+              </div>
+              <button class="btn-primary" :disabled="busy || !pricingPlan">
+                Publicar precio
+              </button>
+            </form></template
+          >
+        </template>
+        <template v-if="tab === 'reviews' && isManager"
+          ><div class="card payment-table">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Recurso</th>
+                  <th>Motivo</th>
+                  <th>Última observación</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody><LoadingRows v-if="loading" :columns="5" />
+                <tr v-for="item in reviews" :key="item.id">
+                  <td>{{ item.resource_id }}</td>
+                  <td>
+                    {{
+                      reviewLabels[item.reason] || "Requiere revisión del cobro"
+                    }}
+                  </td>
+                  <td>{{ when(item.last_seen_at) }}</td>
+                  <td>{{ item.resolved_at ? "Resuelta" : "Pendiente" }}</td>
+                  <td>
+                    <button
+                      v-if="!item.resolved_at"
+                      class="btn-secondary"
+                      @click="reviewSelection = item.id"
+                    >
+                      Revisar
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="!reviews.length">
+                  <td colspan="5">No hay inconsistencias registradas.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <form
+            v-form-care
+            v-if="reviewSelection"
+            class="card action-form"
+            @submit.prevent="resolveReview"
+          >
+            <h3>Registrar resolución</h3>
+            <div class="input-group">
+              <label for="review-resolution">Acción</label
+              ><select id="review-resolution" v-model="resolution">
+                <option value="reprocess">
+                  Volver a verificar Mercado Pago
+                </option>
+                <option value="acknowledged">
+                  Cerrar revisión con una nota
+                </option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="review-note">Motivo de la resolución</label
+              ><textarea
+                id="review-note"
+                v-model="reviewNote"
+                minlength="10"
+                maxlength="500"
+                required
+              />
+            </div>
+            <button class="btn-primary" :disabled="busy">
+              Guardar resolución
+            </button>
+          </form></template
+        >
+      </StableContent>
     </section></DashboardShell
   >
 </template>

@@ -1,5 +1,5 @@
 <script setup>
-import DashboardSkeleton from "./DashboardSkeleton.vue";
+import AppSpinner from "./AppSpinner.vue";
 defineProps({
   kind: { type: String, default: "empty" },
   title: String,
@@ -9,12 +9,14 @@ defineProps({
 });
 </script>
 <template>
-  <DashboardSkeleton
+  <div
     v-if="kind === 'loading'"
-    :label="title"
-    :view="view"
-    compact
-  />
+    class="stable-loading-placeholder"
+    data-dashboard-loading
+    aria-busy="true"
+  >
+    <AppSpinner :size="28" :label="title || 'Cargando datos…'" />
+  </div>
   <div
     v-else
     class="state-panel"

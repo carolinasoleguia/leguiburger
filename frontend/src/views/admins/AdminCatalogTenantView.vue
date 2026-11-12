@@ -1,20 +1,29 @@
 <template>
   <section class="admin-catalog-tenant">
-    <PageHeading title="Gestión de catálogo" description="Definí el catalogo base de la marca o ajustá disponibilidad o precios por sucursal.">
+    <PageHeading
+      title="Gestión de catálogo"
+      description="Definí el catalogo base de la marca o ajustá disponibilidad o precios por sucursal."
+    >
     </PageHeading>
 
-    <StatePanel v-if="initializingCatalog" kind="loading" />
-
-    <nav v-else class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
-      <router-link :to="{ name: 'AdminCatalog' }" class="catalog-tab" exact-active-class="catalog-tab--active">
+    <nav class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
+      <router-link
+        :to="{ name: 'AdminCatalog' }"
+        class="catalog-tab"
+        exact-active-class="catalog-tab--active"
+      >
         {{ brandCatalogLabel }}
       </router-link>
-      <router-link :to="{ name: 'AdminCatalogTenants' }" class="catalog-tab" active-class="catalog-tab--active">
+      <router-link
+        :to="{ name: 'AdminCatalogTenants' }"
+        class="catalog-tab"
+        active-class="catalog-tab--active"
+      >
         Catálogo por sucursal
       </router-link>
     </nav>
 
-    <div v-if="!initializingCatalog" class="card tenant-picker-card">
+    <div class="card tenant-picker-card">
       <div class="panel-heading">
         <div>
           <h3>1. Seleccioná una sucursal</h3>
@@ -24,178 +33,354 @@
       <div class="controls-grid controls-grid--tenant">
         <div class="input-group">
           <label for="catalog-location">Sucursal</label>
-          <select id="catalog-location" v-model="selectedTenant">
+          <select
+            id="catalog-location"
+            v-model="selectedTenant"
+            :disabled="initializingCatalog"
+          >
             <option value="">Seleccioná una sucursal</option>
-            <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
+            <option
+              v-for="tenant in tenants"
+              :key="tenant.id"
+              :value="tenant.id"
+            >
               {{ tenant.subdomain || tenant.id }}
             </option>
           </select>
         </div>
-
       </div>
     </div>
 
-    <div v-if="!initializingCatalog && !selectedTenant" class="card empty-state-card">
-      <h3>Seleccioná una sucursal para continuar</h3>
-      <p>Cuando elijas una sucursal vas a ver su catálogo actual y podrás abrir el listado base para sumar hamburguesas con un clic.</p>
-    </div>
-
-    <div v-else-if="!initializingCatalog" class="card">
-      <div class="panel-heading panel-heading--stacked">
-        <div>
-          <h3>2. Catálogo de la sucursal</h3>
-          <p>{{ tenantProducts.length }} productos forman parte de esta sucursal</p>
+    <StableContent :loading="initializingCatalog || loadingTenantProducts"
+      ><div class="stable-catalog-region">
+        <div
+          v-if="!initializingCatalog && !selectedTenant"
+          class="card empty-state-card"
+        >
+          <h3>Seleccioná una sucursal para continuar</h3>
+          <p>
+            Cuando elijas una sucursal vas a ver su catálogo actual y podrás
+            abrir el listado base para sumar hamburguesas con un clic.
+          </p>
         </div>
-        <div class="panel-heading__actions">
-          <button class="btn-primary btn-fab" type="button" @click="openCatalogModal" aria-label="Agregar hamburguesas al catálogo de la sucursal">+</button>
-        </div>
-      </div>
 
-      <StatePanel v-if="loadingTenantProducts" kind="loading" />
-      <div v-else-if="tenantProductError" class="status-text error" role="alert">{{ tenantProductError }}</div>
-      <div v-else-if="tenantProducts.length === 0" class="status-text">Esta sucursal todavía no tiene productos asignados. Usá el botón `+` para agregar hamburguesas desde el catálogo base.</div>
-      <div v-else class="tenant-product-grid">
-        <article v-for="item in tenantProducts" :key="item.product_id" class="tenant-product-card">
-          <div class="tenant-product-card__media">
-            <img v-if="productImage(item.product || productById(item.product_id))" :src="productImage(item.product || productById(item.product_id))" :alt="productName(item.product || productById(item.product_id))" class="tenant-product-card__image" />
-            <div v-else class="tenant-product-card__image tenant-product-card__image--placeholder"></div>
-          </div>
-
-          <div class="tenant-product-card__body">
-            <div class="tenant-product-card__heading">
-              <div>
-                <h3>{{ productName(item.product || productById(item.product_id)) || item.product_id }}</h3>
-                <p>{{ item.track_stock ? 'Con control de stock' : 'Sin control de stock' }}</p>
-              </div>
-              <span class="status-pill" :class="item.is_available && item.is_active ? 'status-pill--success' : 'status-pill--muted'">
-                {{ item.is_available && item.is_active ? 'Disponible' : 'No disponible' }}
-              </span>
+        <div v-else-if="!initializingCatalog" class="card">
+          <div class="panel-heading panel-heading--stacked">
+            <div>
+              <h3>2. Catálogo de la sucursal</h3>
+              <p>
+                {{ tenantProducts.length }} productos forman parte de esta
+                sucursal
+              </p>
             </div>
-
-            <div class="tenant-product-card__meta">
-              <div>
-                <span class="meta-label">Precio</span>
-                <strong>{{ money(effectivePrice(item)) }}</strong>
-              </div>
-              <div>
-                <span class="meta-label">Stock</span>
-                <strong>{{ item.track_stock ? item.current_stock : '-' }}</strong>
-              </div>
-            </div>
-
-            <div class="tenant-product-card__actions">
-              <button class="btn-secondary" @click="openAssignModal(item.product || productById(item.product_id), item)">Editar</button>
-              <button class="btn-danger" @click="removeTenantProduct(item)">Quitar</button>
-            </div>
-          </div>
-        </article>
-      </div>
-    </div>
-
-    <Transition name="modal"><div v-if="isCatalogModalOpen" class="modal-overlay" @click.self="closeCatalogModal">
-      <div v-dialog-care class="modal-card modal-card--catalog">
-        <button type="button" class="modal-close" @click="closeCatalogModal">×</button>
-        <h3>{{ brandBaseCatalogLabel }}</h3>
-        <p>Elegí una hamburguesa para agregarla a {{ selectedTenantLabel }}.</p>
-
-        <StatePanel v-if="loadingProducts" kind="loading" />
-        <div v-else-if="productError" class="status-text error" role="alert">{{ productError }}</div>
-        <div v-else-if="products.length === 0" class="status-text">Todavía no hay productos en el catálogo de la marca.</div>
-        <div v-else class="base-product-list">
-          <article v-for="product in orderedProducts" :key="productId(product)" class="base-product-row">
-            <div class="base-product-row__main">
-              <div class="base-product-row__thumb">
-                <img v-if="productImage(product)" :src="productImage(product)" :alt="productName(product)" class="base-product-row__image" />
-                <div v-else class="base-product-row__image base-product-row__image--placeholder"></div>
-              </div>
-              <div>
-                <h4>{{ productName(product) }}</h4>
-                <p>{{ productDescription(product) || 'Sin descripción cargada.' }}</p>
-                <span class="meta-label">{{ money(productBasePrice(product)) }}</span>
-              </div>
-            </div>
-
-            <div class="base-product-row__actions">
-              <span v-if="!productActive(product)" class="status-pill status-pill--muted">
-                Inactivo
-              </span>
+            <div class="panel-heading__actions">
               <button
-                v-else-if="!tenantProductById(productId(product))"
-                class="btn-primary btn-action-label"
+                class="btn-primary btn-fab"
                 type="button"
-                @click="openAssignModal(product, tenantProductById(productId(product)))"
+                @click="openCatalogModal"
+                aria-label="Agregar hamburguesas al catálogo de la sucursal"
               >
-                Agregar
+                +
               </button>
-              <span v-else class="status-pill status-pill--success">
-                En sucursal
-              </span>
             </div>
-          </article>
+          </div>
+
+          <div v-if="tenantProductError" class="status-text error" role="alert">
+            {{ tenantProductError }}
+          </div>
+          <div v-else-if="tenantProducts.length === 0" class="status-text">
+            Esta sucursal todavía no tiene productos asignados. Usá el botón `+`
+            para agregar hamburguesas desde el catálogo base.
+          </div>
+          <div v-else class="tenant-product-grid">
+            <article
+              v-for="item in tenantProducts"
+              :key="item.product_id"
+              class="tenant-product-card"
+            >
+              <div class="tenant-product-card__media">
+                <img
+                  v-if="
+                    productImage(item.product || productById(item.product_id))
+                  "
+                  :src="
+                    productImage(item.product || productById(item.product_id))
+                  "
+                  :alt="
+                    productName(item.product || productById(item.product_id))
+                  "
+                  class="tenant-product-card__image"
+                />
+                <div
+                  v-else
+                  class="tenant-product-card__image tenant-product-card__image--placeholder"
+                ></div>
+              </div>
+
+              <div class="tenant-product-card__body">
+                <div class="tenant-product-card__heading">
+                  <div>
+                    <h3>
+                      {{
+                        productName(
+                          item.product || productById(item.product_id),
+                        ) || item.product_id
+                      }}
+                    </h3>
+                    <p>
+                      {{
+                        item.track_stock
+                          ? "Con control de stock"
+                          : "Sin control de stock"
+                      }}
+                    </p>
+                  </div>
+                  <span
+                    class="status-pill"
+                    :class="
+                      item.is_available && item.is_active
+                        ? 'status-pill--success'
+                        : 'status-pill--muted'
+                    "
+                  >
+                    {{
+                      item.is_available && item.is_active
+                        ? "Disponible"
+                        : "No disponible"
+                    }}
+                  </span>
+                </div>
+
+                <div class="tenant-product-card__meta">
+                  <div>
+                    <span class="meta-label">Precio</span>
+                    <strong>{{ money(effectivePrice(item)) }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">Stock</span>
+                    <strong>{{
+                      item.track_stock ? item.current_stock : "-"
+                    }}</strong>
+                  </div>
+                </div>
+
+                <div class="tenant-product-card__actions">
+                  <button
+                    class="btn-secondary"
+                    @click="
+                      openAssignModal(
+                        item.product || productById(item.product_id),
+                        item,
+                      )
+                    "
+                  >
+                    Editar
+                  </button>
+                  <button class="btn-danger" @click="removeTenantProduct(item)">
+                    Quitar
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
         </div>
-      </div>
-    </div></Transition>
+      </div></StableContent
+    >
 
-    <Transition name="modal"><div v-if="isAssignModalOpen" class="modal-overlay" @click.self="closeAssignModal">
-      <div v-dialog-care class="modal-card modal-card--wide">
-        <button type="button" class="modal-close" @click="closeAssignModal">×</button>
-        <h3>Configuración por sucursal</h3>
-        <p>{{ productName(assignProduct) }} en {{ selectedTenantLabel }}</p>
+    <Transition name="modal"
+      ><div
+        v-if="isCatalogModalOpen"
+        class="modal-overlay"
+        @click.self="closeCatalogModal"
+      >
+        <div v-dialog-care class="modal-card modal-card--catalog">
+          <button type="button" class="modal-close" @click="closeCatalogModal">
+            ×
+          </button>
+          <h3>{{ brandBaseCatalogLabel }}</h3>
+          <p>
+            Elegí una hamburguesa para agregarla a {{ selectedTenantLabel }}.
+          </p>
 
-        <form v-form-care @submit.prevent="submitTenantProduct">
-          <div class="input-grid">
-            <div class="input-group">
-              <label>Precio local</label>
-              <input v-model.number="tenantProductForm.price_override" type="number" min="0" step="0.01" />
-            </div>
-            <div class="input-group">
-              <label>Stock</label>
-              <input v-model.number="tenantProductForm.current_stock" type="number" min="0" />
-            </div>
+          <StatePanel v-if="loadingProducts" kind="loading" />
+          <div v-else-if="productError" class="status-text error" role="alert">
+            {{ productError }}
           </div>
-
-          <div class="toggle-grid">
-            <label class="checkbox-row">
-              <input v-model="tenantProductForm.track_stock" type="checkbox" />
-              <span>Controlar stock</span>
-            </label>
-            <label class="checkbox-row">
-              <input v-model="tenantProductForm.is_available" type="checkbox" />
-              <span>Disponible</span>
-            </label>
-            <label v-if="tenantProductForm.exists" class="checkbox-row">
-              <input v-model="tenantProductForm.is_active" type="checkbox" />
-              <span>Activo</span>
-            </label>
+          <div v-else-if="products.length === 0" class="status-text">
+            Todavía no hay productos en el catálogo de la marca.
           </div>
+          <div v-else class="base-product-list">
+            <article
+              v-for="product in orderedProducts"
+              :key="productId(product)"
+              class="base-product-row"
+            >
+              <div class="base-product-row__main">
+                <div class="base-product-row__thumb">
+                  <img
+                    v-if="productImage(product)"
+                    :src="productImage(product)"
+                    :alt="productName(product)"
+                    class="base-product-row__image"
+                  />
+                  <div
+                    v-else
+                    class="base-product-row__image base-product-row__image--placeholder"
+                  ></div>
+                </div>
+                <div>
+                  <h4>{{ productName(product) }}</h4>
+                  <p>
+                    {{
+                      productDescription(product) || "Sin descripción cargada."
+                    }}
+                  </p>
+                  <span class="meta-label">{{
+                    money(productBasePrice(product))
+                  }}</span>
+                </div>
+              </div>
 
-          <div class="modal-actions modal-actions--split" v-if="tenantProductForm.exists">
-            <div class="modal-actions__group">
-              <button type="button" class="btn-secondary" @click="closeAssignModal" :disabled="actionLoading">Cancelar</button>
-              <button type="submit" class="btn-primary" :disabled="actionLoading">
+              <div class="base-product-row__actions">
+                <span
+                  v-if="!productActive(product)"
+                  class="status-pill status-pill--muted"
+                >
+                  Inactivo
+                </span>
+                <button
+                  v-else-if="!tenantProductById(productId(product))"
+                  class="btn-primary btn-action-label"
+                  type="button"
+                  @click="
+                    openAssignModal(
+                      product,
+                      tenantProductById(productId(product)),
+                    )
+                  "
+                >
+                  Agregar
+                </button>
+                <span v-else class="status-pill status-pill--success">
+                  En sucursal
+                </span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div></Transition
+    >
+
+    <Transition name="modal"
+      ><div
+        v-if="isAssignModalOpen"
+        class="modal-overlay"
+        @click.self="closeAssignModal"
+      >
+        <div v-dialog-care class="modal-card modal-card--wide">
+          <button type="button" class="modal-close" @click="closeAssignModal">
+            ×
+          </button>
+          <h3>Configuración por sucursal</h3>
+          <p>{{ productName(assignProduct) }} en {{ selectedTenantLabel }}</p>
+
+          <form v-form-care @submit.prevent="submitTenantProduct">
+            <div class="input-grid">
+              <div class="input-group">
+                <label>Precio local</label>
+                <input
+                  v-model.number="tenantProductForm.price_override"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div class="input-group">
+                <label>Stock</label>
+                <input
+                  v-model.number="tenantProductForm.current_stock"
+                  type="number"
+                  min="0"
+                />
+              </div>
+            </div>
+
+            <div class="toggle-grid">
+              <label class="checkbox-row">
+                <input
+                  v-model="tenantProductForm.track_stock"
+                  type="checkbox"
+                />
+                <span>Controlar stock</span>
+              </label>
+              <label class="checkbox-row">
+                <input
+                  v-model="tenantProductForm.is_available"
+                  type="checkbox"
+                />
+                <span>Disponible</span>
+              </label>
+              <label v-if="tenantProductForm.exists" class="checkbox-row">
+                <input v-model="tenantProductForm.is_active" type="checkbox" />
+                <span>Activo</span>
+              </label>
+            </div>
+
+            <div
+              class="modal-actions modal-actions--split"
+              v-if="tenantProductForm.exists"
+            >
+              <div class="modal-actions__group">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  @click="closeAssignModal"
+                  :disabled="actionLoading"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  class="btn-primary"
+                  :disabled="actionLoading"
+                >
+                  <span v-if="actionLoading" class="spinner"></span>
+                  {{ actionLoading ? "Guardando..." : "Guardar configuración" }}
+                </button>
+              </div>
+            </div>
+
+            <div class="modal-actions" v-else>
+              <button
+                type="button"
+                class="btn-secondary"
+                @click="closeAssignModal"
+                :disabled="actionLoading"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                class="btn-primary"
+                :disabled="actionLoading"
+              >
                 <span v-if="actionLoading" class="spinner"></span>
-                {{ actionLoading ? 'Guardando...' : 'Guardar configuración' }}
+                {{ actionLoading ? "Guardando..." : "Agregar a sucursal" }}
               </button>
             </div>
-          </div>
-
-          <div class="modal-actions" v-else>
-            <button type="button" class="btn-secondary" @click="closeAssignModal" :disabled="actionLoading">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="actionLoading">
-              <span v-if="actionLoading" class="spinner"></span>
-              {{ actionLoading ? 'Guardando...' : 'Agregar a sucursal' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div></Transition>
+          </form>
+        </div>
+      </div></Transition
+    >
 
     <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
       <div class="alert-card">
         <h3 class="alert-title">Aviso</h3>
         <p class="alert-message">{{ alertText }}</p>
         <div class="modal-actions">
-          <button type="button" class="btn-primary" @click="closeAlert">OK</button>
+          <button type="button" class="btn-primary" @click="closeAlert">
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -205,35 +390,53 @@
 <script setup>
 import PageHeading from "../../components/PageHeading.vue";
 import StatePanel from "../../components/StatePanel.vue";
+import StableContent from "../../components/StableContent.vue";
 import { confirmAction } from "../../services/confirmation.js";
-import { computed, onMounted, ref, watch } from 'vue';
-import { apiFetch, getJSON } from '../../services/api.js';
-import { useAuth } from '../../composables/useAuth.js';
+import { computed, onMounted, ref, watch } from "vue";
+import { apiFetch, getJSON } from "../../services/api.js";
+import { useAuth } from "../../composables/useAuth.js";
 
 const auth = useAuth();
 const tenants = ref([]);
 const products = ref([]);
 const tenantProducts = ref([]);
-const selectedTenant = ref('');
+const selectedTenant = ref("");
 const initializingCatalog = ref(true);
 const loadingProducts = ref(false);
 const loadingTenantProducts = ref(false);
-const productError = ref('');
-const tenantProductError = ref('');
+const productError = ref("");
+const tenantProductError = ref("");
 const actionLoading = ref(false);
 const isCatalogModalOpen = ref(false);
 const isAssignModalOpen = ref(false);
 const isAlertOpen = ref(false);
-const alertText = ref('');
+const alertText = ref("");
 const assignProduct = ref(null);
 const assignTenantProduct = ref(null);
 const tenantProductForm = ref(emptyTenantProductForm());
 
-const brandId = computed(() => auth.user.value?.brand_id || auth.user.value?.brandID || '');
+const brandId = computed(
+  () => auth.user.value?.brand_id || auth.user.value?.brandID || "",
+);
 const brandLabel = computed(() => {
   const user = auth.user.value || {};
-  const selectedTenantWithBrand = tenants.value.find((item) => item.id === selectedTenant.value && (item.brand?.name || item.brand?.Name || item.brand_name || item.brandName));
-  const tenantWithBrand = selectedTenantWithBrand || tenants.value.find((item) => item.brand?.name || item.brand?.Name || item.brand_name || item.brandName);
+  const selectedTenantWithBrand = tenants.value.find(
+    (item) =>
+      item.id === selectedTenant.value &&
+      (item.brand?.name ||
+        item.brand?.Name ||
+        item.brand_name ||
+        item.brandName),
+  );
+  const tenantWithBrand =
+    selectedTenantWithBrand ||
+    tenants.value.find(
+      (item) =>
+        item.brand?.name ||
+        item.brand?.Name ||
+        item.brand_name ||
+        item.brandName,
+    );
   return (
     user.brand?.name ||
     user.brand?.Name ||
@@ -243,17 +446,25 @@ const brandLabel = computed(() => {
     tenantWithBrand?.brand?.Name ||
     tenantWithBrand?.brand_name ||
     tenantWithBrand?.brandName ||
-    ''
+    ""
   );
 });
-const brandCatalogLabel = computed(() => (brandLabel.value ? `Catálogo de ${brandLabel.value}` : 'Catálogo de marca'));
-const brandBaseCatalogLabel = computed(() => (brandLabel.value ? `Catálogo base de ${brandLabel.value}` : 'Catálogo base de la marca'));
+const brandCatalogLabel = computed(() =>
+  brandLabel.value ? `Catálogo de ${brandLabel.value}` : "Catálogo de marca",
+);
+const brandBaseCatalogLabel = computed(() =>
+  brandLabel.value
+    ? `Catálogo base de ${brandLabel.value}`
+    : "Catálogo base de la marca",
+);
 const selectedTenantLabel = computed(() => {
   const tenant = tenants.value.find((item) => item.id === selectedTenant.value);
-  return tenant?.subdomain || tenant?.id || 'la sucursal seleccionada';
+  return tenant?.subdomain || tenant?.id || "la sucursal seleccionada";
 });
 
-const tenantProductMap = computed(() => new Map(tenantProducts.value.map((item) => [item.product_id, item])));
+const tenantProductMap = computed(
+  () => new Map(tenantProducts.value.map((item) => [item.product_id, item])),
+);
 const orderedProducts = computed(() => {
   return [...products.value].sort((left, right) => {
     const leftAssigned = !!tenantProductById(productId(left));
@@ -284,29 +495,32 @@ function emptyTenantProductForm() {
     current_stock: 0,
     track_stock: true,
     is_available: true,
-    is_active: true
+    is_active: true,
   };
 }
 
 function money(value) {
   const numeric = Number(value || 0);
-  return numeric.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+  return numeric.toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+  });
 }
 
 function productId(product) {
-  return product?.id || product?.ID || '';
+  return product?.id || product?.ID || "";
 }
 
 function productName(product) {
-  return product?.name || product?.Name || '';
+  return product?.name || product?.Name || "";
 }
 
 function productDescription(product) {
-  return product?.description || product?.Description || '';
+  return product?.description || product?.Description || "";
 }
 
 function productImage(product) {
-  return product?.image_url || product?.ImageURL || '';
+  return product?.image_url || product?.ImageURL || "";
 }
 
 function productBasePrice(product) {
@@ -333,33 +547,33 @@ function tenantProductById(productID) {
 }
 
 function productHeaders() {
-  return brandId.value ? { 'X-Brand-ID': brandId.value } : {};
+  return brandId.value ? { "X-Brand-ID": brandId.value } : {};
 }
 
 function tenantHeaders() {
-  return selectedTenant.value ? { 'X-Tenant-ID': selectedTenant.value } : {};
+  return selectedTenant.value ? { "X-Tenant-ID": selectedTenant.value } : {};
 }
 
 async function loadTenants() {
-  const url = brandId.value ? `/tenants?brand_id=${brandId.value}` : '/tenants';
+  const url = brandId.value ? `/tenants?brand_id=${brandId.value}` : "/tenants";
   tenants.value = await getJSON(url);
 }
 
 async function loadProducts() {
   loadingProducts.value = true;
-  productError.value = '';
+  productError.value = "";
   try {
-    const response = await apiFetch('/products', {
-      method: 'GET',
-      headers: productHeaders()
+    const response = await apiFetch("/products", {
+      method: "GET",
+      headers: productHeaders(),
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.message || 'No se pudo cargar el catálogo.');
+      throw new Error(payload.message || "No se pudo cargar el catálogo.");
     }
     products.value = await response.json();
   } catch (err) {
-    productError.value = err.message || 'No se pudo cargar el catálogo.';
+    productError.value = err.message || "No se pudo cargar el catálogo.";
   } finally {
     loadingProducts.value = false;
   }
@@ -371,19 +585,22 @@ async function loadTenantProducts() {
     return;
   }
   loadingTenantProducts.value = true;
-  tenantProductError.value = '';
+  tenantProductError.value = "";
   try {
-    const response = await apiFetch('/tenant-products', {
-      method: 'GET',
-      headers: tenantHeaders()
+    const response = await apiFetch("/tenant-products", {
+      method: "GET",
+      headers: tenantHeaders(),
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.message || 'No se pudo cargar el catálogo de la sucursal.');
+      throw new Error(
+        payload.message || "No se pudo cargar el catálogo de la sucursal.",
+      );
     }
     tenantProducts.value = await response.json();
   } catch (err) {
-    tenantProductError.value = err.message || 'No se pudo cargar el catálogo de la sucursal.';
+    tenantProductError.value =
+      err.message || "No se pudo cargar el catálogo de la sucursal.";
     tenantProducts.value = [];
   } finally {
     loadingTenantProducts.value = false;
@@ -392,11 +609,13 @@ async function loadTenantProducts() {
 
 function openAssignModal(product, existing = null) {
   if (!selectedTenant.value) {
-    showAlert('Seleccioná una sucursal antes de agregar productos.');
+    showAlert("Seleccioná una sucursal antes de agregar productos.");
     return;
   }
   if (!existing && !productActive(product)) {
-    showAlert('Este producto está inactivo en el catálogo general y no se puede sumar a una sucursal.');
+    showAlert(
+      "Este producto está inactivo en el catálogo general y no se puede sumar a una sucursal.",
+    );
     return;
   }
   assignProduct.value = product;
@@ -408,7 +627,7 @@ function openAssignModal(product, existing = null) {
         current_stock: Number(existing.current_stock || 0),
         track_stock: !!existing.track_stock,
         is_available: !!existing.is_available,
-        is_active: !!existing.is_active
+        is_active: !!existing.is_active,
       }
     : emptyTenantProductForm();
   isCatalogModalOpen.value = false;
@@ -428,49 +647,61 @@ function showAlert(message) {
 
 function closeAlert() {
   isAlertOpen.value = false;
-  alertText.value = '';
+  alertText.value = "";
 }
 
 async function submitTenantProduct() {
   const selectedProductID = productId(assignProduct.value);
   if (!selectedProductID) {
-    showAlert('Seleccioná un producto válido.');
+    showAlert("Seleccioná un producto válido.");
     return;
   }
   actionLoading.value = true;
   try {
     const payload = {
       product_id: selectedProductID,
-      price_override: tenantProductForm.value.price_override === '' ? null : tenantProductForm.value.price_override,
+      price_override:
+        tenantProductForm.value.price_override === ""
+          ? null
+          : tenantProductForm.value.price_override,
       current_stock: Number(tenantProductForm.value.current_stock || 0),
       track_stock: tenantProductForm.value.track_stock,
-      is_available: tenantProductForm.value.is_available
+      is_available: tenantProductForm.value.is_available,
     };
     if (tenantProductForm.value.exists) {
       payload.is_active = tenantProductForm.value.is_active;
     }
 
-    const response = await apiFetch(tenantProductForm.value.exists ? `/tenant-products/${selectedProductID}` : '/tenant-products', {
-      method: tenantProductForm.value.exists ? 'PUT' : 'POST',
-      headers: tenantHeaders(),
-      body: JSON.stringify(payload)
-    });
+    const response = await apiFetch(
+      tenantProductForm.value.exists
+        ? `/tenant-products/${selectedProductID}`
+        : "/tenant-products",
+      {
+        method: tenantProductForm.value.exists ? "PUT" : "POST",
+        headers: tenantHeaders(),
+        body: JSON.stringify(payload),
+      },
+    );
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => ({}));
-      throw new Error(errorPayload.message || 'No se pudo guardar la configuración.');
+      throw new Error(
+        errorPayload.message || "No se pudo guardar la configuración.",
+      );
     }
     await loadTenantProducts();
     closeAssignModal();
     closeCatalogModal();
   } catch (err) {
-    showAlert(err.message || 'No se pudo guardar la configuración.');
+    showAlert(err.message || "No se pudo guardar la configuración.");
   } finally {
     actionLoading.value = false;
   }
 }
 
 async function removeTenantProduct(item, fromModal = false) {
-  const confirmed = await confirmAction(`¿Quitar ${item.product?.name || item.product_id} de esta sucursal?`);
+  const confirmed = await confirmAction(
+    `¿Quitar ${item.product?.name || item.product_id} de esta sucursal?`,
+  );
   if (!confirmed) {
     return;
   }
@@ -479,19 +710,19 @@ async function removeTenantProduct(item, fromModal = false) {
   }
   try {
     const response = await apiFetch(`/tenant-products/${item.product_id}`, {
-      method: 'DELETE',
-      headers: tenantHeaders()
+      method: "DELETE",
+      headers: tenantHeaders(),
     });
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => ({}));
-      throw new Error(errorPayload.message || 'No se pudo quitar el producto.');
+      throw new Error(errorPayload.message || "No se pudo quitar el producto.");
     }
     await loadTenantProducts();
     if (fromModal) {
       closeAssignModal();
     }
   } catch (err) {
-    showAlert(err.message || 'No se pudo quitar el producto.');
+    showAlert(err.message || "No se pudo quitar el producto.");
   } finally {
     if (fromModal) {
       actionLoading.value = false;
@@ -504,7 +735,7 @@ onMounted(async () => {
     await loadTenants();
     await loadProducts();
   } catch (err) {
-    showAlert(err.message || 'No se pudo inicializar catálogo.');
+    showAlert(err.message || "No se pudo inicializar catálogo.");
   } finally {
     initializingCatalog.value = false;
   }
@@ -545,7 +776,9 @@ onMounted(async () => {
   color: var(--text-muted);
   font-weight: 700;
   text-decoration: none;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .catalog-tab:hover,

@@ -1,5 +1,6 @@
 <script setup>
-import DashboardSkeleton from "../../components/DashboardSkeleton.vue";
+import LoadingRows from "../../components/LoadingRows.vue";
+import StableContent from "../../components/StableContent.vue";
 import { onMounted, ref } from "vue";
 import DashboardShell from "../../components/DashboardShell.vue";
 import { useAuth } from "../../composables/useAuth.js";
@@ -132,56 +133,52 @@ onMounted(load);
           >
         </div>
       </div>
-      <DashboardSkeleton
-        v-if="loading"
-        view="table"
-        label="Cargando invitaciones"
-        compact
-      />
-      <div v-show="!loading" class="card invite-table">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Correo</th>
-              <th>Local</th>
-              <th>Rol</th>
-              <th>Estado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in invitations" :key="item.id">
-              <td>{{ item.email }}</td>
-              <td>{{ item.subdomain }}</td>
-              <td>{{ roles[item.role] }}</td>
-              <td>
-                {{
-                  item.used_at
-                    ? "Finalizada"
-                    : Date.parse(item.expires_at) < Date.now()
-                      ? "Vencida"
-                      : "Pendiente"
-                }}
-              </td>
-              <td>
-                <button
-                  v-if="
-                    !item.used_at && Date.parse(item.expires_at) > Date.now()
-                  "
-                  class="btn-secondary"
-                  :disabled="busy"
-                  @click="revoke(item)"
-                >
-                  Revocar
-                </button>
-              </td>
-            </tr>
-            <tr v-if="!invitations.length">
-              <td colspan="5">Todavía no hay invitaciones.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <StableContent :loading="loading" label="Cargando invitaciones">
+        <div class="card invite-table">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Correo</th>
+                <th>Local</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody><LoadingRows v-if="loading" :columns="5" />
+              <tr v-for="item in invitations" :key="item.id">
+                <td>{{ item.email }}</td>
+                <td>{{ item.subdomain }}</td>
+                <td>{{ roles[item.role] }}</td>
+                <td>
+                  {{
+                    item.used_at
+                      ? "Finalizada"
+                      : Date.parse(item.expires_at) < Date.now()
+                        ? "Vencida"
+                        : "Pendiente"
+                  }}
+                </td>
+                <td>
+                  <button
+                    v-if="
+                      !item.used_at && Date.parse(item.expires_at) > Date.now()
+                    "
+                    class="btn-secondary"
+                    :disabled="busy"
+                    @click="revoke(item)"
+                  >
+                    Revocar
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!invitations.length">
+                <td colspan="5">Todavía no hay invitaciones.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </StableContent>
     </section></DashboardShell
   >
 </template>

@@ -1,135 +1,232 @@
 <template>
   <section class="admin-catalog">
-    <PageHeading title="Gestión de catálogo" description="Definí la oferta base de la marca y ajustá disponibilidad o precios por sucursal cuando haga falta.">
-      <div v-if="!initializingCatalog" class="catalog-actions">
-        <button class="btn-primary" @click="openProductModal">Nuevo producto</button>
+    <PageHeading
+      title="Gestión de catálogo"
+      description="Definí la oferta base de la marca y ajustá disponibilidad o precios por sucursal cuando haga falta."
+    >
+      <div class="catalog-actions">
+        <button
+          class="btn-primary"
+          :disabled="initializingCatalog"
+          @click="openProductModal"
+        >
+          Nuevo producto
+        </button>
       </div>
     </PageHeading>
 
-    <StatePanel v-if="initializingCatalog" kind="loading" />
-
-    <nav v-else class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
-      <router-link :to="{ name: 'AdminCatalog' }" class="catalog-tab" exact-active-class="catalog-tab--active">
+    <nav class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
+      <router-link
+        :to="{ name: 'AdminCatalog' }"
+        class="catalog-tab"
+        exact-active-class="catalog-tab--active"
+      >
         {{ brandCatalogLabel }}
       </router-link>
-      <router-link :to="{ name: 'AdminCatalogTenants' }" class="catalog-tab" active-class="catalog-tab--active">
+      <router-link
+        :to="{ name: 'AdminCatalogTenants' }"
+        class="catalog-tab"
+        active-class="catalog-tab--active"
+      >
         Catálogo por sucursal
       </router-link>
     </nav>
 
-    <div v-if="!initializingCatalog" class="card">
+    <div class="card">
       <div class="panel-heading">
         <div>
           <h3>{{ brandCatalogLabel }}</h3>
-          <p>{{ products.length }} productos registrados como oferta general de la marca</p>
+          <p>
+            {{ products.length }} productos registrados como oferta general de
+            la marca
+          </p>
         </div>
       </div>
 
-      <StatePanel v-if="loadingProducts" kind="loading" />
-      <div v-else-if="productError" class="status-text error" role="alert">{{ productError }}</div>
-      <div v-else-if="products.length === 0" class="status-text">Todavía no hay productos en el catálogo.</div>
-
-      <div v-else class="table-shell">
-        <table class="data-table compact-table catalog-table">
-          <thead>
-            <tr>
-              <th>Producto</th>
-              <th>Precio base</th>
-              <th>Estado</th>
-              <th class="actions-column">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="product in products" :key="productId(product)">
-              <td class="product-cell">
-                <div class="product-cell__content">
-                  <img v-if="productImage(product)" :src="productImage(product)" :alt="productName(product)" class="product-thumb" />
-                  <div>
-                    <strong>{{ productName(product) }}</strong>
-                    <span>{{ productDescription(product) || '-' }}</span>
+      <StableContent :loading="initializingCatalog || loadingProducts"
+        ><div class="stable-table-region table-shell">
+          <table class="data-table compact-table catalog-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Precio base</th>
+                <th>Estado</th>
+                <th class="actions-column">Acciones</th>
+              </tr>
+            </thead>
+            <tbody><LoadingRows v-if="initializingCatalog || loadingProducts" :columns="4" />
+              <tr v-if="!products.length">
+                <td colspan="4">
+                  <span v-if="productError" role="alert">{{
+                    productError
+                  }}</span
+                  ><span v-else-if="!loadingProducts && !initializingCatalog"
+                    >Todavía no hay productos en el catálogo.</span
+                  >
+                </td>
+              </tr>
+              <tr v-for="product in products" :key="productId(product)">
+                <td class="product-cell">
+                  <div class="product-cell__content">
+                    <img
+                      v-if="productImage(product)"
+                      :src="productImage(product)"
+                      :alt="productName(product)"
+                      class="product-thumb"
+                    />
+                    <div>
+                      <strong>{{ productName(product) }}</strong>
+                      <span>{{ productDescription(product) || "-" }}</span>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td>{{ money(productBasePrice(product)) }}</td>
-              <td class="status-cell status-column">
-                <span class="status-pill" :class="productActive(product) ? 'status-pill--success' : 'status-pill--muted'">
-                  {{ productActive(product) ? 'Activo' : 'Inactivo' }}
-                </span>
-              </td>
-              <td class="table-actions actions-column">
-                <div class="table-actions__inner">
-                  <button class="btn-secondary catalog-action-button" @click="openProductModal(product)">Editar</button>
-                  <button class="btn-danger catalog-action-button" @click="deleteProduct(product)">Eliminar</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                </td>
+                <td>{{ money(productBasePrice(product)) }}</td>
+                <td class="status-cell status-column">
+                  <span
+                    class="status-pill"
+                    :class="
+                      productActive(product)
+                        ? 'status-pill--success'
+                        : 'status-pill--muted'
+                    "
+                  >
+                    {{ productActive(product) ? "Activo" : "Inactivo" }}
+                  </span>
+                </td>
+                <td class="table-actions actions-column">
+                  <div class="table-actions__inner">
+                    <button
+                      class="btn-secondary catalog-action-button"
+                      @click="openProductModal(product)"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      class="btn-danger catalog-action-button"
+                      @click="deleteProduct(product)"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div></StableContent
+      >
     </div>
 
-    <Transition name="modal"><div v-if="isProductModalOpen" class="modal-overlay" @click.self="closeProductModal">
-      <div v-dialog-care class="modal-card modal-card--product">
-        <button type="button" class="modal-close" @click="closeProductModal">×</button>
-        <h3>{{ productForm.id ? 'Editar producto' : 'Nuevo producto' }}</h3>
-        <p>Estos datos pertenecen al catálogo general de la marca.</p>
+    <Transition name="modal"
+      ><div
+        v-if="isProductModalOpen"
+        class="modal-overlay"
+        @click.self="closeProductModal"
+      >
+        <div v-dialog-care class="modal-card modal-card--product">
+          <button type="button" class="modal-close" @click="closeProductModal">
+            ×
+          </button>
+          <h3>{{ productForm.id ? "Editar producto" : "Nuevo producto" }}</h3>
+          <p>Estos datos pertenecen al catálogo general de la marca.</p>
 
-        <form v-form-care class="product-modal-form" @submit.prevent="submitProduct">
-          <div class="input-group">
-            <label>Nombre</label>
-            <input v-model="productForm.name" type="text" required />
-          </div>
-          <div class="input-group">
-            <label>Descripción</label>
-            <textarea v-model="productForm.description"></textarea>
-          </div>
-          <div class="input-grid">
+          <form
+            v-form-care
+            class="product-modal-form"
+            @submit.prevent="submitProduct"
+          >
             <div class="input-group">
-              <label>Precio base</label>
-              <input v-model.number="productForm.base_price" type="number" min="0" step="0.01" required />
+              <label>Nombre</label>
+              <input v-model="productForm.name" type="text" required />
             </div>
             <div class="input-group">
-              <label>Imagen</label>
-              <input type="file" accept="image/png,image/jpeg" @change="handleImageChange" />
-              <span class="file-hint">{{ productForm.image_name || 'No se eligió ningún archivo' }}</span>
+              <label>Descripción</label>
+              <textarea v-model="productForm.description"></textarea>
             </div>
-          </div>
-
-          <div class="image-preview" v-if="previewImageSrc">
-            <span class="image-preview__label">Vista previa</span>
-            <img :src="previewImageSrc" :alt="productForm.name || 'Vista previa del producto'" class="image-preview__img" />
-          </div>
-
-          <div v-if="productForm.id" class="product-status-toggle">
-            <div>
-              <span class="product-status-toggle__label">Estado del producto</span>
-              <strong>{{ productForm.is_active ? 'Activo' : 'Inactivo' }}</strong>
+            <div class="input-grid">
+              <div class="input-group">
+                <label>Precio base</label>
+                <input
+                  v-model.number="productForm.base_price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+              <div class="input-group">
+                <label>Imagen</label>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  @change="handleImageChange"
+                />
+                <span class="file-hint">{{
+                  productForm.image_name || "No se eligió ningún archivo"
+                }}</span>
+              </div>
             </div>
-            <label class="switch-control" for="product-active">
-              <input id="product-active" v-model="productForm.is_active" type="checkbox" />
-              <span class="switch-control__track">
-                <span class="switch-control__thumb"></span>
-              </span>
-            </label>
-          </div>
 
-          <div class="modal-actions">
-            <button type="button" class="btn-secondary" @click="closeProductModal" :disabled="actionLoading">Cancelar</button>
-            <button type="submit" class="btn-primary" :disabled="actionLoading">
-              <span v-if="actionLoading" class="spinner"></span>
-              {{ actionLoading ? 'Guardando...' : 'Guardar' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div></Transition>
+            <div class="image-preview" v-if="previewImageSrc">
+              <span class="image-preview__label">Vista previa</span>
+              <img
+                :src="previewImageSrc"
+                :alt="productForm.name || 'Vista previa del producto'"
+                class="image-preview__img"
+              />
+            </div>
+
+            <div v-if="productForm.id" class="product-status-toggle">
+              <div>
+                <span class="product-status-toggle__label"
+                  >Estado del producto</span
+                >
+                <strong>{{
+                  productForm.is_active ? "Activo" : "Inactivo"
+                }}</strong>
+              </div>
+              <label class="switch-control" for="product-active">
+                <input
+                  id="product-active"
+                  v-model="productForm.is_active"
+                  type="checkbox"
+                />
+                <span class="switch-control__track">
+                  <span class="switch-control__thumb"></span>
+                </span>
+              </label>
+            </div>
+
+            <div class="modal-actions">
+              <button
+                type="button"
+                class="btn-secondary"
+                @click="closeProductModal"
+                :disabled="actionLoading"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                class="btn-primary"
+                :disabled="actionLoading"
+              >
+                <span v-if="actionLoading" class="spinner"></span>
+                {{ actionLoading ? "Guardando..." : "Guardar" }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div></Transition
+    >
 
     <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
       <div class="alert-card">
         <h3 class="alert-title">Aviso</h3>
         <p class="alert-message">{{ alertText }}</p>
         <div class="modal-actions">
-          <button type="button" class="btn-primary" @click="closeAlert">OK</button>
+          <button type="button" class="btn-primary" @click="closeAlert">
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -137,30 +234,39 @@
 </template>
 
 <script setup>
+import LoadingRows from "../../components/LoadingRows.vue";
 import PageHeading from "../../components/PageHeading.vue";
-import StatePanel from "../../components/StatePanel.vue";
+import StableContent from "../../components/StableContent.vue";
 import { confirmAction } from "../../services/confirmation.js";
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { apiFetch, getJSON } from '../../services/api.js';
-import { useAuth } from '../../composables/useAuth.js';
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { apiFetch, getJSON } from "../../services/api.js";
+import { useAuth } from "../../composables/useAuth.js";
 
 const auth = useAuth();
 const tenants = ref([]);
 const products = ref([]);
 const initializingCatalog = ref(true);
 const loadingProducts = ref(false);
-const productError = ref('');
+const productError = ref("");
 const actionLoading = ref(false);
 const isProductModalOpen = ref(false);
 const isAlertOpen = ref(false);
-const alertText = ref('');
+const alertText = ref("");
 const productForm = ref(emptyProductForm());
-const previewObjectUrl = ref('');
+const previewObjectUrl = ref("");
 
-const brandId = computed(() => auth.user.value?.brand_id || auth.user.value?.brandID || '');
+const brandId = computed(
+  () => auth.user.value?.brand_id || auth.user.value?.brandID || "",
+);
 const brandName = computed(() => {
   const user = auth.user.value || {};
-  const tenantWithBrand = tenants.value.find((tenant) => tenant.brand?.name || tenant.brand?.Name || tenant.brand_name || tenant.brandName);
+  const tenantWithBrand = tenants.value.find(
+    (tenant) =>
+      tenant.brand?.name ||
+      tenant.brand?.Name ||
+      tenant.brand_name ||
+      tenant.brandName,
+  );
   return (
     user.brand?.name ||
     user.brand?.Name ||
@@ -170,44 +276,51 @@ const brandName = computed(() => {
     tenantWithBrand?.brand?.Name ||
     tenantWithBrand?.brand_name ||
     tenantWithBrand?.brandName ||
-    ''
+    ""
   );
 });
-const brandCatalogLabel = computed(() => (brandName.value ? `Catálogo de ${brandName.value}` : 'Catálogo de marca'));
-const previewImageSrc = computed(() => previewObjectUrl.value || productForm.value.image_url || '');
+const brandCatalogLabel = computed(() =>
+  brandName.value ? `Catálogo de ${brandName.value}` : "Catálogo de marca",
+);
+const previewImageSrc = computed(
+  () => previewObjectUrl.value || productForm.value.image_url || "",
+);
 
 function emptyProductForm() {
   return {
-    id: '',
-    name: '',
-    description: '',
+    id: "",
+    name: "",
+    description: "",
     base_price: 0,
-    image_url: '',
+    image_url: "",
     image_file: null,
-    image_name: '',
-    is_active: true
+    image_name: "",
+    is_active: true,
   };
 }
 
 function money(value) {
   const numeric = Number(value || 0);
-  return numeric.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+  return numeric.toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+  });
 }
 
 function productId(product) {
-  return product?.id || product?.ID || '';
+  return product?.id || product?.ID || "";
 }
 
 function productName(product) {
-  return product?.name || product?.Name || '';
+  return product?.name || product?.Name || "";
 }
 
 function productDescription(product) {
-  return product?.description || product?.Description || '';
+  return product?.description || product?.Description || "";
 }
 
 function productImage(product) {
-  return product?.image_url || product?.ImageURL || '';
+  return product?.image_url || product?.ImageURL || "";
 }
 
 function productBasePrice(product) {
@@ -219,7 +332,7 @@ function productActive(product) {
 }
 
 function productHeaders() {
-  return brandId.value ? { 'X-Brand-ID': brandId.value } : {};
+  return brandId.value ? { "X-Brand-ID": brandId.value } : {};
 }
 
 async function loadTenants() {
@@ -231,19 +344,19 @@ async function loadTenants() {
 
 async function loadProducts() {
   loadingProducts.value = true;
-  productError.value = '';
+  productError.value = "";
   try {
-    const response = await apiFetch('/products', {
-      method: 'GET',
-      headers: productHeaders()
+    const response = await apiFetch("/products", {
+      method: "GET",
+      headers: productHeaders(),
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(payload.message || 'No se pudo cargar el catálogo.');
+      throw new Error(payload.message || "No se pudo cargar el catálogo.");
     }
     products.value = await response.json();
   } catch (err) {
-    productError.value = err.message || 'No se pudo cargar el catálogo.';
+    productError.value = err.message || "No se pudo cargar el catálogo.";
   } finally {
     loadingProducts.value = false;
   }
@@ -259,8 +372,8 @@ function openProductModal(product = null) {
         base_price: Number(productBasePrice(product)),
         image_url: productImage(product),
         image_file: null,
-        image_name: productImage(product) ? 'Imagen actual' : '',
-        is_active: productActive(product)
+        image_name: productImage(product) ? "Imagen actual" : "",
+        is_active: productActive(product),
       }
     : emptyProductForm();
   isProductModalOpen.value = true;
@@ -275,17 +388,17 @@ function handleImageChange(event) {
   const [file] = event.target.files || [];
   revokePreviewObjectUrl();
   productForm.value.image_file = file || null;
-  productForm.value.image_name = file ? file.name : '';
-  previewObjectUrl.value = file ? URL.createObjectURL(file) : '';
+  productForm.value.image_name = file ? file.name : "";
+  previewObjectUrl.value = file ? URL.createObjectURL(file) : "";
   if (!file) {
-    productForm.value.image_url = '';
+    productForm.value.image_url = "";
   }
 }
 
 function revokePreviewObjectUrl() {
   if (previewObjectUrl.value) {
     URL.revokeObjectURL(previewObjectUrl.value);
-    previewObjectUrl.value = '';
+    previewObjectUrl.value = "";
   }
 }
 
@@ -296,11 +409,13 @@ function showAlert(message) {
 
 function closeAlert() {
   isAlertOpen.value = false;
-  alertText.value = '';
+  alertText.value = "";
 }
 
 async function deleteProduct(product) {
-  const confirmed = await confirmAction(`¿Eliminar ${productName(product)} del catálogo base?`);
+  const confirmed = await confirmAction(
+    `¿Eliminar ${productName(product)} del catálogo base?`,
+  );
   if (!confirmed) {
     return;
   }
@@ -308,16 +423,18 @@ async function deleteProduct(product) {
   actionLoading.value = true;
   try {
     const response = await apiFetch(`/products/${productId(product)}`, {
-      method: 'DELETE',
-      headers: productHeaders()
+      method: "DELETE",
+      headers: productHeaders(),
     });
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => ({}));
-      throw new Error(errorPayload.message || 'No se pudo eliminar el producto.');
+      throw new Error(
+        errorPayload.message || "No se pudo eliminar el producto.",
+      );
     }
     await loadProducts();
   } catch (err) {
-    showAlert(err.message || 'No se pudo eliminar el producto.');
+    showAlert(err.message || "No se pudo eliminar el producto.");
   } finally {
     actionLoading.value = false;
   }
@@ -326,37 +443,42 @@ async function deleteProduct(product) {
 async function submitProduct() {
   actionLoading.value = true;
   try {
-    const endpoint = `/products${productForm.value.id ? `/${productForm.value.id}` : ''}`;
+    const endpoint = `/products${productForm.value.id ? `/${productForm.value.id}` : ""}`;
     const payload = new FormData();
-    payload.append('name', productForm.value.name);
-    payload.append('description', productForm.value.description);
-    payload.append('base_price', String(Number(productForm.value.base_price || 0)));
+    payload.append("name", productForm.value.name);
+    payload.append("description", productForm.value.description);
+    payload.append(
+      "base_price",
+      String(Number(productForm.value.base_price || 0)),
+    );
     if (brandId.value) {
-      payload.append('brand_id', brandId.value);
+      payload.append("brand_id", brandId.value);
     }
     if (productForm.value.id) {
-      payload.append('is_active', String(productForm.value.is_active));
+      payload.append("is_active", String(productForm.value.is_active));
     }
     if (productForm.value.image_file) {
-      payload.append('image_file', productForm.value.image_file);
+      payload.append("image_file", productForm.value.image_file);
     }
     if (productForm.value.image_url) {
-      payload.append('image_url', productForm.value.image_url);
+      payload.append("image_url", productForm.value.image_url);
     }
 
     const response = await apiFetch(endpoint, {
-      method: productForm.value.id ? 'PUT' : 'POST',
+      method: productForm.value.id ? "PUT" : "POST",
       headers: productHeaders(),
-      body: payload
+      body: payload,
     });
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => ({}));
-      throw new Error(errorPayload.message || 'No se pudo guardar el producto.');
+      throw new Error(
+        errorPayload.message || "No se pudo guardar el producto.",
+      );
     }
     await loadProducts();
     closeProductModal();
   } catch (err) {
-    showAlert(err.message || 'No se pudo guardar el producto.');
+    showAlert(err.message || "No se pudo guardar el producto.");
   } finally {
     actionLoading.value = false;
   }
@@ -367,7 +489,7 @@ onMounted(async () => {
     await loadTenants();
     await loadProducts();
   } catch (err) {
-    showAlert(err.message || 'No se pudo inicializar catálogo.');
+    showAlert(err.message || "No se pudo inicializar catálogo.");
   } finally {
     initializingCatalog.value = false;
   }
@@ -412,7 +534,9 @@ onBeforeUnmount(() => {
   color: var(--text-muted);
   font-weight: 700;
   text-decoration: none;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .catalog-tab:hover,
@@ -652,7 +776,9 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: var(--surface-raised);
   border: 1px solid var(--control-border);
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .switch-control__thumb {
