@@ -21,6 +21,7 @@ import UnauthorizedView from "../views/shared/UnauthorizedView.vue";
 import NotFoundView from "../views/shared/NotFoundView.vue";
 
 const workspaceViews = {
+  CashView: () => import("../views/shared/CashView.vue"),
   OrdersView: () => import("../views/shared/OrdersView.vue"),
   KitchenView: () => import("../views/shared/KitchenView.vue"),
   InventoryView: () => import("../views/shared/InventoryView.vue"),
@@ -31,7 +32,11 @@ const workspaceViews = {
   HealthView: () => import("../views/shared/HealthView.vue"),
 };
 const routes = [
-  { path: "/care", component: () => import("../views/shared/CareView.vue"), meta: { requiresAuth: true } },
+  {
+    path: "/care",
+    component: () => import("../views/shared/CareView.vue"),
+    meta: { requiresAuth: true },
+  },
   {
     path: "/restaurants",
     component: () => import("../views/shared/RestaurantsView.vue"),
@@ -53,6 +58,7 @@ const routes = [
     meta: { authAction: "business-invite" },
   },
   ...[
+    ["/cash", "CashView", ["owner", "super_admin", "admin", "cashier"]],
     ["/orders", "OrdersView", ["owner", "super_admin", "admin", "cashier"]],
     [
       "/kitchen",
@@ -213,6 +219,7 @@ const routes = [
       tenantMatch: true,
     },
   },
+  { path: "/catalogo/:tenantId", component: CatalogLandingView },
   {
     path: "/catalogo",
     name: "CatalogLanding",

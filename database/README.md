@@ -39,6 +39,13 @@ Las marcas existentes conservan su clasificación `unclassified`. El administrad
 
 ## Acceso
 
+Las migraciones `202611110009_menu_and_cash_shifts` y
+`202611110010_collaborator_role_compatibility` agregan publicación explícita de
+la carta, categorías y el registro privado de turnos/movimientos de efectivo;
+también retiran un check legado que impedía el rol de cocina, conservando el
+control estricto de roles de colaboradores. La guía de [menú y caja](../docs/menu-y-caja.md)
+explica la compatibilidad de cobros anteriores y las nuevas reglas de arqueo.
+
 Los datos operativos sensibles nuevos tienen RLS habilitado y no se conceden permisos de acceso directo a `anon`, `authenticated` o `service_role`. La facturación y las auditorías de la plataforma viven en `legui_private`, fuera de los endpoints REST públicos de Supabase.
 
 La aplicación usa el backend Go y su autenticación propia. El backend es quien valida el usuario activo, el rol, la marca y el local antes de consultar con su conexión confiable a PostgreSQL. No se deben entregar al navegador las credenciales de esa conexión.

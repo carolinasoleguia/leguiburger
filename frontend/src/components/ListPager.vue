@@ -2,6 +2,7 @@
 defineProps({
   offset: Number,
   count: Number,
+  total: { type: Number, default: null },
   size: { type: Number, default: 25 },
   disabled: Boolean,
 });
@@ -18,7 +19,12 @@ defineEmits(["change"]);
     ><span>Página {{ Math.floor(offset / size) + 1 }}</span
     ><button
       class="btn-secondary"
-      :disabled="disabled || count < size || offset + size > 10000"
+      :disabled="
+        disabled ||
+        count < size ||
+        (total !== null && offset + size >= total) ||
+        offset + size > 10000
+      "
       @click="$emit('change', offset + size)"
     >
       Siguiente

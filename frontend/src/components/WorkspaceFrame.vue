@@ -43,6 +43,7 @@ defineProps({
               : "Datos del local seleccionado."
         }}</span>
       </div>
+      <slot name="filters" />
       <div v-if="workspace.error.value" class="error-msg" role="alert">
         {{ workspace.error.value }}
         <button

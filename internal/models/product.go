@@ -3,6 +3,7 @@ package models
 import "time"
 
 type Product struct {
+	Category    string    `gorm:"not null;default:Hamburguesas" json:"category"`
 	ID          string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
 	BrandID     string    `gorm:"type:uuid;not null;uniqueIndex:idx_brand_product_name" json:"brand_id"`
 	Brand       Brand     `gorm:"foreignKey:BrandID" json:"brand,omitempty"`

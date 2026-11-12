@@ -17,7 +17,7 @@ import (
 
 // This is deliberately an allowlist. New tables do not silently export secrets.
 // Account credentials, sessions, mail bodies, OAuth and provider payloads stay out.
-var snapshotTables = []string{"brands", "tenants", "products", "tenant_products", "supplies", "extras", "recipes", "shipping_methods", "customers", "order_statuses_lookup", "payment_statuses_lookup", "orders", "order_details", "order_detail_extras", "sales", "production_reports", "order_status_events", "order_payments", "operating_expenses", "inventory_movements", "activity_events"}
+var snapshotTables = []string{"brands", "tenants", "products", "tenant_products", "supplies", "extras", "recipes", "shipping_methods", "customers", "order_statuses_lookup", "payment_statuses_lookup", "orders", "order_details", "order_detail_extras", "sales", "production_reports", "order_status_events", "order_payments", "operating_expenses", "inventory_movements", "activity_events", "cash_shifts", "cash_entries"}
 
 type snapshot struct {
 	Version   int                        `json:"version"`
@@ -26,9 +26,15 @@ type snapshot struct {
 	Tables    map[string]json.RawMessage `json:"tables"`
 }
 
+func snapshotTable(table string) string {
+	if table == "cash_shifts" || table == "cash_entries" {
+		return "legui_private." + table
+	}
+	return "public." + table
+}
 func columns(tx *gorm.DB, table string) ([]string, error) {
 	var cols []string
-	e := tx.Raw(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=? AND is_generated='NEVER' ORDER BY ordinal_position`, table).Scan(&cols).Error
+	e := tx.Raw(`SELECT column_name FROM information_schema.columns WHERE table_schema=? AND table_name=? AND is_generated='NEVER' ORDER BY ordinal_position`, strings.Split(snapshotTable(table), ".")[0], table).Scan(&cols).Error
 	return cols, e
 }
 func scopeFor(table string, cols []string) (string, bool) {
@@ -80,7 +86,7 @@ func capture(tx *gorm.DB, id string) (snapshot, error) {
 		}
 		var raw string
 		// The size guard runs on PostgreSQL before transferring a potentially large JSON.
-		e = tx.Raw(`WITH rows AS(SELECT to_jsonb(t) row FROM public.`+table+` t WHERE `+where+`), payload AS(SELECT coalesce(jsonb_agg(row),'[]') data FROM rows) SELECT CASE WHEN octet_length(data::text)<=? THEN data::text ELSE NULL END FROM payload`, id, maxBackup-size).Scan(&raw).Error
+		e = tx.Raw(`WITH rows AS(SELECT to_jsonb(t) row FROM `+snapshotTable(table)+` t WHERE `+where+`), payload AS(SELECT coalesce(jsonb_agg(row),'[]') data FROM rows) SELECT CASE WHEN octet_length(data::text)<=? THEN data::text ELSE NULL END FROM payload`, id, maxBackup-size).Scan(&raw).Error
 		if e != nil {
 			return s, e
 		}
@@ -117,11 +123,11 @@ func verifySnapshot(tx *gorm.DB, s snapshot) (map[string]any, error) {
 			names[i] = `"` + strings.ReplaceAll(c, `"`, `""`) + `"`
 		}
 		temp := "care_restore_" + table
-		if e = tx.Exec(`CREATE TEMP TABLE ` + temp + ` (LIKE public.` + table + ` INCLUDING CONSTRAINTS INCLUDING GENERATED) ON COMMIT DROP`).Error; e != nil {
+		if e = tx.Exec(`CREATE TEMP TABLE ` + temp + ` (LIKE ` + snapshotTable(table) + ` INCLUDING CONSTRAINTS INCLUDING GENERATED) ON COMMIT DROP`).Error; e != nil {
 			return nil, e
 		}
 		fields := strings.Join(names, ",")
-		if e = tx.Exec(`INSERT INTO `+temp+` (`+fields+`) SELECT `+fields+` FROM jsonb_populate_recordset(NULL::public.`+table+`,?::jsonb)`, string(raw)).Error; e != nil {
+		if e = tx.Exec(`INSERT INTO `+temp+` (`+fields+`) SELECT `+fields+` FROM jsonb_populate_recordset(NULL::`+snapshotTable(table)+`,?::jsonb)`, string(raw)).Error; e != nil {
 			return nil, e
 		}
 		var n int
@@ -131,7 +137,7 @@ func verifySnapshot(tx *gorm.DB, s snapshot) (map[string]any, error) {
 		counts[table] = n
 		// Recreate PK/UNIQUE indexes to reject duplicate identities in a restored file.
 		var defs []string
-		if e = tx.Raw(`SELECT pg_get_indexdef(i.indexrelid) FROM pg_index i WHERE i.indrelid=('public.'||?)::regclass AND i.indisunique`, table).Scan(&defs).Error; e != nil {
+		if e = tx.Raw(`SELECT pg_get_indexdef(i.indexrelid) FROM pg_index i WHERE i.indrelid=?::regclass AND i.indisunique`, snapshotTable(table)).Scan(&defs).Error; e != nil {
 			return nil, e
 		}
 		for index, def := range defs {
@@ -146,8 +152,8 @@ func verifySnapshot(tx *gorm.DB, s snapshot) (map[string]any, error) {
 	}
 	var keys []struct{ Child, Parent, NonNull, Equality string }
 	if e := tx.Raw(`SELECT ch.relname child,pa.relname parent,string_agg(format('c.%I IS NOT NULL',ca.attname),' AND ' ORDER BY k.ord) non_null,string_agg(format('p.%I=c.%I',pca.attname,ca.attname),' AND ' ORDER BY k.ord) equality
- FROM pg_constraint f JOIN pg_class ch ON ch.oid=f.conrelid JOIN pg_namespace ns ON ns.oid=ch.relnamespace AND ns.nspname='public'
- JOIN pg_class pa ON pa.oid=f.confrelid JOIN pg_namespace pn ON pn.oid=pa.relnamespace AND pn.nspname='public'
+ FROM pg_constraint f JOIN pg_class ch ON ch.oid=f.conrelid JOIN pg_namespace ns ON ns.oid=ch.relnamespace AND ns.nspname IN ('public','legui_private')
+ JOIN pg_class pa ON pa.oid=f.confrelid JOIN pg_namespace pn ON pn.oid=pa.relnamespace AND pn.nspname IN ('public','legui_private')
  CROSS JOIN LATERAL unnest(f.conkey,f.confkey) WITH ORDINALITY k(ca,pa,ord)
  JOIN pg_attribute ca ON ca.attrelid=ch.oid AND ca.attnum=k.ca JOIN pg_attribute pca ON pca.attrelid=pa.oid AND pca.attnum=k.pa
  WHERE f.contype='f' GROUP BY f.oid,ch.relname,pa.relname`).Scan(&keys).Error; e != nil {

@@ -44,6 +44,7 @@ const scenarios = [
   "/locations",
   "/team",
   "/orders",
+  "/cash",
   "/inventory",
   "/expenses",
   "/customers",
@@ -200,6 +201,38 @@ function data(path, count) {
     path === "/api/inventory"
   )
     return { items: rows };
+  if (path === "/api/cash/shifts")
+    return {
+      items: rows.map((x, i) => ({
+        ...x,
+        opened_at: "2026-11-12T10:00:00Z",
+        closed_at: i ? "2026-11-12T11:00:00Z" : null,
+        opening_balance: "100.00",
+        expected_balance: i ? "100.00" : null,
+        counted_balance: i ? "100.00" : null,
+        difference: i ? "0.00" : null,
+      })),
+    };
+  if (/^\/api\/cash\/shifts\/[^/]+$/.test(path))
+    return {
+      id: "fixture-0",
+      currency: "ARS",
+      opened_at: "2026-11-12T10:00:00Z",
+      closed_at: null,
+      opening_balance: "100.00",
+      expected_balance: "120.00",
+      cash_charged: "20.00",
+      cash_refunded: "0.00",
+    };
+  if (path.endsWith("/entries") && path.startsWith("/api/cash/"))
+    return {
+      items: rows.map((x) => ({
+        ...x,
+        kind: "cash_in",
+        amount: "1.00",
+        note: "Cambio de turno",
+      })),
+    };
   if (path === "/api/kitchen")
     return { items: rows.map((x) => ({ ...x, status: "accepted" })) };
   if (path === "/api/notifications")
@@ -271,6 +304,8 @@ const selectors = [
   "main .stable-content-body>form",
   "main .metric-grid",
   "main .report-grid",
+  "main .cash-summary",
+  "main .cash-forms",
   "main .catalog-tabs",
   "main .tenant-picker-card",
   "main .stable-table-region",

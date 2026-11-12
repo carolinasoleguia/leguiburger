@@ -15,12 +15,14 @@ Conserva la identidad de hamburguesería y usa las operaciones reales de Supabas
 - `/inventory`: existencias y movimientos de productos, extras e insumos; compras,
   producción, desperdicios, devoluciones y ajustes. Mínimos y costos para gestores;
   costos de productos derivados de recetas. Las escrituras exigen versión y clave
-  de idempotencia. Buscar y bajo mínimo filtran la página actual, identificada así.
+  de idempotencia. Buscar, bajo mínimo y tipo filtran todo el inventario del local
+  en la base, antes de paginar. Los filtros permanecen operables durante la carga.
 - `/expenses`: alta y anulación con motivo e historial; importes decimales exactos.
 - `/orders`: pedidos de mostrador, cliente opcional, carta paginada, aceptación,
   cambios de estado, cobros/devoluciones manuales y acceso a Mercado Pago.
   Registrar un cobro manual supone dinero ya recibido; no envía una transacción
-  bancaria. Los arqueos y turnos de caja todavía no forman parte de este módulo.
+  bancaria. `/cash` agrega turnos de caja y arqueos de efectivo, con enlace desde
+  esta pantalla. La búsqueda de la carta del mostrador se realiza en el servidor.
 - `/kitchen`: hasta 100 pedidos activos de producción, ordenados por antigüedad;
   aceptado → preparando → listo, refresco cada 30 segundos. Colaboradores no ven
   clientes, direcciones, importes ni pagos en esta API.

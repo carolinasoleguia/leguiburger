@@ -54,6 +54,11 @@ pedidos, membresías, devoluciones, webhooks, conciliación y configuración.
 La guía de [seguridad y sesiones](docs/seguridad-y-sesiones.md) explica permisos,
 MFA, recuperación, invitaciones, auditoría y configuración del correo SMTP.
 
+La guía de [carta pública y turnos de caja](docs/menu-y-caja.md) explica la publicación
+del catálogo existente, QR, búsqueda completa y arqueos. La [revisión de aislamiento
+de la API](docs/revision-aislamiento-api.md) documenta los límites entre plataforma,
+restaurantes y colaboradores, con pruebas de IDs y ámbitos forzados.
+
 La [API de operación y analítica](docs/api-operaciones.md) documenta roles, endpoints, DTOs y ejemplos. El [diagnóstico de analítica](docs/analitica-dashboards.md) conserva la comparación con Al Toque y el inventario previo a la migración.
 
 ```powershell

@@ -18,7 +18,8 @@
     <nav class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
       <router-link
         :to="{ name: 'AdminCatalog' }"
-        class="catalog-tab" :title="brandCatalogLabel"
+        class="catalog-tab"
+        :title="brandCatalogLabel"
         exact-active-class="catalog-tab--active"
       >
         {{ brandCatalogLabel }}
@@ -54,18 +55,29 @@
                 <th class="actions-column">Acciones</th>
               </tr>
             </thead>
-            <tbody><LoadingRows v-if="initializingCatalog || loadingProducts" :columns="4" />
-              <tr v-show="!(initializingCatalog || loadingProducts)" v-if="!products.length">
+            <tbody>
+              <LoadingRows
+                v-if="initializingCatalog || loadingProducts"
+                :columns="4"
+              />
+              <tr
+                v-show="!(initializingCatalog || loadingProducts)"
+                v-if="!products.length"
+              >
                 <td colspan="4">
                   <span v-if="productError" role="alert">{{
                     productError
-                  }}</span
-                  ><span v-else-if="!loadingProducts && !initializingCatalog"
+                  }}</span><span
+                    v-else-if="!loadingProducts && !initializingCatalog"
                     >Todavía no hay productos en el catálogo.</span
                   >
                 </td>
               </tr>
-              <tr v-show="!(initializingCatalog || loadingProducts)" v-for="product in products" :key="productId(product)">
+              <tr
+                v-show="!(initializingCatalog || loadingProducts)"
+                v-for="product in products"
+                :key="productId(product)"
+              >
                 <td class="product-cell">
                   <div class="product-cell__content">
                     <img
@@ -141,6 +153,16 @@
             <div class="input-group">
               <label>Descripción</label>
               <textarea v-model="productForm.description"></textarea>
+            </div>
+            <div class="input-group">
+              <label for="product-category">Categoría</label
+              ><input
+                id="product-category"
+                v-model="productForm.category"
+                required
+                maxlength="60"
+                placeholder="Hamburguesas, acompañamientos, bebidas…"
+              />
             </div>
             <div class="input-grid">
               <div class="input-group">
@@ -291,6 +313,7 @@ function emptyProductForm() {
     id: "",
     name: "",
     description: "",
+    category: "Hamburguesas",
     base_price: 0,
     image_url: "",
     image_file: null,
@@ -369,6 +392,7 @@ function openProductModal(product = null) {
         id: productId(product),
         name: productName(product),
         description: productDescription(product),
+        category: product.category || "Hamburguesas",
         base_price: Number(productBasePrice(product)),
         image_url: productImage(product),
         image_file: null,
@@ -447,6 +471,7 @@ async function submitProduct() {
     const payload = new FormData();
     payload.append("name", productForm.value.name);
     payload.append("description", productForm.value.description);
+    payload.append("category", productForm.value.category);
     payload.append(
       "base_price",
       String(Number(productForm.value.base_price || 0)),

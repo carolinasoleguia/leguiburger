@@ -51,6 +51,7 @@ jobs:
           node tools/test-security-browser.mjs
           node tools/test-payments-browser.mjs
           node tools/test-workspace-browser.mjs
+          node tools/test-menu-cash-browser.mjs
           node tools/test-hierarchy-browser.mjs
           node tools/test-care-browser.mjs
           node tools/test-motion-browser.mjs

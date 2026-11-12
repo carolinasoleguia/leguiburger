@@ -52,6 +52,14 @@ func (h *Handler) closeBusiness(r *http.Request, p auth.SessionPrincipal) (any, 
 		if prior > 0 {
 			return map[string]bool{"archived": true}, nil
 		}
+		var openCash int64
+		if e := tx.Raw(`SELECT count(*) FROM legui_private.cash_shifts s JOIN public.tenants t ON t.id=s.tenant_id WHERE t.brand_id=? AND s.closed_at IS NULL`, id).Scan(&openCash).Error; e != nil {
+			return nil, e
+		}
+		if openCash > 0 {
+			return nil, &problem{409, "Cerrá los turnos de caja abiertos antes de cerrar el restaurante"}
+		}
+
 		if e := tx.Exec(`INSERT INTO legui_private.business_closures(brand_id,actor_id,reason) VALUES(?,?,?)`, id, p.ID, strings.TrimSpace(in.Reason)).Error; e != nil {
 			return nil, e
 		}

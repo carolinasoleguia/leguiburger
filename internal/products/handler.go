@@ -29,6 +29,7 @@ func NewHandlerWithImageStore(s Service, imageStore ProductImageStore) *Handler 
 }
 
 type CreateInput struct {
+	Category     string  `json:"category"`
 	Name         string  `json:"name"`
 	BrandID      string  `json:"brand_id"`
 	Description  string  `json:"description"`
@@ -38,6 +39,7 @@ type CreateInput struct {
 }
 
 type UpdateInput struct {
+	Category     string   `json:"category"`
 	Name         string   `json:"name"`
 	Description  string   `json:"description"`
 	BasePrice    *float64 `json:"base_price"`
@@ -122,7 +124,7 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		input.ImageURL = uploadedImageURL
 	}
 
-	product, err := h.service.CreateProduct(r.Context(), brandID, input.Name, input.Description, basePrice, input.ImageURL)
+	product, err := h.service.CreateProduct(r.Context(), brandID, input.Name, input.Description, basePrice, input.ImageURL, input.Category)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -189,7 +191,7 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request, id strin
 		input.ImageURL = uploadedImageURL
 	}
 
-	product, err := h.service.UpdateProduct(r.Context(), brandID, id, input.Name, input.Description, basePrice, input.ImageURL, input.IsActive)
+	product, err := h.service.UpdateProduct(r.Context(), brandID, id, input.Name, input.Description, basePrice, input.ImageURL, input.IsActive, input.Category)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -218,7 +220,7 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 		h.respondWithError(w, http.StatusConflict, "DUPLICATE_PRODUCT_NAME", err.Error())
 	} else if errors.Is(err, ErrProductNotFound) {
 		h.respondWithError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
-	} else if errors.Is(err, ErrInvalidProductData) {
+	} else if errors.Is(err, ErrInvalidProductData) || errors.Is(err, ErrInvalidProductCategory) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_PRODUCT_DATA", err.Error())
 	} else if errors.Is(err, ErrInvalidProductPrice) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_PRODUCT_PRICE", err.Error())
@@ -282,6 +284,7 @@ func (h *Handler) decodeCreateInput(r *http.Request) (CreateInput, string, error
 		}
 
 		input := CreateInput{
+			Category:    r.FormValue("category"),
 			Name:        strings.TrimSpace(r.FormValue("name")),
 			BrandID:     strings.TrimSpace(r.FormValue("brand_id")),
 			Description: r.FormValue("description"),
@@ -328,6 +331,7 @@ func (h *Handler) decodeUpdateInput(r *http.Request) (UpdateInput, string, error
 		}
 
 		input := UpdateInput{
+			Category:    r.FormValue("category"),
 			Name:        strings.TrimSpace(r.FormValue("name")),
 			Description: r.FormValue("description"),
 			ImageURL:    "",

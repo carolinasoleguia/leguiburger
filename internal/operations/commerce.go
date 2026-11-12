@@ -324,6 +324,29 @@ func (h *Handler) createOrderPayment(r *http.Request, p Principal) (Result, erro
 		return Result{}, err
 	}
 	return h.mutate(r, p, scope, "orders.payment", input, func(tx *gorm.DB, key, digest string) (json.RawMessage, int, error) {
+		if input.Method == "cash" {
+			var order struct{ Currency, Environment string }
+			q := tx.Raw(`SELECT currency,payment_environment environment FROM public.orders WHERE tenant_id=? AND id=?`, scope.TenantID, id).Scan(&order)
+			if q.Error != nil {
+				return nil, 0, q.Error
+			}
+			if q.RowsAffected != 1 {
+				return nil, 0, notFound()
+			}
+			if order.Environment == "production" {
+				if e := cashLock(tx, scope.TenantID, order.Currency); e != nil {
+					return nil, 0, e
+				}
+				var required bool
+				if e := tx.Raw(`SELECT EXISTS(SELECT 1 FROM legui_private.cash_shifts WHERE tenant_id=? AND currency=?) AND NOT EXISTS(SELECT 1 FROM legui_private.cash_shifts WHERE tenant_id=? AND currency=? AND closed_at IS NULL)`, scope.TenantID, order.Currency, scope.TenantID, order.Currency).Scan(&required).Error; e != nil {
+					return nil, 0, e
+				}
+				if required {
+					return nil, 0, conflict("Abrí un turno de caja para registrar cobros o devoluciones en efectivo")
+				}
+			}
+		}
+
 		var paidAt any
 		if input.SettledAt != nil {
 			paidAt = *input.SettledAt

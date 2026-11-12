@@ -1,6 +1,6 @@
 <script setup>
 import LoadingRows from "../../components/LoadingRows.vue";
-import { computed, ref, watch } from "vue";
+import { ref, watch, onBeforeUnmount } from "vue";
 import WorkspaceFrame from "../../components/WorkspaceFrame.vue";
 import ListPager from "../../components/ListPager.vue";
 import { useWorkspace, when, money } from "../../composables/useWorkspace.js";
@@ -10,6 +10,7 @@ const items = ref([]),
   tab = ref("stock"),
   search = ref(""),
   low = ref(false),
+  kind = ref(""),
   selected = ref(null),
   delta = ref(""),
   reason = ref("purchase"),
@@ -21,18 +22,19 @@ const w = useWorkspace(async ({ request, tenant, current }) => {
   selected.value = null;
   if (!tenant) return;
   const data = await request(
-    `${tab.value === "stock" ? "/inventory" : "/inventory/movements"}?limit=25&offset=${offset.value}`,
+    `${tab.value === "stock" ? "/inventory" : "/inventory/movements"}?limit=25&offset=${offset.value}&search=${encodeURIComponent(search.value)}&low=${low.value}&kind=${kind.value}`,
   );
   if (current())
     (tab.value === "stock" ? items : movements).value = data.items || [];
 });
-const visible = computed(() =>
-  items.value.filter(
-    (x) =>
-      x.name.toLowerCase().includes(search.value.toLowerCase()) &&
-      (!low.value || Number(x.current_stock) <= Number(x.minimum_stock)),
-  ),
-);
+let searchTimer;
+watch([search, low, kind], () => {
+  offset.value = 0;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(w.refresh, 300);
+});
+onBeforeUnmount(() => clearTimeout(searchTimer));
+
 function select(item) {
   selected.value = item;
   minimum.value = String(item.minimum_stock);
@@ -82,31 +84,43 @@ function page(n) {
     title="Stock e insumos"
     description="Compras, producción, desperdicios y ajustes. Cada movimiento deja su registro."
   >
-    <div class="operation-actions">
-      <button
-        class="btn-secondary"
-        :aria-pressed="tab === 'stock'"
-        @click="tab = 'stock'"
-      >
-        Existencias</button
-      ><button
-        class="btn-secondary"
-        :aria-pressed="tab === 'movements'"
-        @click="tab = 'movements'"
-      >
-        Historial
-      </button>
-    </div>
-    <template v-if="tab === 'stock'"
-      ><div class="workspace-filters">
+    <template #filters>
+      <div class="operation-actions">
+        <button
+          class="btn-secondary"
+          :aria-pressed="tab === 'stock'"
+          @click="tab = 'stock'"
+        >
+          Existencias</button
+        ><button
+          class="btn-secondary"
+          :aria-pressed="tab === 'movements'"
+          @click="tab = 'movements'"
+        >
+          Historial
+        </button>
+      </div>
+      <div v-if="tab === 'stock'" class="workspace-filters">
         <label
-          >Buscar en esta página<input v-model="search" type="search" /></label
+          >Buscar en todo el inventario<input
+            v-model="search"
+            type="search" /></label
         ><label
           ><span
             ><input v-model="low" type="checkbox" /> Sólo bajo mínimo</span
           ></label
         >
+        <label
+          >Tipo<select v-model="kind">
+            <option value="">Todos</option>
+            <option value="product">Productos</option>
+            <option value="extra">Extras</option>
+            <option value="supply">Insumos</option>
+          </select></label
+        >
       </div>
+    </template>
+    <template v-if="tab === 'stock'">
       <div class="card table-scroll">
         <table class="data-table">
           <thead>
@@ -119,8 +133,16 @@ function page(n) {
               <th></th>
             </tr>
           </thead>
-          <tbody><LoadingRows v-if="w.loading.value" :columns="w.manager.value ? 6 : 5" />
-            <tr v-show="!(w.loading.value)" v-for="item in visible" :key="item.kind + item.id">
+          <tbody>
+            <LoadingRows
+              v-if="w.loading.value"
+              :columns="w.manager.value ? 6 : 5"
+            />
+            <tr
+              v-show="!w.loading.value"
+              v-for="item in items"
+              :key="item.kind + item.id"
+            >
               <td>
                 {{ item.name
                 }}<small>{{
@@ -151,8 +173,10 @@ function page(n) {
                 </button>
               </td>
             </tr>
-            <tr v-show="!(w.loading.value)" v-if="!visible.length">
-              <td colspan="5">No hay resultados en esta página.</td>
+            <tr v-show="!w.loading.value" v-if="!items.length">
+              <td :colspan="w.manager.value ? 6 : 5">
+                No hay resultados para estos filtros.
+              </td>
             </tr>
           </tbody>
         </table>
@@ -169,15 +193,20 @@ function page(n) {
             <th>Antes → Después</th>
           </tr>
         </thead>
-        <tbody><LoadingRows v-if="w.loading.value" :columns="5" />
-          <tr v-show="!(w.loading.value)" v-for="item in movements" :key="item.id">
+        <tbody>
+          <LoadingRows v-if="w.loading.value" :columns="5" />
+          <tr
+            v-show="!w.loading.value"
+            v-for="item in movements"
+            :key="item.id"
+          >
             <td>{{ when(item.occurred_at) }}</td>
             <td>{{ item.item_kind }}</td>
             <td>{{ item.reason }}</td>
             <td>{{ item.quantity_delta }}</td>
             <td>{{ item.balance_before }} → {{ item.balance_after }}</td>
           </tr>
-          <tr v-show="!(w.loading.value)" v-if="!movements.length">
+          <tr v-show="!w.loading.value" v-if="!movements.length">
             <td colspan="5">Todavía no hay movimientos.</td>
           </tr>
         </tbody>

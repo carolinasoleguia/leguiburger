@@ -9,7 +9,8 @@
     <nav class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
       <router-link
         :to="{ name: 'AdminCatalog' }"
-        class="catalog-tab" :title="brandCatalogLabel"
+        class="catalog-tab"
+        :title="brandCatalogLabel"
         exact-active-class="catalog-tab--active"
       >
         {{ brandCatalogLabel }}
@@ -51,6 +52,11 @@
       </div>
     </div>
 
+    <MenuPublication
+      v-if="selectedTenant"
+      :key="selectedTenant"
+      :tenant="selectedTenant"
+    />
     <StableContent :loading="initializingCatalog || loadingTenantProducts"
       ><div class="stable-catalog-region">
         <div
@@ -388,6 +394,7 @@
 </template>
 
 <script setup>
+import MenuPublication from "../../components/MenuPublication.vue";
 import PageHeading from "../../components/PageHeading.vue";
 import StatePanel from "../../components/StatePanel.vue";
 import StableContent from "../../components/StableContent.vue";

@@ -2,6 +2,9 @@ package operations
 
 import (
 	"encoding/json"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -84,6 +87,24 @@ func TestPeriodBounds(t *testing.T) {
 	for _, path := range []string{"/?from=wrong", "/?from=2026-12-01&to=2026-01-01", "/?from=2020-01-01&to=2026-01-01"} {
 		if _, err := readPeriod(httptest.NewRequest("GET", path, nil), "America/Argentina/Buenos_Aires"); err == nil {
 			t.Fatal("invalid range accepted", path)
+		}
+	}
+}
+
+func TestMenuManagementAndCashRoutesRequireSession(t *testing.T) {
+	mux := http.NewServeMux()
+	database, err := gorm.Open(postgres.New(postgres.Config{DSN: "host=127.0.0.1 dbname=unused", PreferSimpleProtocol: true}), &gorm.Config{DisableAutomaticPing: true, DryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	RegisterRoutes(mux, database)
+	for _, route := range []string{"GET /api/menu/settings", "PATCH /api/menu/settings", "GET /api/cash/shifts", "POST /api/cash/shifts", "GET /api/cash/shifts/00000000-0000-4000-8000-000000000001", "GET /api/cash/shifts/00000000-0000-4000-8000-000000000001/entries", "POST /api/cash/shifts/00000000-0000-4000-8000-000000000001/entries", "POST /api/cash/shifts/00000000-0000-4000-8000-000000000001/close"} {
+		parts := strings.SplitN(route, " ", 2)
+		r := httptest.NewRequest(parts[0], parts[1], strings.NewReader(`{}`))
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, r)
+		if w.Code != 401 {
+			t.Errorf("%s allowed anonymous access: %d", route, w.Code)
 		}
 	}
 }

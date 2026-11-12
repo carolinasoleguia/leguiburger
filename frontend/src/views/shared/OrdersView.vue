@@ -14,6 +14,7 @@ const orders = ref([]),
   customers = ref([]),
   offset = ref(0),
   catalogOffset = ref(0),
+  catalogSearch = ref(""),
   selected = ref(null),
   detail = ref(null),
   payments = ref([]),
@@ -38,7 +39,9 @@ const w = useWorkspace(async ({ request, tenant, current }) => {
   if (!tenant) return;
   const [list, menu, people] = await Promise.all([
     request(`/orders?limit=25&offset=${offset.value}`),
-    request(`/pos/catalog?limit=25&offset=${catalogOffset.value}`),
+    request(
+      `/pos/catalog?limit=25&offset=${catalogOffset.value}&search=${encodeURIComponent(catalogSearch.value)}`,
+    ),
     request(
       `/crm/customers?limit=25&search=${encodeURIComponent(customerSearch.value)}`,
     ),
@@ -182,8 +185,31 @@ function menuPage(n) {
     :workspace="w"
     title="Caja y pedidos"
     description="Tomá pedidos, registrá cobros y acompañá cada entrega."
-    ><form v-form-care class="card operation-form" @submit.prevent="create">
+    ><div class="operation-actions">
+      <router-link class="btn-secondary" to="/cash"
+        >Turnos y arqueo de caja</router-link
+      >
+    </div>
+    <form v-form-care class="card operation-form" @submit.prevent="create">
       <h2>Nuevo pedido de mostrador</h2>
+      <div class="form-row">
+        <label
+          >Buscar en toda la carta<input
+            v-model="catalogSearch"
+            type="search"
+            maxlength="100" /></label
+        ><button
+          type="button"
+          class="btn-secondary"
+          :disabled="w.busy.value"
+          @click="
+            catalogOffset = 0;
+            w.refresh();
+          "
+        >
+          Buscar producto
+        </button>
+      </div>
       <div class="form-row">
         <label
           >Hamburguesa / producto<select v-model="product">
@@ -228,8 +254,8 @@ function menuPage(n) {
         >
       </div>
       <p>
-        Total estimado: <strong>{{ money(total) }}</strong
-        >. El servidor confirma los precios al crear.
+        Total estimado: <strong>{{ money(total) }}</strong>. El servidor
+        confirma los precios al crear.
       </p>
       <div class="form-row">
         <label
@@ -264,8 +290,9 @@ function menuPage(n) {
             <th></th>
           </tr>
         </thead>
-        <tbody><LoadingRows v-if="w.loading.value" :columns="6" />
-          <tr v-show="!(w.loading.value)" v-for="item in orders" :key="item.id">
+        <tbody>
+          <LoadingRows v-if="w.loading.value" :columns="6" />
+          <tr v-show="!w.loading.value" v-for="item in orders" :key="item.id">
             <td>#{{ item.id.slice(0, 8) }}</td>
             <td>{{ when(item.created_at) }}</td>
             <td>{{ statusLabels[item.status] }}</td>
@@ -277,7 +304,7 @@ function menuPage(n) {
               </button>
             </td>
           </tr>
-          <tr v-show="!(w.loading.value)" v-if="!orders.length">
+          <tr v-show="!w.loading.value" v-if="!orders.length">
             <td colspan="6">Los pedidos de este local aparecerán acá.</td>
           </tr>
         </tbody>
@@ -323,7 +350,8 @@ function menuPage(n) {
           {{ statusLabels[next] }}
         </button>
       </div>
-      <form v-form-care
+      <form
+        v-form-care
         v-if="!['canceled', 'rejected'].includes(detail.status)"
         class="operation-form"
         @submit.prevent="pay"
@@ -360,7 +388,8 @@ function menuPage(n) {
           {{ p.status }}</span
         ><strong>{{ money(p.amount, p.currency) }}</strong>
       </div>
-      <form v-form-care
+      <form
+        v-form-care
         v-if="
           payments.some(
             (x) =>

@@ -14,7 +14,11 @@ func (h *Handler) posCatalog(r *http.Request, p Principal) (Result, error) {
 	if e != nil {
 		return Result{}, e
 	}
-	return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(SELECT p.id,p.name,coalesce(tp.price_override,p.base_price)::text price,tp.current_stock,tp.track_stock FROM public.products p JOIN public.tenant_products tp ON tp.product_id=p.id WHERE tp.tenant_id=? AND p.is_active AND tp.is_active AND tp.is_available ORDER BY p.name,p.id LIMIT ? OFFSET ?)v`, scope.TenantID, limit, offset))
+	search, e := searchQuery(r)
+	if e != nil {
+		return Result{}, e
+	}
+	return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(SELECT p.id,p.name,coalesce(tp.price_override,p.base_price)::text price,tp.current_stock,tp.track_stock FROM public.products p JOIN public.tenant_products tp ON tp.product_id=p.id WHERE tp.tenant_id=? AND p.is_active AND tp.is_active AND tp.is_available AND (?='' OR strpos(lower(p.name||' '||coalesce(p.description,'')),lower(?))>0) ORDER BY p.name,p.id LIMIT ? OFFSET ?)v`, scope.TenantID, search, search, limit, offset))
 }
 func (h *Handler) customerDirectory(r *http.Request, p Principal) (Result, error) {
 	if !p.Cashier() {
@@ -34,5 +38,5 @@ func (h *Handler) customerDirectory(r *http.Request, p Principal) (Result, error
 	}
 	return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(
  SELECT c.id,c.first_name,c.last_name,c.email,c.phone,c.created_at,(SELECT count(*) FROM public.orders o WHERE o.customer_id=c.id AND o.tenant_id=c.tenant_id AND o.payment_environment='production') orders,(SELECT max(o.created_at) FROM public.orders o WHERE o.customer_id=c.id AND o.tenant_id=c.tenant_id AND o.payment_environment='production') last_order_at
- FROM public.customers c WHERE c.tenant_id=? AND (?='' OR strpos(lower(c.first_name||' '||c.last_name||' '||c.email),lower(?))>0) ORDER BY c.created_at DESC,c.id DESC LIMIT ? OFFSET ?)v`, scope.TenantID, search, search, limit, offset))
+ FROM public.customers c WHERE c.tenant_id=? AND (?='' OR strpos(lower(coalesce(c.first_name,'')||' '||coalesce(c.last_name,'')||' '||coalesce(c.email,'')||' '||coalesce(c.phone,'')),lower(?))>0) ORDER BY c.created_at DESC,c.id DESC LIMIT ? OFFSET ?)v`, scope.TenantID, search, search, limit, offset))
 }

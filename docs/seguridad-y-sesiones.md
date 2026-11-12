@@ -102,6 +102,13 @@ Las consultas del logger de producción ocultan parámetros.
 
 ## Validación
 
+La [revisión de aislamiento del 12/11/2026](revision-aislamiento-api.md) agrega
+147 comprobaciones HTTP con dos marcas y tres locales, sobre recursos privados,
+publicación de carta, búsqueda y arqueos. Plataforma conserva acceso global;
+admins y colaboradores no adquieren permisos al forzar IDs, headers o queries.
+Se ejecuta con `go test ./internal/operations -run TestTenantIsolationIntegration
+-count=1 -v -args -security-integration` y revierte todos sus datos de prueba.
+
 ```powershell
 go test ./...
 go test ./internal/operations -run TestSecurityIntegration -count=1 -v -args -security-integration

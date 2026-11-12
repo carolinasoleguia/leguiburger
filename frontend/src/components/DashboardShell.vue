@@ -119,6 +119,7 @@ const navigation = computed(() => {
     )
       ? [
           { label: "Caja y pedidos", to: "/orders", icon: "receipt" },
+          { label: "Turnos de caja", to: "/cash", icon: "card" },
           { label: "Clientes", to: "/customers", icon: "users" },
         ]
       : []),
@@ -236,12 +237,17 @@ async function logout() {
         <span class="live-dot" />{{ roleLabel }}
       </div>
       <span class="nav-heading">Espacio de trabajo</span>
-      <label v-if="assignedLocations.length > 1" class="input-group"
+      <label
+        v-if="!['owner', 'super_admin', 'admin'].includes(auth.userRole.value)"
+        class="input-group sidebar-location-context"
         >Local de trabajo<select
           :value="auth.tenantId.value"
-          :disabled="switching"
+          :disabled="switching || assignedLocations.length < 2"
           @change="changeLocation"
         >
+          <option v-if="!assignedLocations.length" :value="auth.tenantId.value">
+            Consultando locales…
+          </option>
           <option
             v-for="item in assignedLocations"
             :key="item.id"
