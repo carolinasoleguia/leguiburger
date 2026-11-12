@@ -44,6 +44,7 @@ func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 		h.buyer = options[0]
 	}
 	mux.HandleFunc("POST /api/public/menu/{id}/buyer-session", h.buyerSession)
+	mux.HandleFunc("PATCH /api/shopper/profile", h.buyerWrap(h.shopperContact))
 	mux.HandleFunc("GET /api/shopper/orders", h.buyerWrap(h.shopperOrders))
 	mux.HandleFunc("POST /api/shopper/claim", h.buyerWrap(h.claimOrder))
 	mux.HandleFunc("GET /api/shopper/coupons", h.buyerWrap(h.shopperCoupons))

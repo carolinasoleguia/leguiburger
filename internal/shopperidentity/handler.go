@@ -248,7 +248,7 @@ func (h *Handler) run(w http.ResponseWriter, r *http.Request, action string) (an
 		Profile
 		PasswordHash string
 	}
-	q := h.db.WithContext(ctx).Raw(`SELECT id::text,name,email,email_verified,password_hash FROM legui_private.shoppers WHERE email=? AND active`, in.Email).Scan(&row)
+	q := h.db.WithContext(ctx).Raw(`SELECT id::text,name,email,email_verified,phone,default_address address,password_hash FROM legui_private.shoppers WHERE email=? AND active`, in.Email).Scan(&row)
 	if q.Error != nil {
 		return nil, q.Error
 	}

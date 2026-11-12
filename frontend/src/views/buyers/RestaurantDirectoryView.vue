@@ -1,8 +1,20 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import BrandLogo from "../../components/BrandLogo.vue";
 import ThemeToggle from "../../components/ThemeToggle.vue";
-import { shopperRequest } from "../../composables/useShopper.js";
+import {
+  shopper,
+  loadShopper,
+  shopperRequest,
+} from "../../composables/useShopper.js";
+const search = ref("");
+const filtered = computed(() =>
+  items.value.filter((x) =>
+    `${x.business} ${x.location} ${x.address || ""}`
+      .toLowerCase()
+      .includes(search.value.toLowerCase()),
+  ),
+);
 const items = ref([]),
   loading = ref(true),
   error = ref("");
@@ -17,7 +29,10 @@ async function load() {
     loading.value = false;
   }
 }
-onMounted(load);
+onMounted(() => {
+  load();
+  loadShopper().catch(() => {});
+});
 </script>
 <template>
   <main class="restaurants-public">
@@ -31,10 +46,21 @@ onMounted(load);
     <section>
       <p class="eyebrow">El antojo empieza acá</p>
       <h1>Elegí tu próxima favorita.</h1>
-      <p>
+      <p v-if="shopper.profile" class="directory-session" role="status">
+        Estás comprando como <strong>{{ shopper.profile.name }}</strong>. Tus
+        compras se guardan en Mis pedidos y podés usar tus cupones.
+      </p>
+      <p v-else>
         Explorá las cartas de los locales. Podés pedir con tu cuenta o sin
         registrarte.
       </p>
+      <label class="directory-search"
+        >Buscá tu marca o sucursal<input
+          v-model="search"
+          type="search"
+          maxlength="100"
+          placeholder="Nombre del restaurante, localidad o dirección"
+      /></label>
       <p v-if="loading" role="status">Cargando restaurantes…</p>
       <p v-if="error" role="alert">
         {{ error }}
@@ -43,8 +69,11 @@ onMounted(load);
       <p v-if="!loading && !error && !items.length" class="card">
         Todavía no hay cartas publicadas.
       </p>
+      <p v-if="!loading && items.length && !filtered.length">
+        No encontramos restaurantes con esa búsqueda.
+      </p>
       <div class="restaurant-grid">
-        <article v-for="local in items" :key="local.id" class="card">
+        <article v-for="local in filtered" :key="local.id" class="card">
           <small>{{ local.location }}</small>
           <h2>{{ local.business }}</h2>
           <p>
@@ -77,6 +106,27 @@ header > div {
   display: flex;
   gap: 20px;
   align-items: center;
+}
+.directory-session {
+  border-left: 3px solid var(--accent);
+  padding: 14px 18px;
+  background: var(--surface);
+  border-radius: 8px;
+}
+.directory-search {
+  display: grid;
+  gap: 10px;
+  max-width: 560px;
+  margin-top: 28px;
+  font-size: 14px;
+}
+.directory-search input {
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid var(--control-border);
+  background: var(--field);
+  color: var(--text);
+  border-radius: 8px;
 }
 section {
   max-width: 1240px;

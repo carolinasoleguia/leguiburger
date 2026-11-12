@@ -70,25 +70,39 @@ func (h *Handler) shopperPreferences(r *http.Request) (Result, error) {
 		return Result{}, e
 	}
 	if r.Method == "GET" {
-		return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(SELECT b.id,b.name,coalesce(p.newsletter,false) newsletter FROM public.brands b LEFT JOIN legui_private.shopper_preferences p ON p.brand_id=b.id AND p.shopper_id=? WHERE b.suspended_at IS NULL AND b.closed_at IS NULL AND (EXISTS(SELECT 1 FROM public.tenants t WHERE t.brand_id=b.id AND t.active AND t.menu_published) OR p.shopper_id IS NOT NULL) ORDER BY b.name)v`, p.ID))
+		return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(SELECT b.id,b.name,coalesce(p.newsletter,false) newsletter,coalesce(p.personalization,false) personalization FROM public.brands b LEFT JOIN legui_private.shopper_preferences p ON p.brand_id=b.id AND p.shopper_id=? WHERE p.shopper_id IS NOT NULL OR (b.suspended_at IS NULL AND b.closed_at IS NULL AND EXISTS(SELECT 1 FROM public.tenants t WHERE t.brand_id=b.id AND t.active AND t.menu_published)) ORDER BY b.name)v`, p.ID))
 	}
 	in, e := decode[struct {
-		BrandID    string `json:"brand_id"`
-		Newsletter bool   `json:"newsletter"`
+		BrandID         string `json:"brand_id"`
+		Newsletter      *bool  `json:"newsletter"`
+		Personalization *bool  `json:"personalization"`
 	}](r)
-	if e != nil || !validID(in.BrandID) {
+	if e != nil || !validID(in.BrandID) || (in.Newsletter == nil && in.Personalization == nil) {
 		return Result{}, badInput("Preferencia inválida")
 	}
-	var exists bool
-	h.repo.DB.WithContext(r.Context()).Raw(`SELECT EXISTS(SELECT 1 FROM public.tenants WHERE brand_id=? AND menu_published AND active)`, in.BrandID).Scan(&exists)
+	var exists, previous bool
+	if e = h.repo.DB.WithContext(r.Context()).Raw(`SELECT EXISTS(SELECT 1 FROM public.tenants t JOIN public.brands b ON b.id=t.brand_id WHERE t.brand_id=? AND t.menu_published AND t.active AND b.suspended_at IS NULL AND b.closed_at IS NULL)`, in.BrandID).Scan(&exists).Error; e != nil {
+		return Result{}, e
+	}
 	if !exists {
-		return Result{}, notFound()
+		if e = h.repo.DB.WithContext(r.Context()).Raw(`SELECT EXISTS(SELECT 1 FROM legui_private.shopper_preferences WHERE shopper_id=? AND brand_id=?)`, p.ID, in.BrandID).Scan(&previous).Error; e != nil {
+			return Result{}, e
+		}
+		if !previous {
+			return Result{}, notFound()
+		}
+		if in.Newsletter != nil && *in.Newsletter || in.Personalization != nil && *in.Personalization {
+			return Result{}, conflict("La marca no está disponible. Podés desactivar sus preferencias")
+		}
 	}
 	e = h.repo.DB.WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
-		if e := tx.Exec(`INSERT INTO legui_private.shopper_preferences(shopper_id,brand_id,newsletter) VALUES(?,?,?) ON CONFLICT(shopper_id,brand_id) DO UPDATE SET newsletter=excluded.newsletter,updated_at=clock_timestamp()`, p.ID, in.BrandID, in.Newsletter).Error; e != nil {
+		if _, e := shopperidentity.Lock(r.Context(), tx, r); e != nil {
 			return e
 		}
-		return tx.Exec(`INSERT INTO legui_private.shopper_preference_events(shopper_id,brand_id,newsletter) VALUES(?,?,?)`, p.ID, in.BrandID, in.Newsletter).Error
+		if e := tx.Exec(`INSERT INTO legui_private.shopper_preferences(shopper_id,brand_id,newsletter,personalization) VALUES(?,?,coalesce(?,false),coalesce(?,false)) ON CONFLICT(shopper_id,brand_id) DO UPDATE SET newsletter=coalesce(?,shopper_preferences.newsletter),personalization=coalesce(?,shopper_preferences.personalization),updated_at=clock_timestamp()`, p.ID, in.BrandID, in.Newsletter, in.Personalization, in.Newsletter, in.Personalization).Error; e != nil {
+			return e
+		}
+		return tx.Exec(`INSERT INTO legui_private.shopper_preference_events(shopper_id,brand_id,newsletter,personalization) SELECT shopper_id,brand_id,newsletter,personalization FROM legui_private.shopper_preferences WHERE shopper_id=? AND brand_id=?`, p.ID, in.BrandID).Error
 	})
 	if e != nil {
 		return Result{}, e
@@ -111,7 +125,7 @@ func (h *Handler) marketing(r *http.Request, p Principal) (Result, error) {
 		return Result{}, e
 	}
 	if strings.HasSuffix(r.URL.Path, "/customers") {
-		return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(SELECT p.id,p.name,count(*) orders,bool_or(coalesce(pref.newsletter,false) AND p.email_verified) newsletter_confirmed FROM legui_private.shoppers p JOIN legui_private.shopper_orders a ON a.shopper_id=p.id JOIN public.orders o ON o.id=a.order_id JOIN public.tenants t ON t.id=o.tenant_id AND t.brand_id=? LEFT JOIN legui_private.shopper_preferences pref ON pref.brand_id=t.brand_id AND pref.shopper_id=p.id GROUP BY p.id,p.name ORDER BY p.name LIMIT 100)v`, scope.BrandID))
+		return resultJSON(h.repo.JSON(r.Context(), `WITH own AS(SELECT o.*,s.code status FROM public.orders o JOIN public.tenants t ON t.id=o.tenant_id JOIN public.order_statuses_lookup s ON s.id=o.order_status_id WHERE t.brand_id=? AND o.payment_environment='production'),customers AS(SELECT a.shopper_id,count(*) orders,sum(CASE WHEN o.status NOT IN ('canceled','rejected') THEN o.total_paid ELSE 0 END) spent,count(*) FILTER(WHERE o.total_paid>=o.total_due AND o.total_due>0 AND o.status NOT IN ('pending','canceled','rejected')) paid_orders,max(o.created_at) FILTER(WHERE o.total_paid>0 AND o.status NOT IN ('canceled','rejected')) last_purchase FROM own o JOIN legui_private.shopper_orders a ON a.order_id=o.id GROUP BY a.shopper_id) SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(SELECT p.id,p.name,c.orders,coalesce(pref.newsletter,false) AND p.email_verified newsletter_confirmed,coalesce(pref.personalization,false) personalization,CASE WHEN pref.personalization THEN c.spent::text END spent,CASE WHEN pref.personalization THEN c.last_purchase END last_purchase,CASE WHEN pref.personalization THEN c.paid_orders END paid_orders,CASE WHEN pref.personalization THEN CASE WHEN c.last_purchase<clock_timestamp()-interval '30 days' THEN 'Para recuperar' WHEN c.paid_orders>=3 THEN 'Frecuente' WHEN c.paid_orders=0 THEN 'Primera compra' ELSE 'En crecimiento' END END segment,CASE WHEN pref.personalization THEN (SELECT d.product_name FROM own o JOIN legui_private.shopper_orders a ON a.order_id=o.id JOIN public.order_details d ON d.order_id=o.id WHERE a.shopper_id=p.id AND o.total_paid>0 AND o.status NOT IN ('canceled','rejected') GROUP BY d.product_id,d.product_name ORDER BY sum(d.quantity) DESC,d.product_name LIMIT 1) END favorite_product FROM customers c JOIN legui_private.shoppers p ON p.id=c.shopper_id LEFT JOIN legui_private.shopper_preferences pref ON pref.shopper_id=p.id AND pref.brand_id=? ORDER BY p.name LIMIT 100)v`, scope.BrandID, scope.BrandID))
 	}
 	if r.Method == "GET" {
 		return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(SELECT c.id,c.code,c.percent,c.minimum::text,c.max_uses,c.active,c.expires_at,c.tenant_id,p.name recipient,(SELECT count(*) FROM legui_private.shopper_coupon_uses u WHERE u.coupon_id=c.id) uses FROM legui_private.shopper_coupons c LEFT JOIN legui_private.shoppers p ON p.id=c.shopper_id WHERE c.brand_id=? ORDER BY c.created_at DESC LIMIT 100)v`, scope.BrandID))
@@ -171,4 +185,52 @@ func (h *Handler) marketing(r *http.Request, p Principal) (Result, error) {
 		data, e := jsonQuery(tx, `INSERT INTO legui_private.shopper_coupons(id,brand_id,tenant_id,shopper_id,code,percent,minimum,max_uses,expires_at) VALUES(?,?,?,?,?,?,?::numeric,?,?) RETURNING jsonb_build_object('id',id,'code',code)::text payload`, uuid.NewString(), scope.BrandID, local, in.ShopperID, in.Code, in.Percent, in.Minimum, in.MaxUses, time.Now().Add(time.Duration(in.Days)*24*time.Hour))
 		return data, 201, e
 	})
+}
+
+func (h *Handler) shopperContact(r *http.Request) (Result, error) {
+	p, e := h.shopperProfile(r)
+	if e != nil {
+		return Result{}, e
+	}
+	in, e := decode[struct {
+		Name    string `json:"name"`
+		Phone   string `json:"phone"`
+		Address string `json:"delivery_address"`
+	}](r)
+	if e != nil {
+		return Result{}, e
+	}
+	in.Name = strings.TrimSpace(in.Name)
+	in.Phone = strings.TrimSpace(in.Phone)
+	in.Address = strings.TrimSpace(in.Address)
+	if len([]rune(in.Name)) < 2 || len([]rune(in.Name)) > 100 || !validShopperPhone(in.Phone) || len([]rune(in.Address)) > 500 {
+		return Result{}, badInput("Revisá tu nombre, teléfono y dirección")
+	}
+	e = h.repo.DB.WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
+		if _, e := shopperidentity.Lock(r.Context(), tx, r); e != nil {
+			return e
+		}
+		return tx.Exec(`UPDATE legui_private.shoppers SET name=?,phone=?,default_address=? WHERE id=?`, in.Name, in.Phone, in.Address, p.ID).Error
+	})
+	if e != nil {
+		return Result{}, e
+	}
+	return Result{Data: json.RawMessage(`{"ok":true}`)}, nil
+}
+func validShopperPhone(raw string) bool {
+	if raw == "" {
+		return true
+	}
+	if len(raw) > 30 {
+		return false
+	}
+	digits := 0
+	for _, c := range raw {
+		if c >= '0' && c <= '9' {
+			digits++
+		} else if !strings.ContainsRune(" +()-", c) {
+			return false
+		}
+	}
+	return digits >= 6 && digits <= 20
 }

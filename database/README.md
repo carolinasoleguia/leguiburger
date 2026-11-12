@@ -79,3 +79,5 @@ La segunda prueba es explícita y apunta únicamente al proyecto LeguiBurger ind
 La integración con un proveedor de pago requiere validar firmas/notificaciones y consultar el pago al proveedor. La tabla de webhooks está preparada para deduplicar ingresos; una notificación por sí sola no acredita dinero ni habilita una membresía.
 
 La migración `202611120003_shopper_accounts` agrega cuentas privadas de compradores globales, sesiones/acciones de correo, vínculos de compras, preferencias auditadas y cupones por marca/sucursal con usos. No agrega un rol a usuarios/colaboradores ni importa datos comerciales. Ver [cuentas de compradores](../docs/cuentas-compradores.md).
+
+`202611120004_shopper_personalization` agrega contacto opcional del comprador y personalización por marca desactivada por defecto, con historial de consentimiento. La identidad de cada compra sigue en `shopper_orders`; no agrega DNI ni duplica el perfil en ventas.

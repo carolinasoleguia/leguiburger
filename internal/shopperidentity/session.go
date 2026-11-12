@@ -21,6 +21,8 @@ var ErrSession = errors.New("shopper session unavailable")
 const Cookie = "legui_shopper"
 
 type Profile struct {
+	Phone         string `json:"phone"`
+	Address       string `json:"delivery_address"`
 	ID            string `json:"id"`
 	Name          string `json:"name"`
 	Email         string `json:"email"`
@@ -50,7 +52,7 @@ func current(ctx context.Context, db *gorm.DB, r *http.Request, lock bool) (Prof
 	if e != nil || len(c.Value) != 43 {
 		return p, ErrSession
 	}
-	sql := `SELECT p.id::text,p.name,p.email,p.email_verified FROM legui_private.shopper_sessions s JOIN legui_private.shoppers p ON p.id=s.shopper_id AND p.active WHERE s.digest=? AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()`
+	sql := `SELECT p.id::text,p.name,p.email,p.email_verified,p.phone,p.default_address address FROM legui_private.shopper_sessions s JOIN legui_private.shoppers p ON p.id=s.shopper_id AND p.active WHERE s.digest=? AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()`
 	if lock {
 		sql += ` FOR SHARE OF s,p`
 	}

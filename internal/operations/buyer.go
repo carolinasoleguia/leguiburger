@@ -31,6 +31,7 @@ type BuyerBasket struct {
 	ShippingMethodID *string            `json:"shipping_method_id,omitempty"`
 }
 type BuyerOrderRequest struct {
+	RememberContact bool `json:"remember_contact,omitempty"`
 	BuyerBasket
 	QuoteDigest   string `json:"quote_digest"`
 	Name          string `json:"name"`
@@ -406,6 +407,9 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 	if profile, err := shopperidentity.Current(r.Context(), h.repo.DB, r); err == nil {
 		input.ShopperID = profile.ID
 	}
+	if input.RememberContact && input.ShopperID == "" {
+		return Result{}, unauthorized()
+	}
 	input.CouponLock = true
 	encoded, _ := canonicalJSON(input)
 	digest := buyeraccess.Digest(id + "\n" + string(encoded))
@@ -481,6 +485,11 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 		if input.ShopperID != "" {
 			if e = tx.Exec(`INSERT INTO legui_private.shopper_orders(order_id,shopper_id) VALUES(?,?)`, orderID, input.ShopperID).Error; e != nil {
 				return e
+			}
+			if input.RememberContact {
+				if e = tx.Exec(`UPDATE legui_private.shoppers SET phone=?,default_address=CASE WHEN ?='delivery' THEN ? ELSE default_address END WHERE id=?`, input.Phone, input.Fulfillment, input.Address, input.ShopperID).Error; e != nil {
+					return e
+				}
 			}
 		}
 		if quote.CouponID != "" {

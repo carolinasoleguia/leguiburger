@@ -150,8 +150,7 @@ function toggle(c) {
         Aparecerán acá cuando hagan o vinculen su primera compra.
       </p>
       <div v-for="p in customers" :key="p.id" class="report-row">
-        <strong>{{ p.name }}</strong
-        ><span
+        <strong>{{ p.name }}</strong><span
           >{{ p.orders }} pedidos ·
           {{
             p.newsletter_confirmed
@@ -159,11 +158,51 @@ function toggle(c) {
               : "Sin suscripción confirmada"
           }}</span
         >
+        <div v-if="p.personalization" class="marketing-insight">
+          <strong>{{ p.segment }}</strong>
+          <p>
+            {{ p.paid_orders }} compras pagadas · {{ money(p.spent) }} recibido
+          </p>
+          <p v-if="p.last_purchase">
+            Última compra: {{ when(p.last_purchase) }}
+          </p>
+          <p v-if="p.favorite_product">
+            Producto más comprado: {{ p.favorite_product }}
+          </p>
+          <p>
+            {{
+              p.segment === "Para recuperar"
+                ? "Podés ofrecerle un beneficio para que vuelva."
+                : p.segment === "Frecuente"
+                  ? "Podés premiar su frecuencia con un cupón personal."
+                  : "Podés ofrecerle un beneficio para una próxima compra."
+            }}
+          </p>
+        </div>
+        <p v-else class="marketing-no-profile">
+          Este comprador no habilitó promociones según sus compras.
+        </p>
       </div>
     </section></WorkspaceFrame
   >
 </template>
 <style scoped>
+.report-row {
+  flex-wrap: wrap;
+}
+.marketing-insight,
+.marketing-no-profile {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.marketing-insight {
+  padding: 16px;
+  background: var(--surface-raised);
+  border-radius: 8px;
+  margin-top: 12px;
+}
 .marketing-coupon {
   display: flex;
   justify-content: space-between;

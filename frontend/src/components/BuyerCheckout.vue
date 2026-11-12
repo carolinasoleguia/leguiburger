@@ -34,6 +34,7 @@ const fulfillment = ref("pickup"),
   email = ref(""),
   address = ref(""),
   payment = ref("at_local");
+const rememberContact = ref(false);
 const couponCode = ref(String(useRoute().query.cupon || ""));
 const recoveryMissing = ref(false);
 const storageKey = "legui-buyer:" + props.tenant;
@@ -301,6 +302,9 @@ async function confirm() {
       pendingBody = {
         ...basket(),
         quote_digest: quote.value.digest,
+        ...(shopper.profile && rememberContact.value
+          ? { remember_contact: true }
+          : {}),
         name: name.value,
         phone: phone.value,
         email: email.value,
@@ -405,6 +409,8 @@ loadShopper()
     if (p && alive) {
       if (!name.value) name.value = p.name;
       if (!email.value) email.value = p.email;
+      if (!phone.value) phone.value = p.phone || "";
+      if (!address.value) address.value = p.delivery_address || "";
     }
   })
   .catch(() => {});
@@ -810,6 +816,9 @@ defineExpose({
                       maxlength="500"
                       rows="2"
                     /></label
+                  ><label v-if="shopper.profile" class="buyer-remember"
+                    ><input v-model="rememberContact" type="checkbox" />Guardar
+                    teléfono y dirección para próximas compras</label
                   ><label
                     >¿Cómo vas a pagar?<select v-model="payment">
                       <option value="at_local">Al retirar o recibir</option>
@@ -822,6 +831,10 @@ defineExpose({
                     </select></label
                   >
                 </fieldset>
+                <p v-if="shopper.profile" class="buyer-muted">
+                  Comprando como {{ shopper.profile.name }}. Este pedido se
+                  vincula a tu cuenta.
+                </p>
                 <p class="buyer-muted">
                   El local confirmará la disponibilidad al aceptar tu pedido.
                   Tus datos se comparten con este restaurante para coordinar la
@@ -888,6 +901,18 @@ defineExpose({
   background: var(--accent);
   color: var(--bg);
   border-color: var(--accent);
+}
+.buyer-form .buyer-remember {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  line-height: 1.5;
+}
+.buyer-remember input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
 }
 .buyer-coupon {
   display: grid;

@@ -197,6 +197,15 @@ func TestShopperAccountsIntegration(t *testing.T) {
 		}
 		return parse(request("POST", "/api/public/menu/"+tenant+"/orders", "", "", headers, basket, 201))["id"].(string)
 	}
+	request("PATCH", "/api/shopper/profile", "", "", nil, map[string]any{"name": "Buyer A", "phone": "1155554444", "delivery_address": "Calle habitual 123"}, 401)
+	request("PATCH", "/api/shopper/profile", "", "", ca, map[string]any{"name": "Buyer A", "phone": "1155554444", "delivery_address": "Calle habitual 123"}, 200)
+	request("PATCH", "/api/shopper/profile", "", "", ca, map[string]any{"name": "Buyer A", "phone": "invalid", "delivery_address": ""}, 400)
+	if parse(request("GET", "/api/shopper/me", "", "", ca, nil, 200))["phone"] != "1155554444" {
+		t.Fatal("saved shopper contact missing")
+	}
+	if parse(request("GET", "/api/shopper/me", "", "", cb, nil, 200))["phone"] != "" {
+		t.Fatal("another buyer inherited contact")
+	}
 	first := quoteAndCreate(t1, p1, "", ca, "100.00")
 	request("POST", "/api/marketing/coupons", "admin_a", t2, nil, map[string]any{}, 403)
 	request("POST", "/api/marketing/coupons", "cashier", t1, nil, map[string]any{}, 403)
@@ -248,6 +257,33 @@ func TestShopperAccountsIntegration(t *testing.T) {
 	// Secret possession, never matching email, is required to attach guest orders.
 	request("POST", "/api/shopper/claim", "", "", cb, map[string]any{"tenant_id": t1}, 404)
 
+	if customers[0].(map[string]any)["spent"] != nil || customers[0].(map[string]any)["favorite_product"] != nil {
+		t.Fatal("personalization without consent")
+	}
+	request("PATCH", "/api/shopper/preferences", "", "", ca, map[string]any{"brand_id": b1, "personalization": true}, 200)
+	request("PATCH", "/api/shopper/preferences", "", "", cb, map[string]any{"brand_id": b2, "personalization": true}, 200)
+	enabled := parse(request("GET", "/api/marketing/customers", "admin_a", t1, nil, nil, 200))["items"].([]any)[0].(map[string]any)
+	if enabled["spent"] != "0.00" || enabled["segment"] != "Primera compra" || enabled["orders"] != float64(2) {
+		t.Fatalf("scoped shopper metrics invalid %v", enabled)
+	}
+	request("POST", "/api/orders/"+discounted+"/payments", "admin_a", t1, nil, map[string]any{"kind": "charge", "method": "transfer", "amount": "90.00"}, 201)
+	enabled = parse(request("GET", "/api/marketing/customers", "admin_a", t1, nil, nil, 200))["items"].([]any)[0].(map[string]any)
+	if enabled["spent"] != "90.00" || enabled["favorite_product"] != "__isolation_product_a" || enabled["segment"] != "En crecimiento" {
+		t.Fatalf("purchase profiling invalid %v", enabled)
+	}
+	request("PATCH", "/api/shopper/preferences", "", "", ca, map[string]any{"brand_id": b1, "personalization": false}, 200)
+	disabled := parse(request("GET", "/api/marketing/customers", "admin_a", t1, nil, nil, 200))["items"].([]any)[0].(map[string]any)
+	if disabled["spent"] != nil || disabled["segment"] != nil {
+		t.Fatal("withdrawn personalization still exposed")
+	}
+	if !strings.Contains(request("GET", "/api/shopper/preferences", "", "", ca, nil, 200).Body.String(), `"newsletter": true`) {
+		t.Fatal("personalization toggle erased newsletter consent")
+	}
+	var count int64
+	tx.Raw(`SELECT count(*) FROM public.sales s JOIN legui_private.shopper_orders a ON a.order_id=s.order_id WHERE a.shopper_id=?`, a).Scan(&count)
+	if count != 1 {
+		t.Fatal("sales cannot be joined to shopper ID")
+	}
 	// Match PostgreSQL's per-unit currency rounding, including half-cent discounts.
 	must(`UPDATE public.products SET base_price=0.05 WHERE id=?`, p1)
 	request("POST", "/api/marketing/coupons", "admin_a", t1, nil, map[string]any{"code": "CENTAVOS", "percent": 10, "minimum": "0", "max_uses": 5, "days": 7, "shopper_id": a, "all_locations": false}, 201)
@@ -260,10 +296,15 @@ func TestShopperAccountsIntegration(t *testing.T) {
 	tiny["name"] = "Rounding Fixture"
 	tiny["phone"] = "1155550123"
 	tiny["payment_method"] = "at_local"
+	tiny["remember_contact"] = true
 	tinyHeaders := map[string]string{"Cookie": ca["Cookie"], "Authorization": "Bearer " + base64.RawURLEncoding.EncodeToString([]byte(strings.Repeat("z", 32)))}
 	tinyReceipt := parse(request("POST", "/api/public/menu/"+t1+"/orders", "", "", tinyHeaders, tiny, 201))
 	if tinyReceipt["total_due"] != "0.12" || tinyReceipt["discount"] != "0.03" {
 		t.Fatalf("persisted currency rounding differs %v", tinyReceipt)
+	}
+	stored := parse(request("GET", "/api/shopper/me", "", "", ca, nil, 200))
+	if stored["phone"] != "1155550123" || stored["delivery_address"] != "Calle habitual 123" {
+		t.Fatalf("opt-in contact save failed %v", stored)
 	}
 	profile := parse(request("GET", "/api/shopper/me", "", "", ca, nil, 200))
 	request("POST", "/api/shopper/login", "", "", nil, map[string]any{"email": profile["email"], "password": "Incorrect-Fixture-Pass123!"}, 401)

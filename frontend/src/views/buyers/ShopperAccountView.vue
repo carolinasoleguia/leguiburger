@@ -25,7 +25,10 @@ const name = ref(""),
   coupons = ref([]),
   preferences = ref([]),
   selected = ref(null),
-  offset = ref(0);
+  offset = ref(0),
+  profileName = ref(""),
+  profilePhone = ref(""),
+  profileAddress = ref("");
 let actionToken =
   new URLSearchParams(location.hash.slice(1)).get("token") || "";
 if (actionToken)
@@ -45,6 +48,9 @@ async function load() {
   try {
     if (!shopper.ready) await loadShopper();
     if (!shopper.profile) return;
+    profileName.value = shopper.profile.name;
+    profilePhone.value = shopper.profile.phone || "";
+    profileAddress.value = shopper.profile.delivery_address || "";
     const [history, wallet, prefs] = await Promise.all([
       shopperRequest(`/api/shopper/orders?limit=20&offset=${offset.value}`),
       shopperRequest("/api/shopper/coupons"),
@@ -124,18 +130,18 @@ function logout() {
     selected.value = null;
   });
 }
-function preference(brand, event) {
+function preference(brand, event, field = "newsletter") {
   const value = event.target.checked;
   return act(async () => {
     try {
       await shopperRequest(
         "/api/shopper/preferences",
-        { brand_id: brand.id, newsletter: value },
+        { brand_id: brand.id, [field]: value },
         "PATCH",
       );
-      brand.newsletter = value;
+      brand[field] = value;
     } catch (e) {
-      event.target.checked = brand.newsletter;
+      event.target.checked = brand[field];
       throw e;
     }
   }, "Preferencias guardadas.");
@@ -147,6 +153,20 @@ function claim() {
     });
     await load();
   }, "Pedido vinculado a tu cuenta.");
+}
+function saveProfile() {
+  return act(async () => {
+    await shopperRequest(
+      "/api/shopper/profile",
+      {
+        name: profileName.value,
+        phone: profilePhone.value,
+        delivery_address: profileAddress.value,
+      },
+      "PATCH",
+    );
+    await loadShopper();
+  }, "Datos guardados para tus próximas compras.");
 }
 function changePassword() {
   return act(async () => {
@@ -316,6 +336,10 @@ onMounted(async () => {
             }}
           </p>
           <nav aria-label="Tu cuenta">
+            <router-link to="/restaurantes" class="btn-primary shopper-start"
+              >Explorar restaurantes
+              <span aria-hidden="true">→</span></router-link
+            >
             <button
               v-for="item in [
                 ['pedidos', 'Mis pedidos'],
@@ -462,25 +486,42 @@ onMounted(async () => {
             <p v-if="!preferences.length" class="card shopper-empty">
               Las marcas con carta publicada aparecerán acá.
             </p>
-            <label
+            <article
               v-for="brand in preferences"
               :key="brand.id"
               class="card shopper-preference"
-              ><span
-                ><strong>{{ brand.name }}</strong
-                ><small>{{
-                  brand.newsletter
-                    ? shopper.profile.email_verified
-                      ? "Suscripción habilitada"
-                      : "Solicitud pendiente de confirmar correo"
-                    : "Sin suscripción"
-                }}</small></span
-              ><input
-                type="checkbox"
-                :checked="brand.newsletter"
-                :disabled="busy"
-                @change="preference(brand, $event)" /></label
-          ></template>
+            >
+              <strong>{{ brand.name }}</strong
+              ><label
+                ><span
+                  >Novedades por correo<small>{{
+                    brand.newsletter
+                      ? shopper.profile.email_verified
+                        ? "Suscripción habilitada"
+                        : "Solicitud pendiente de confirmar correo"
+                      : "Sin suscripción"
+                  }}</small></span
+                ><input
+                  type="checkbox"
+                  :checked="brand.newsletter"
+                  :disabled="busy"
+                  @change="preference(brand, $event)" /></label
+              ><label
+                ><span
+                  >Promociones según mis compras<small
+                    >Esta marca podrá usar solo las compras que le hiciste para
+                    ofrecerte beneficios. No incluye datos de otras
+                    marcas.</small
+                  ></span
+                ><input
+                  data-personalization
+                  type="checkbox"
+                  :checked="brand.personalization"
+                  :disabled="busy"
+                  @change="preference(brand, $event, 'personalization')"
+              /></label>
+            </article>
+          </template>
           <template v-else
             ><p class="eyebrow">Tu lugar en la mesa</p>
             <h2>Mi perfil</h2>
@@ -503,6 +544,37 @@ onMounted(async () => {
                 Enviar confirmación
               </button>
             </section>
+            <form class="card shopper-form" @submit.prevent="saveProfile">
+              <h3>Datos para tus compras</h3>
+              <p class="shopper-muted">
+                El teléfono y la dirección son opcionales. Se usarán para
+                completar tu próxima compra; podés editarlos o borrarlos cuando
+                quieras.
+              </p>
+              <label
+                >Nombre<input
+                  v-model="profileName"
+                  autocomplete="name"
+                  required
+                  minlength="2"
+                  maxlength="100" /></label
+              ><label
+                >Teléfono<input
+                  v-model="profilePhone"
+                  type="tel"
+                  autocomplete="tel"
+                  maxlength="30" /></label
+              ><label
+                >Dirección habitual<textarea
+                  v-model="profileAddress"
+                  autocomplete="street-address"
+                  rows="3"
+                  maxlength="500"
+                ></textarea></label
+              ><button class="btn-primary" :disabled="busy">
+                Guardar datos
+              </button>
+            </form>
             <form class="card shopper-form" @submit.prevent="changePassword">
               <h3>Cambiar contraseña</h3>
               <label
@@ -594,7 +666,8 @@ onMounted(async () => {
   gap: 8px;
   font-size: 14px;
 }
-.shopper-form input {
+.shopper-form input,
+.shopper-form textarea {
   width: 100%;
   min-height: 46px;
   background: var(--field);
@@ -611,6 +684,17 @@ onMounted(async () => {
   display: grid;
   gap: 8px;
   margin: 28px 0;
+}
+.shopper-start {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  grid-column: 1/-1;
+  margin-bottom: 8px;
 }
 .shopper-sidebar nav button {
   padding: 14px 16px;
@@ -704,12 +788,16 @@ onMounted(async () => {
   line-height: 1.6;
 }
 .shopper-preference {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
+  display: grid;
+  gap: 20px;
   margin: 16px 0;
   padding: 24px;
+}
+.shopper-preference label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
   cursor: pointer;
 }
 .shopper-preference small {

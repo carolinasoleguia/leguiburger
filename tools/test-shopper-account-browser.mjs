@@ -71,7 +71,9 @@ try {
         calls = [];
       let logged = false,
         staff = false,
-        savedCoupon = null;
+        savedCoupon = null,
+        savedPhone = "",
+        savedAddress = "";
       page.on("pageerror", (e) => errors.push(e.message));
       await page.setViewport({ width, height: 950 });
       await page.evaluateOnNewDocument(
@@ -95,6 +97,8 @@ try {
           name: "Sofía",
           email: "sofia@example.invalid",
           email_verified: false,
+          phone: savedPhone,
+          delivery_address: savedAddress,
         };
         if (path === "/api/auth/refresh")
           return reply(
@@ -129,6 +133,11 @@ try {
                 name: "Sofía",
                 orders: 2,
                 newsletter_confirmed: false,
+                personalization: true,
+                segment: "Frecuente",
+                paid_orders: 3,
+                spent: "19000.00",
+                favorite_product: "Doble de la casa",
               },
             ],
           });
@@ -154,6 +163,28 @@ try {
           savedCoupon.active = body.active;
           return reply(r, { id: savedCoupon.id, active: savedCoupon.active });
         }
+        if (path === "/api/shopper/profile") {
+          savedPhone = body.phone;
+          savedAddress = body.delivery_address;
+          return reply(r, { ok: true });
+        }
+        if (path === "/api/public/restaurants")
+          return reply(r, {
+            items: [
+              {
+                id: localA,
+                business: "Burger de barrio",
+                location: "City Bell",
+                address: "Calle 123",
+              },
+              {
+                id: localB,
+                business: "Otra hamburguesería",
+                location: "Centro",
+                address: "Calle 456",
+              },
+            ],
+          });
         if (path === "/api/shopper/me")
           return reply(r, logged ? profile : {}, logged ? 200 : 401);
         if (path === "/api/shopper/register" || path === "/api/shopper/login") {
@@ -264,6 +295,33 @@ try {
         ),
       );
       checks++;
+      assert.equal(
+        await page.$eval(".shopper-sidebar nav > :first-child", (el) =>
+          el.textContent.trim(),
+        ),
+        "Explorar restaurantes →",
+      );
+      checks++;
+      await page.click(".shopper-start");
+      await page.waitForSelector(".restaurant-grid article");
+      await page.waitForFunction(() =>
+        document.body.textContent.includes("Estás comprando como"),
+      );
+      checks++;
+      await page.type(".directory-search input", "City Bell");
+      await page.waitForFunction(
+        () =>
+          document.querySelectorAll(".restaurant-grid article").length === 1,
+      );
+      checks++;
+      assert.ok(
+        (await page.$eval(".restaurant-grid a", (el) => el.href)).includes(
+          localA,
+        ),
+      );
+      checks++;
+      await page.goBack({ waitUntil: "domcontentloaded" });
+      await page.waitForSelector(".shopper-order");
       await button(page, "Vincular el pedido");
       await page.waitForFunction(() =>
         document.body.textContent.includes("Pedido vinculado"),
@@ -316,7 +374,37 @@ try {
         ),
       );
       checks++;
+      await page.click("[data-personalization]");
+      await page.waitForFunction(
+        () =>
+          document.querySelector("[data-personalization]").checked &&
+          document.body.textContent.includes("Preferencias guardadas"),
+      );
+      assert.ok(
+        calls.some(
+          (c) =>
+            c.path === "/api/shopper/preferences" &&
+            c.body?.personalization === true,
+        ),
+      );
+      checks++;
       await button(page, "Mi perfil");
+      await page.type('input[autocomplete="tel"]', "1155554444");
+      await page.type(
+        'textarea[autocomplete="street-address"]',
+        "Calle habitual 123",
+      );
+      await button(page, "Guardar datos");
+      await page.waitForFunction(() =>
+        document.body.textContent.includes("Datos guardados"),
+      );
+      assert.ok(
+        calls.some(
+          (c) =>
+            c.path === "/api/shopper/profile" && c.body?.phone === "1155554444",
+        ),
+      );
+      checks++;
       await button(page, "Enviar confirmación");
       await page.waitForFunction(() =>
         document.body.textContent.includes(

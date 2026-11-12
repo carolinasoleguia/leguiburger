@@ -43,3 +43,23 @@ La preferencia es independiente por marca, no se activa al registrar la cuenta y
 - Público: GET `/api/public/restaurants`; cotización/creación de pedido aceptan `coupon_code` opcional y siempre revalidan su elegibilidad.
 
 `TestShopperAccountsIntegration -security-integration` usa DB real con rollback y comprueba registro, cookies, ingreso, recuperación, verificación/replay, cambio de contraseña, compras entre marcas, acceso ajeno, destinatarios, cupones/reuso/redondeo, ventas netas, preferencias y logout. Los correos de fixture quedan dentro de la transacción revertida. `tools/test-shopper-account-browser.mjs` cubre las pantallas en 1440/390 y ambos temas; las suites de compra invitada, cookies, SSE, pagos, jerarquía y seguridad continúan siendo parte de CI.
+
+## Entrada de compra y datos opcionales
+
+La primera acción de la barra lateral de Mi cuenta es **Explorar restaurantes**, con botón principal y fila completa en móvil. Abre `/restaurantes`, que conserva la sesión y permite buscar marca, sucursal o dirección. El directorio muestra el comprador autenticado y cada carta completa nombre/correo y, si se guardaron, teléfono/dirección. La confirmación sigue pasando por el mismo backend y se vincula al ID del comprador.
+
+La migración `202611120004_shopper_personalization` agrega `shoppers.phone` y `default_address`, opcionales y privados, y el consentimiento `personalization` por marca, desactivado por defecto, con su historial. Se editan/borran desde PATCH `/api/shopper/profile` para el usuario de la cookie; no se acepta un ID de usuario a editar. En el checkout, `remember_contact` solo guarda teléfono/dirección si el comprador lo elige. Un retiro no reemplaza una dirección guardada por vacío. El contacto del pedido sigue siendo el ingresado para esa entrega.
+
+No se agregó DNI ni una copia del perfil en las ventas. La trazabilidad existente se obtiene así:
+
+```sql
+SELECT s.id AS sale_id, s.order_id, a.shopper_id
+FROM public.sales s
+LEFT JOIN legui_private.shopper_orders a ON a.order_id = s.order_id;
+```
+
+`public.sales.customer_id` continúa siendo el cliente CRM de la sucursal y no se reutiliza como identidad global. Las compras invitadas no vinculadas tienen `shopper_id` nulo en esa consulta. Los datos de entrega existentes de cada pedido permanecen como estaban; cambiar el perfil no reescribe esos pedidos.
+
+El consentimiento de personalización es independiente de newsletters. Con él habilitado, la pantalla del restaurante muestra importe efectivamente recibido, cantidad de compras pagadas, fecha de última compra y producto más comprado, exclusivamente dentro de esa marca y en producción. Se excluyen pedidos cancelados/rechazados. El segmento es una regla explicable: sin compras pagadas = Primera compra; última compra hace más de 30 días = Para recuperar; tres o más compras pagadas = Frecuente; resto = En crecimiento. Son ayudas para elegir un cupón, no predicciones ni envíos automáticos.
+
+Sin consentimiento, las métricas y segmentos de promociones se devuelven como nulos. Desactivarlo los oculta en consultas posteriores, conservando los registros de ventas y el historial de preferencias. Los dos permisos pueden retirarse aunque una marca deje de publicar su carta. Esta función no comparte datos personales guardados ni actividad de otras marcas con el restaurante.
