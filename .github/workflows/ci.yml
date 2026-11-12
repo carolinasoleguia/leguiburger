@@ -26,6 +26,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Verify source and secrets
         run: python3 tools/check-source.py
+      - name: Verify imported skills
+        run: python3 tools/check-skills.py
       - name: Verify Go dependencies
         run: go mod verify
       - name: Backend tests

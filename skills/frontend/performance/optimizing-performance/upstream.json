@@ -1,0 +1,25 @@
+{
+  "source": "https://github.com/thkt/dotclaude",
+  "requested_repository": "thkt/claude-config",
+  "revision": "dd663c92a87f8ce0b60889c4f7dd70d83f532ece",
+  "path": "skills/optimizing-performance",
+  "license": "not-provided-at-revision",
+  "original_directory": "skills/originals/thkt-optimizing-performance",
+  "files": {
+    "references/bundle-optimization.md": "8d1be32aac36227c0ff759f1f46a68b1f210dd4b55c3d4a1e83ec236d5827de4",
+    "references/react-optimization.md": "25e8743b4361f61ed9d29722edfac8eb2e55bc687fa60d37e359e49fe231d496",
+    "references/web-vitals.md": "660adb2e3f884ddf511a0ddfd5518ea6e41aaa8c986455b907d9df0112f517f2",
+    "scripts/validate-template.sh": "23cfb91805a3d066a721c4048ac3875a6b1a7a72d229670c419c3bd24250681b",
+    "scripts/validate.sh": "86e5a1df219c812835d7f12ab0b0d014d493b7ca646d6c29d5cd712822f19b09",
+    "SKILL.md": "f09c4d7a24251126c56a985419d898800314e53d09c0a34fe1002858b528e1ac",
+    "source-notice.md": "e6d6228f9f892e1b0c1e3b1e5a2ec894685e5e76672efd3d51ac53fa6f373980"
+  },
+  "adaptations": [
+    "portable frontmatter",
+    "project execution context",
+    "FID to INP",
+    "web-vitals on* callbacks",
+    "relative links",
+    "non-mutating React sort example"
+  ]
+}

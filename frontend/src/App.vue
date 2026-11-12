@@ -9,11 +9,9 @@
           " /></Transition></router-view
   ></AppErrorBoundary>
   <AppConfirmation />
-  <AppProgress />
 </template>
 
 <script setup>
 import AppErrorBoundary from "./components/AppErrorBoundary.vue";
 import AppConfirmation from "./components/AppConfirmation.vue";
-import AppProgress from "./components/AppProgress.vue";
 </script>

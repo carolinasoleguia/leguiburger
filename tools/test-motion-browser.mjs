@@ -89,6 +89,9 @@ async function release(status = 200) {
     );
 }
 try {
+  await page.evaluateOnNewDocument(() =>
+    localStorage.setItem("legui-motion", "reduced"),
+  );
   page.on("pageerror", (e) => errors.push(e.message));
   await page.emulateMediaFeatures([
     { name: "prefers-reduced-motion", value: "no-preference" },
@@ -139,7 +142,11 @@ try {
       getComputedStyle(el).animationName.includes("stable-shimmer"),
     ),
   );
-  await page.waitForSelector(".app-progress", { visible: true });
+  assert.equal(await page.$(".app-progress"), null);
+  assert.equal(
+    await page.evaluate(() => localStorage.getItem("legui-motion")),
+    null,
+  );
   await page.screenshot({
     path: ".cache/motion-browser/skeleton-1440-dark.png",
     fullPage: true,
@@ -150,18 +157,16 @@ try {
     new URL(one.url()).pathname.endsWith("locations") ? locals : business,
   );
   assert(
-    await page.$(".app-progress"),
-    "activity must remain while another request is pending",
+    await page.$("[data-dashboard-loading]"),
+    "panel must remain loading while another request is pending",
   );
   await page.emulateMediaFeatures([
     { name: "prefers-reduced-motion", value: "reduce" },
   ]);
-  assert.equal(
-    await page.$eval(
-      ".stable-content input",
-      (el) => getComputedStyle(el).animationName,
+  assert(
+    await page.$eval(".stable-content input", (el) =>
+      getComputedStyle(el).animationName.includes("stable-shimmer"),
     ),
-    "none",
   );
   await page.setViewport({ width: 390, height: 950 });
   await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
@@ -188,7 +193,7 @@ try {
   await release();
   await page.waitForSelector("[data-dashboard-loading]", { hidden: true });
   await page.waitForFunction(() => window.__panelTransitions > 0);
-  await page.waitForSelector(".app-progress", { hidden: true });
+  assert.equal(await page.$(".app-progress"), null);
   await page.evaluate(() => {
     const label = [...document.querySelectorAll("label")].find((el) =>
       el.textContent.includes("Identificador"),
@@ -243,8 +248,8 @@ try {
     document.querySelector("main h1")?.textContent.includes("catálogo"),
   );
   await page.waitForFunction(() =>
-    [...document.querySelectorAll("button")].some((el) =>
-      el.textContent.includes("Nuevo producto"),
+    [...document.querySelectorAll("button")].some(
+      (el) => el.textContent.includes("Nuevo producto") && !el.disabled,
     ),
   );
   await page.evaluate(() =>
@@ -263,46 +268,21 @@ try {
   await page.emulateMediaFeatures([
     { name: "prefers-reduced-motion", value: "reduce" },
   ]);
-  assert(
-    await page.$eval('[role="dialog"]', (el) =>
-      getComputedStyle(el)
-        .transitionDuration.split(",")
-        .every((value) => parseFloat(value) === 0),
-    ),
-  );
-  await page.keyboard.press("Escape");
-  await page.waitForSelector('[role="dialog"]', { hidden: true });
-  await page.click(".motion-toggle");
-  await page.waitForFunction(
-    () => document.documentElement.dataset.motion === "full",
-  );
-  await page.evaluate(() =>
-    [...document.querySelectorAll("button")]
-      .find((el) => el.textContent.includes("Nuevo producto"))
-      .click(),
-  );
-  await page.waitForSelector('[role="dialog"]', { visible: true });
-  assert(
-    await page.$eval('[role="dialog"]', (el) =>
-      getComputedStyle(el)
-        .transitionDuration.split(",")
-        .some((value) => parseFloat(value) > 0.1),
-    ),
-    "explicit motion preference must override system reduction",
+  assert.equal(
+    await page.evaluate(() => document.documentElement.dataset.motion),
+    "full",
   );
   await page.waitForFunction(() =>
     document.querySelector('[role="dialog"]')?.contains(document.activeElement),
   );
   await page.keyboard.press("Escape");
   await page.waitForSelector('[role="dialog"]', { hidden: true });
-  await page.click(".motion-toggle");
-  await page.waitForFunction(
-    () => document.documentElement.dataset.motion === "reduced",
-  );
+  assert.equal(await page.$(".motion-toggle"), null);
+  assert.equal(await page.$(".app-progress"), null);
   await page.reload({ waitUntil: "networkidle0" });
   assert.equal(
     await page.evaluate(() => document.documentElement.dataset.motion),
-    "reduced",
+    "full",
   );
   noTenants = true;
   await page.goto(origin + "/admin/production", { waitUntil: "networkidle0" });
@@ -323,7 +303,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Motion browser passed: real delayed loading skeletons, theme/mobile bounds, shared activity across concurrent requests, reveal transitions, preserved failed drafts, busy indicators, modal navigation and reduced motion.",
+    "Motion browser passed: real delayed loading skeletons, theme/mobile bounds, panel loading across concurrent requests, reveal transitions, preserved failed drafts, busy indicators, modal navigation, always-on motion and no global loading bar.",
   );
 } catch (error) {
   console.error("Motion browser failure", page.url(), errors);

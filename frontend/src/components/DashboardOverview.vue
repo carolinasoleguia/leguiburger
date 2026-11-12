@@ -142,18 +142,18 @@ function preset(count) {
 }
 </script>
 <template>
-  <section class="operations-page">
+  <section class="operations-page overview-page">
     <header class="section-header">
       <div>
         <p class="eyebrow">
           {{
             w.platform.value
-              ? "LEGUIBURGER COMO NEGOCIO"
-              : "EL PULSO DE TU HAMBURGUESERÍA"
+              ? "LeguiBurger como negocio"
+              : "El pulso de tu hamburguesería"
           }}
         </p>
         <h1>
-          {{ w.platform.value ? "Cada negocio cuenta." : "Todo a punto." }}
+          {{ w.platform.value ? "Cada negocio cuenta" : "Todo a punto" }}
         </h1>
         <p>
           Datos reales, en horario de Argentina. Los movimientos de prueba
@@ -179,14 +179,21 @@ function preset(count) {
         >Moneda<select v-model="currency">
           <option v-for="c in currencies" :key="c">{{ c }}</option>
         </select></label
-      ><button
-        class="btn-secondary"
-        :disabled="w.loading.value"
-        @click="w.refresh"
       >
-        Consultar</button
-      ><button class="text-button" @click="preset(7)">7 días</button
-      ><button class="text-button" @click="preset(30)">30 días</button>
+      <div
+        class="overview-period-actions"
+        role="group"
+        aria-label="Consultar período"
+      >
+        <button
+          class="btn-secondary"
+          :disabled="w.loading.value"
+          @click="w.refresh"
+        >
+          Consultar</button
+        ><button class="text-button" @click="preset(7)">7 días</button
+        ><button class="text-button" @click="preset(30)">30 días</button>
+      </div>
     </div>
     <div v-if="w.error.value" class="error-msg" role="alert">
       {{ w.error.value }}
@@ -313,8 +320,10 @@ function preset(count) {
               <th>{{ w.platform.value ? "Negocios" : "Total" }}</th>
             </tr>
           </thead>
-          <tbody><LoadingRows v-if="w.loading.value" :columns="3" />
-            <tr v-show="!(w.loading.value)"
+          <tbody>
+            <LoadingRows v-if="w.loading.value" :columns="3" />
+            <tr
+              v-show="!w.loading.value"
               v-for="item in w.platform.value
                 ? report.activity_by_feature
                 : report.recent_orders"

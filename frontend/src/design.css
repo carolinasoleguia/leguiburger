@@ -58,9 +58,9 @@ p { line-height: 1.65; }
 .sidebar .brand-word { font-size: 21px; }
 .sidebar .brand-mark { width: 34px; height: 34px; border-radius: 9px; }
 .sidebar-caption { margin: 10px 0 25px 44px; font-size: 11px; color: var(--text-muted); }
-.workspace-label { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); padding: 7px 10px; border-radius: 6px; color: var(--text-muted); font-size: 10px; align-self: flex-start; margin-bottom: 32px; }
-.nav-heading { margin: 0 10px 12px; color: var(--text-muted); font-size: 9px; letter-spacing: .13em; }
-.nav-link { display: flex; gap: 12px; align-items: center; min-height: 44px; padding: 11px 13px; border-radius: 7px; margin-bottom: 5px; font-size: 13px; border: 1px solid transparent; }
+.workspace-label { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); padding: 7px 10px; border-radius: 6px; color: var(--text-muted); font-size: 10px; align-self: flex-start; margin-bottom: 24px; }
+.nav-heading { margin: 0 12px 8px; color: var(--text-muted); font-size: 11px; letter-spacing: 0; }
+.nav-link { display: flex; gap: 12px; align-items: center; min-height: 44px; padding: 10px 12px; border-radius: 8px; margin-bottom: 2px; font-size: 13px; border: 1px solid transparent; }
 .nav-link.active { background: var(--hover); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 20%, var(--border)); font-weight: 600; }
 .nav-link:hover { background: var(--hover); color: var(--text); }
 .nav-active-dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; margin-left: auto; }
@@ -211,7 +211,7 @@ p { line-height: 1.65; }
   .panel-options button > span { font-size: 15px; } .panel-options button svg { width: 16px; }
   .faq-section { grid-template-columns: 1fr; gap: 28px; } .landing-final { display: block; padding-block: 50px; } .landing-final > div:last-child { margin-top: 25px; }
   .auth-page { grid-template-columns: 1fr; } .auth-story { display: none; } .auth-form-side { min-height: 100dvh; padding: 20px 28px; }
-  .auth-mobile-brand { display: block; margin-bottom: 32px; }
+  .auth-mobile-brand { display: block; margin-bottom: 24px; }
 }
 @media(min-width:801px) { .auth-mobile-brand { display: none; } }
 @media(max-width:500px) {

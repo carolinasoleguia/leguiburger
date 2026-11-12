@@ -1,6 +1,10 @@
 <script setup>
 defineProps({ name: { type: String, default: 'grid' }, size: { type: [Number, String], default: 20 } });
 const paths = {
+  receipt: 'M6 3h12v18l-3-2-3 2-3-2-3 2V3z M9 7h6 M9 11h6 M9 15h3',
+  card: 'M3 5h18v14H3z M3 9h18 M7 15h3',
+  activity: 'M3 12h4l3-8 4 16 3-8h4',
+  support: 'M4 13v-1a8 8 0 0 1 16 0v1 M4 12H2v6h4v-6H4 M20 12h2v6h-4v-6h2 M20 18v3h-6',
   play: 'M8 5l11 7-11 7V5z',
   pause: 'M8 5v14 M16 5v14',
   mic: 'M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0V5 M5 10v2a7 7 0 0 0 14 0v-2 M12 19v3 M8 22h8',

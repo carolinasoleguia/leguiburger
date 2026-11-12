@@ -8,7 +8,7 @@ import { useTheme } from '../../composables/useTheme.js';
 import { mountLandingWheel } from '../../composables/landingWheel.js';
 
 const { theme } = useTheme();
-const root = ref(null), menuButton = ref(null), menuOpen = ref(false), playing = ref(true), phase = ref(0), active = ref(0), panelView = ref('Catálogo'), openFaq = ref(null), teamView = ref(false);
+const root = ref(null), menuButton = ref(null), menuOpen = ref(false), playing = true, phase = ref(0), active = ref(0), panelView = ref('Catálogo'), openFaq = ref(null), teamView = ref(false);
 const nav = [{ href:'#como-funciona', label:'Cómo funciona' }, { href:'#tu-espacio', label:'Tu espacio' }, { href:'#equipo', label:'Tu equipo' }, { href:'#preguntas', label:'Preguntas' }];
 const waveform = Array.from({ length:27 }, (_, i) => ({ height: `${[8,16,25,13,32,21,11,28,18][i%9]}px`, animationDelay:`${i*-.09}s` }));
 const example = { business:'LeguiBurger · Local Centro', job:'Producción de la jornada', message:'Para el servicio de hoy: 120 medallones, 120 panes y 30 porciones de papas. Todo preparado para el turno de la noche.', items:[{ name:'Medallones preparados', amount:'120 u.' },{ name:'Panes comprados', amount:'120 u.' },{ name:'Porciones de papas', amount:'30 u.' }] };
@@ -49,9 +49,9 @@ onMounted(() => {
  function sync() {
   clearInterval(demoTimer); clearInterval(storyTimer); clearInterval(panelTimer);
   if (document.hidden) return;
-  demoTimer=setInterval(()=>{ if(playing.value && visible.has('demo')) phase.value=(phase.value+1)%4; },2600);
-  storyTimer=setInterval(()=>{ if(playing.value && visible.has('story') && !element.querySelector('.storySteps:focus-within, .storySteps:hover')) active.value=(active.value+1)%3; },2600);
-  panelTimer=setInterval(()=>{ if(playing.value && visible.has('panel') && !element.querySelector('.panelControls:focus-within, .panelControls:hover')) panelView.value=panelViews[(panelViews.indexOf(panelView.value)+1)%3]; },8000);
+  demoTimer=setInterval(()=>{ if(playing && visible.has('demo')) phase.value=(phase.value+1)%4; },2600);
+  storyTimer=setInterval(()=>{ if(playing && visible.has('story') && !element.querySelector('.storySteps:focus-within, .storySteps:hover')) active.value=(active.value+1)%3; },2600);
+  panelTimer=setInterval(()=>{ if(playing && visible.has('panel') && !element.querySelector('.panelControls:focus-within, .panelControls:hover')) panelView.value=panelViews[(panelViews.indexOf(panelView.value)+1)%3]; },8000);
  }
  sync(); document.addEventListener('visibilitychange',sync);
  const stopWheel=mountLandingWheel(element);
@@ -69,7 +69,7 @@ onBeforeUnmount(()=>dispose());
 
   <section id="contenido" class="hero" aria-labelledby="hero-title"><div class="heroCopy"><div class="heroEyebrow"><span />Para tu hamburguesería</div><h1 id="hero-title"><span class="textMotion" data-text-motion data-intro="true">Tu negocio bajo control,</span><br /><em>con todo el sabor de tu marca.</em></h1><p>Tu marca, tus locales y tu cocina, en un mismo lugar. Organizá el catálogo, los precios por sucursal, el equipo y la producción diaria. Todo listo para acompañar el ritmo de tu hamburguesería.</p><div class="heroActions"><router-link to="/login" class="primary">Entrar a mi negocio<AppIcon name="arrow" :size="18" /></router-link><a href="#como-funciona" class="textLink">Ver cómo funciona<span aria-hidden="true">↓</span></a></div><p class="heroNote"><AppIcon name="check" :size="15" />Todo desde tu navegador<span>·</span>Con tu cuenta de LeguiBurger</p></div>
    <div class="demoStage" data-playback="demo" :data-phase="phase" :data-playing="playing"><LandingBurgerDemo :phase="phase" :playing="playing" />
-    <div class="demoControls"><div class="demoProgress" aria-hidden="true"><span v-for="(label,index) in ['Tu carta','Tu negocio','Todo a punto']" :key="label" :data-active="(phase===0 ? 0 : phase===1 ? 1 : 2) === index"><i />{{ label }}</span></div><button type="button" :aria-label="playing ? 'Pausar demostración' : 'Reproducir demostración'" :aria-pressed="!playing" @click="playing=!playing"><AppIcon :name="playing ? 'pause' : 'play'" :size="15" /></button></div><p class="illustrationNote">Diseño ilustrativo con datos de ejemplo.</p>
+    <div class="demoControls"><div class="demoProgress" aria-hidden="true"><span v-for="(label,index) in ['Tu carta','Tu negocio','Todo a punto']" :key="label" :data-active="(phase===0 ? 0 : phase===1 ? 1 : 2) === index"><i />{{ label }}</span></div></div><p class="illustrationNote">Diseño ilustrativo con datos de ejemplo.</p>
    </div>
   </section>
 

@@ -1,0 +1,1588 @@
+{
+  "schema_version": 1,
+  "received_repositories": [
+    {
+      "folder": "anti-slop-main",
+      "license": "MIT",
+      "notice": "skills/frontend/received/anti-slop-main/LICENSE"
+    },
+    {
+      "folder": "avoid-ai-design-main",
+      "license": "MIT",
+      "notice": "skills/frontend/received/avoid-ai-design-main/LICENSE"
+    },
+    {
+      "folder": "design-guide-main",
+      "license": "MIT",
+      "notice": "skills/frontend/received/design-guide-main/LICENSE"
+    },
+    {
+      "folder": "no-slop-ui-master",
+      "license": "MIT",
+      "notice": "skills/frontend/received/no-slop-ui-master/LICENSE"
+    },
+    {
+      "folder": "taste-skill-main",
+      "license": "MIT",
+      "notice": "skills/frontend/received/taste-skill-main/LICENSE"
+    },
+    {
+      "folder": "web-design-skills-main",
+      "license": "terms-not-supplied",
+      "notice": "skills/frontend/received/web-design-skills-main/source-notice.md"
+    },
+    {
+      "folder": "ai-design-skills-main",
+      "license": "MIT",
+      "notice": "skills/frontend/received/ai-design-skills-main/LICENSE"
+    }
+  ],
+  "selection": "Cuerpos completos y dependencias de diseño; alternativas seleccionadas por ejecución. Sin instaladores, plugins ni demos de repos.",
+  "files": [
+    {
+      "kind": "resource",
+      "repo": "anti-slop-main",
+      "original_path": "LICENSE",
+      "active_resource": "skills/frontend/received/anti-slop-main/LICENSE",
+      "bytes": 1083,
+      "sha256": "9fd83fb1fda52ca0094b96e2ed5a3d6c42a81b95a6c6326553f5bbe570f443de"
+    },
+    {
+      "kind": "skill",
+      "repo": "anti-slop-main",
+      "original_path": "skills/antislop/SKILL.md",
+      "original_name": "antislop",
+      "name": "antislop",
+      "canonical": "skills/frontend/review/antislop/SKILL.md",
+      "snapshot": "skills/frontend/received/anti-slop-main/skills/antislop/received-profile.md",
+      "bytes": 57827,
+      "sha256": "64a1ff70bafbfb7a105083cdff0026a6f09baf7e19d3aa1bc3e880cf7233f90c",
+      "body_sha256": "8590fc70084b7db58c522b04a1ef8c3d6cfc45cc8449af692e05b1252d6d48e4",
+      "scope": "Evaluar decisiones visuales y patrones genéricos con el filtro completo antislop; elegir auditoría o implementación según el encargo."
+    },
+    {
+      "kind": "resource",
+      "repo": "anti-slop-main",
+      "original_path": "skills/antislop/VERSION",
+      "active_resource": "skills/frontend/review/antislop/VERSION",
+      "bytes": 7,
+      "sha256": "ce6ddda39d58fbf68b3810aa75fe22894936f20c1e62c901ae455e0bab5138df"
+    },
+    {
+      "kind": "skill",
+      "repo": "anti-slop-main",
+      "original_path": "skills/antislop-code/SKILL.md",
+      "original_name": "antislop-code",
+      "name": "antislop-code",
+      "canonical": "skills/engineering/antislop-code/SKILL.md",
+      "snapshot": "skills/frontend/received/anti-slop-main/skills/antislop-code/received-profile.md",
+      "bytes": 8944,
+      "sha256": "004933009d352710dcbea7817101d5c188474a442e3ece26a6e0c18d3223898f",
+      "body_sha256": "23b92beca41b2978a2173d273e8378a3c8a3e32c2d7967c395dc834813ec9587",
+      "scope": "Revisar higiene de comentarios sin cambiar comportamiento; complementar las convenciones del lenguaje, sin redefinirlas."
+    },
+    {
+      "kind": "skill",
+      "repo": "anti-slop-main",
+      "original_path": "skills/antislop-copywriting/SKILL.md",
+      "original_name": "antislop-copywriting",
+      "name": "antislop-copywriting",
+      "canonical": "skills/frontend/content/antislop-copywriting/SKILL.md",
+      "snapshot": "skills/frontend/received/anti-slop-main/skills/antislop-copywriting/received-profile.md",
+      "bytes": 25419,
+      "sha256": "2434a6fb0603dea1e62d4c1968382def47af779bd0e43b2130edd49df41ba444",
+      "body_sha256": "82477f31860cd31fcda4c7dd34f89d22e207b220cccdfee94faed905257ffb5d",
+      "scope": "Redactar o revisar copy, headlines y CTAs del producto; conservar significado, hechos verificables y localización."
+    },
+    {
+      "kind": "skill",
+      "repo": "anti-slop-main",
+      "original_path": "skills/antislop-human/SKILL.md",
+      "original_name": "antislop-human",
+      "name": "antislop-human",
+      "canonical": "skills/frontend/accessibility/antislop-human/SKILL.md",
+      "snapshot": "skills/frontend/received/anti-slop-main/skills/antislop-human/received-profile.md",
+      "bytes": 11051,
+      "sha256": "5bc7c8e56cc79a5154eabf32469fd9f95621ac0b0faa73acd5816d56aafd5868",
+      "body_sha256": "f399ec8c208451b2d1e1700a7e9847e76eb52664f3d2cb3cab5197775190bfcd",
+      "scope": "Revisar contraste, teclado, foco y estados de UI; incluye cálculo local de contraste y referencias completas."
+    },
+    {
+      "kind": "resource",
+      "repo": "anti-slop-main",
+      "original_path": "skills/antislop-human/contrast-check.py",
+      "active_resource": "skills/frontend/accessibility/antislop-human/contrast-check.py",
+      "bytes": 5589,
+      "sha256": "619cdf3da8b27f87d8e4049b4acecfe1a559b234ab2aa9cf09447c28745c3075"
+    },
+    {
+      "kind": "resource",
+      "repo": "anti-slop-main",
+      "original_path": "skills/antislop-human/contrast-mcp.py",
+      "active_resource": "skills/frontend/accessibility/antislop-human/contrast-mcp.py",
+      "bytes": 3628,
+      "sha256": "2dff74f119829d81b28dd593c6fd2289d56d9301cb8e47f1b49d7c6ef03a429f"
+    },
+    {
+      "kind": "skill",
+      "repo": "anti-slop-main",
+      "original_path": "skills/antislop-layoutmobile/SKILL.md",
+      "original_name": "antislop-layoutmobile",
+      "name": "antislop-layoutmobile",
+      "canonical": "skills/frontend/responsive/antislop-layoutmobile/SKILL.md",
+      "snapshot": "skills/frontend/received/anti-slop-main/skills/antislop-layoutmobile/received-profile.md",
+      "bytes": 16378,
+      "sha256": "8613395a5109f637837f5c24f0ce5e58a96df1c2567a9f7666fcaecc47ff39cd",
+      "body_sha256": "789064618705070cca7a20f405338f7a312a9b6c50526f2c1d0bea2d8fccf283",
+      "scope": "Revisar reflow, overflow y objetivos táctiles de la web móvil; no implica desarrollo nativo."
+    },
+    {
+      "kind": "skill",
+      "repo": "anti-slop-main",
+      "original_path": "skills/antislop-ui/SKILL.md",
+      "original_name": "antislop-ui",
+      "name": "antislop-ui",
+      "canonical": "skills/frontend/review/antislop-ui/SKILL.md",
+      "snapshot": "skills/frontend/received/anti-slop-main/skills/antislop-ui/received-profile.md",
+      "bytes": 26844,
+      "sha256": "47d9892771253f544f7eb2e40af35fd5c31407dcd8c048183bbd1de5a00a4bbe",
+      "body_sha256": "e30c2e586c39ca9b10bdf413f69917e4ef2f1c94bb780cb91ad0351e3d9f22d8",
+      "scope": "Aplicar el filtro visual antislop a composición, color, componentes y movimiento cuando ese filtro sea el elegido."
+    },
+    {
+      "kind": "resource",
+      "repo": "avoid-ai-design-main",
+      "original_path": "LICENSE",
+      "active_resource": "skills/frontend/received/avoid-ai-design-main/LICENSE",
+      "bytes": 1066,
+      "sha256": "fb80d085c4fea39d2e594fb21618cc380c749585f68b3ff013e7ea7add3d5ed6"
+    },
+    {
+      "kind": "skill",
+      "repo": "avoid-ai-design-main",
+      "original_path": "SKILL.md",
+      "original_name": "avoid-ai-design",
+      "name": "avoid-ai-design",
+      "canonical": "skills/frontend/review/avoid-ai-design/SKILL.md",
+      "snapshot": "skills/frontend/received/avoid-ai-design-main/received-profile.md",
+      "bytes": 13925,
+      "sha256": "8261a426b62a08bef43069e47ad7ffbad1aa86cd3f51b76a84217d14ce9b92f4",
+      "body_sha256": "1fa290564722bf21ebb3b2aa59ff6d269f139ec123e808424adb9b18914f33be",
+      "scope": "Auditar patrones visuales genéricos o corregirlos si se pide; incluye detector estático y catálogo de señales."
+    },
+    {
+      "kind": "resource",
+      "repo": "avoid-ai-design-main",
+      "original_path": "references/aesthetic-directions.md",
+      "active_resource": "skills/frontend/review/avoid-ai-design/references/aesthetic-directions.md",
+      "bytes": 11348,
+      "sha256": "8f2cfc02bdab4df7d5eacedac3d8bb01b3bbd9de1c51d304db816e55ef2a5a91"
+    },
+    {
+      "kind": "resource",
+      "repo": "avoid-ai-design-main",
+      "original_path": "references/ai-tells-catalog.md",
+      "active_resource": "skills/frontend/review/avoid-ai-design/references/ai-tells-catalog.md",
+      "bytes": 46224,
+      "sha256": "91c064363c395ab74c3aff376a5efb57bbe9ba1fe62d948335978bfb89ab42e0"
+    },
+    {
+      "kind": "resource",
+      "repo": "avoid-ai-design-main",
+      "original_path": "references/design-md-template.md",
+      "active_resource": "skills/frontend/review/avoid-ai-design/references/design-md-template.md",
+      "bytes": 3684,
+      "sha256": "edc25f41802244e4f271969b8601b8988a47fb0f6f3c26f2ca1e5c85f3adfc89"
+    },
+    {
+      "kind": "resource",
+      "repo": "avoid-ai-design-main",
+      "original_path": "scripts/detect.mjs",
+      "active_resource": "skills/frontend/review/avoid-ai-design/scripts/detect.mjs",
+      "bytes": 43857,
+      "sha256": "0b317eefbc27ad2c9ea35149734c14a1e421162d860b3dcec97072744a524fb5"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "LICENSE",
+      "active_resource": "skills/frontend/received/design-guide-main/LICENSE",
+      "bytes": 1062,
+      "sha256": "d10ca0aa3007558ce3f1ff953553fa6a4e36709e6199ecf488b4e3819ba797f5"
+    },
+    {
+      "kind": "skill",
+      "repo": "design-guide-main",
+      "original_path": "SKILL.md",
+      "original_name": "design-guide",
+      "name": "design-guide",
+      "canonical": "skills/frontend/review/design-guide/SKILL.md",
+      "snapshot": "skills/frontend/received/design-guide-main/received-profile.md",
+      "bytes": 19935,
+      "sha256": "51344481b11849e952b14ad703074591b35a2d45abc9b0135103ba0fb2974e66",
+      "body_sha256": "205a4e86c4e3ca4bcb20c1d25f1bc43a7e0b3caba7c1265082d6ea78934b612c",
+      "scope": "Planificar o revisar pantallas, estados y flujos de producto; elegir profundidad y evidencias proporcionales al cambio."
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/aide-integration.md",
+      "active_resource": "skills/frontend/review/design-guide/references/aide-integration.md",
+      "bytes": 4294,
+      "sha256": "98044d14b3d8a3a814a29b6b1db425c3bd8e3f16d8d14d25d9cd4fe7335a6151"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/anti-ai-design-tells.md",
+      "active_resource": "skills/frontend/review/design-guide/references/anti-ai-design-tells.md",
+      "bytes": 4185,
+      "sha256": "590c24ee7fe1cec7c61e39c154632c84f562a042bf5fc5f6b3d2bbab8d1e11a1"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/artifact-presentation.md",
+      "active_resource": "skills/frontend/review/design-guide/references/artifact-presentation.md",
+      "bytes": 3864,
+      "sha256": "35faed6e40d29f242b4636aa03c04953546bff8547376e4ebced61167e4bad7a"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/design-contract.schema.json",
+      "active_resource": "skills/frontend/review/design-guide/references/design-contract.schema.json",
+      "bytes": 4811,
+      "sha256": "7aa28f39c1fe7eb0c57d62e37fae5f67758eda2c919a68f409818434b8c6693f"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/design-defaults.md",
+      "active_resource": "skills/frontend/review/design-guide/references/design-defaults.md",
+      "bytes": 2574,
+      "sha256": "bb442de05b3f9d406b3615ae0a2fd35bd24db05c96acbc14f30c54e4d1977eaf"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/design-process.md",
+      "active_resource": "skills/frontend/review/design-guide/references/design-process.md",
+      "bytes": 5237,
+      "sha256": "adccc0328ba94f1fce15db0f0567e3c988e8029310f5b7b182535b2a6bc3bb00"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/end-to-end-journeys.md",
+      "active_resource": "skills/frontend/review/design-guide/references/end-to-end-journeys.md",
+      "bytes": 2952,
+      "sha256": "f749ea9568af60e3e413163585d95aafb5ae49df1e56d7680e14639cbf262379"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/framework-adapters.md",
+      "active_resource": "skills/frontend/review/design-guide/references/framework-adapters.md",
+      "bytes": 2676,
+      "sha256": "c2b4ccd3156768eab6f6e44b4eb793a79f81187de6a79c482e8517483b236968"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/helper-registry.md",
+      "active_resource": "skills/frontend/review/design-guide/references/helper-registry.md",
+      "bytes": 2933,
+      "sha256": "c6db9da2c031d13f5aebb60dfe769f500a41a804205b4a0a798d7665d6231483"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/implementation-contract.md",
+      "active_resource": "skills/frontend/review/design-guide/references/implementation-contract.md",
+      "bytes": 2145,
+      "sha256": "39d9bbbc391c2c182e5f09dd4d08c18e3b4ba1160b01de4026752ba4bf600b91"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/internationalization.md",
+      "active_resource": "skills/frontend/review/design-guide/references/internationalization.md",
+      "bytes": 2031,
+      "sha256": "ca6f686eb7efd542e2cf3516e122a06c70c7e1149d7f7493ce5a83c6b80ea0f3"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/internationalization.zh-CN.md",
+      "active_resource": "skills/frontend/review/design-guide/references/internationalization.zh-CN.md",
+      "bytes": 1872,
+      "sha256": "5b23c6499048f2f81eed372907108f54e40991eac73bb81c546aa054d9d864e4"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/local-overrides.example.md",
+      "active_resource": "skills/frontend/review/design-guide/references/local-overrides.example.md",
+      "bytes": 1110,
+      "sha256": "fda3bd0fbcebbc127b6ca69210d165437ce4e3ff055e400057cabc729e7e0f4a"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/product-design-review.md",
+      "active_resource": "skills/frontend/review/design-guide/references/product-design-review.md",
+      "bytes": 15396,
+      "sha256": "318c4d0934017fec1624a3cad8404db56815882061cc0c5cb89caccab455459b"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/project-intelligence.md",
+      "active_resource": "skills/frontend/review/design-guide/references/project-intelligence.md",
+      "bytes": 1743,
+      "sha256": "0fe805acce895de32e192c48705f208f06ce7defb4b5861d6c76285f2f61b8f9"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/project-profile.example.md",
+      "active_resource": "skills/frontend/review/design-guide/references/project-profile.example.md",
+      "bytes": 1116,
+      "sha256": "7011a786a0c276b47543b8cf2ee3880111476cafc5e8f0b11c5e9fe637fb351d"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/quality-gates.md",
+      "active_resource": "skills/frontend/review/design-guide/references/quality-gates.md",
+      "bytes": 2909,
+      "sha256": "67dc7cb3514c18a3d6ec17a1f90c1a1359cf21bfdf50f586ad6057cece23020c"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/review-rubric.md",
+      "active_resource": "skills/frontend/review/design-guide/references/review-rubric.md",
+      "bytes": 3007,
+      "sha256": "5b11625cf406fdd5c1249a5be66d7a7a778b9e1817d65cc5a14b9ea5c1397cbf"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/review-templates/complex-forms.md",
+      "active_resource": "skills/frontend/review/design-guide/references/review-templates/complex-forms.md",
+      "bytes": 1637,
+      "sha256": "aee7432aa234df35cb1787aacc3c444771d3d2ba714e520946f89ac9221219b8"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/review-templates/dashboards.md",
+      "active_resource": "skills/frontend/review/design-guide/references/review-templates/dashboards.md",
+      "bytes": 1474,
+      "sha256": "2c8d9fce7a578b4ec8aedc5106ac1979d561a3221a8e2d6daa456419618942ae"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/review-templates/data-tables.md",
+      "active_resource": "skills/frontend/review/design-guide/references/review-templates/data-tables.md",
+      "bytes": 1559,
+      "sha256": "4c688817fad01fa7669417095bf985722fd4d960fefa444b43c3da3578357d09"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/review-templates/high-risk-batch-actions.md",
+      "active_resource": "skills/frontend/review/design-guide/references/review-templates/high-risk-batch-actions.md",
+      "bytes": 1744,
+      "sha256": "3665ef15ddbc5fe7a64db9e93b4f8e21756260d611f53fd83dda0f3d2f4922cb"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/review-templates/mobile-navigation.md",
+      "active_resource": "skills/frontend/review/design-guide/references/review-templates/mobile-navigation.md",
+      "bytes": 1576,
+      "sha256": "0d26ccfdb1d6ece7b9bedf6a8223801d16514c68ae9a782966939b0cc63d2c61"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "references/state-and-data.md",
+      "active_resource": "skills/frontend/review/design-guide/references/state-and-data.md",
+      "bytes": 2040,
+      "sha256": "53c927e620f2a7d3c9d75e8631523f6b896d91cbe218189b4de091939f28c5eb"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "scripts/capture-audit.py",
+      "active_resource": "skills/frontend/review/design-guide/scripts/capture-audit.py",
+      "bytes": 2639,
+      "sha256": "017a77b9385344312b2e015f5fdcaf4f52ed5f697f77652346ea8415e6bb9468"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "scripts/design-contract.py",
+      "active_resource": "skills/frontend/review/design-guide/scripts/design-contract.py",
+      "bytes": 13954,
+      "sha256": "0c70fb968dc1e05eaee6bbbd5c1218fc926880713416ece65fa1a1a85758174b"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "scripts/detect-frontend-env.sh",
+      "active_resource": "skills/frontend/review/design-guide/scripts/detect-frontend-env.sh",
+      "bytes": 2752,
+      "sha256": "d31d3e01bb694739b7d5bbfe7a19bdf095bb1f02463a6eb695aace3a6df1899a"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "scripts/i18n.py",
+      "active_resource": "skills/frontend/review/design-guide/scripts/i18n.py",
+      "bytes": 2750,
+      "sha256": "a5e0f42e454eacdd3d223d0c23d9dcdd71e38f2b48eece1b4456b5ada61aa3b7"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "scripts/inspect-project.py",
+      "active_resource": "skills/frontend/review/design-guide/scripts/inspect-project.py",
+      "bytes": 11205,
+      "sha256": "a8dbebce493d94dddcb82c808e59338c2059a29a263f26e769739ee420b7cad2"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "scripts/present-design.py",
+      "active_resource": "skills/frontend/review/design-guide/scripts/present-design.py",
+      "bytes": 16903,
+      "sha256": "779cf4e6f4717625e99a50a3676906607675d0350bab5a247f741a9d01aead82"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "scripts/run-preview.py",
+      "active_resource": "skills/frontend/review/design-guide/scripts/run-preview.py",
+      "bytes": 12504,
+      "sha256": "57567f03c3509982c219610d93613ef4d02062dc2bdf3b41f98b93d667eece45"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "scripts/verify-ui.py",
+      "active_resource": "skills/frontend/review/design-guide/scripts/verify-ui.py",
+      "bytes": 17334,
+      "sha256": "76a3d34892b17ccd7399c57487a1b27b4b2753a71b4ae3018babe22de6eeab4c"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "scripts/visual-diff.py",
+      "active_resource": "skills/frontend/review/design-guide/scripts/visual-diff.py",
+      "bytes": 3720,
+      "sha256": "c296181174c18dbc85bccadf51997fc25a787fa5a5250d2ba23aad6ef0c311b4"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "assets/design-guide-logo-dark.svg",
+      "active_resource": "skills/frontend/review/design-guide/assets/design-guide-logo-dark.svg",
+      "bytes": 697,
+      "sha256": "4768045f08badc433be86d5f85ab5ac92c2005ed305922f2d9e39b0b7821c6e9"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "assets/design-guide-logo-light.svg",
+      "active_resource": "skills/frontend/review/design-guide/assets/design-guide-logo-light.svg",
+      "bytes": 697,
+      "sha256": "43b1105bd987d5ce7e4865b59d0d25886a973ede81de8afbda131c2242ca20f5"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "assets/design-guide-mark.svg",
+      "active_resource": "skills/frontend/review/design-guide/assets/design-guide-mark.svg",
+      "bytes": 443,
+      "sha256": "1567da5c7cb6d88b4b07aa1c7762d2b3f7e86e7013dee07b8181ae852c7bba67"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "locales/en.json",
+      "active_resource": "skills/frontend/review/design-guide/locales/en.json",
+      "bytes": 6715,
+      "sha256": "83ff1fbc2e5d3c59957bedb00dda1eef21334daf2fe20e6f5a8d972717299298"
+    },
+    {
+      "kind": "resource",
+      "repo": "design-guide-main",
+      "original_path": "locales/zh-CN.json",
+      "active_resource": "skills/frontend/review/design-guide/locales/zh-CN.json",
+      "bytes": 6700,
+      "sha256": "b6d30aec902d43343f431a1d7d0e5e692710babcc6f5a07a1b93267399abb60c"
+    },
+    {
+      "kind": "resource",
+      "repo": "no-slop-ui-master",
+      "original_path": "LICENSE",
+      "active_resource": "skills/frontend/received/no-slop-ui-master/LICENSE",
+      "bytes": 1068,
+      "sha256": "4cfd4273ee13a4361ffce13e83ec3ea98a7fb9601e6bef4f624dfaf090120d1e"
+    },
+    {
+      "kind": "skill",
+      "repo": "no-slop-ui-master",
+      "original_path": "SKILL.md",
+      "original_name": "no-slop-ui",
+      "name": "no-slop-ui",
+      "canonical": "skills/frontend/review/no-slop-ui/SKILL.md",
+      "snapshot": "skills/frontend/received/no-slop-ui-master/received-profile.md",
+      "bytes": 3597,
+      "sha256": "f69d2e02a261d30157e06836a10354aa52e1b4455d5fc6642c4e744032f58d23",
+      "body_sha256": "7007a340cf75e98bc938faefd01d392ac441af7adb521ea5e3fd0555474a3696",
+      "scope": "Diseñar interfaces operativas sobrias o revisar su composición; dirección alternativa, no estándar simultáneo con estilos expresivos."
+    },
+    {
+      "kind": "resource",
+      "repo": "no-slop-ui-master",
+      "original_path": "references/banned-patterns.md",
+      "active_resource": "skills/frontend/review/no-slop-ui/references/banned-patterns.md",
+      "bytes": 3890,
+      "sha256": "0b03eaa290f463fa8586f060012187b0afc2ec53c043c9d05f6c3065de6d36cc"
+    },
+    {
+      "kind": "resource",
+      "repo": "no-slop-ui-master",
+      "original_path": "references/colour-palettes.md",
+      "active_resource": "skills/frontend/review/no-slop-ui/references/colour-palettes.md",
+      "bytes": 1648,
+      "sha256": "a8508f1b085d06cec0d95e3d58f3f47d5e76f1742ae0ca3874e183ddcdd8f806"
+    },
+    {
+      "kind": "resource",
+      "repo": "no-slop-ui-master",
+      "original_path": "assets/no-slop-ui-before-after.svg",
+      "active_resource": "skills/frontend/review/no-slop-ui/assets/no-slop-ui-before-after.svg",
+      "bytes": 6305,
+      "sha256": "a01c6e5fb5e93163400a847f4da8dfaae6ee7cbbdbd4c74b00d0301144d7cd7a"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "LICENSE",
+      "active_resource": "skills/frontend/received/taste-skill-main/LICENSE",
+      "bytes": 1065,
+      "sha256": "4575a543ab88dad12ccea7d97e563d0bce5b448b06072e65d3264497dad326df"
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/brandkit/SKILL.md",
+      "original_name": "brandkit",
+      "name": "brandkit",
+      "canonical": "skills/frontend/visual-assets/brandkit/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/brandkit/received-profile.md",
+      "bytes": 19057,
+      "sha256": "9584a127e535c90b686c8dcb5a707ede586dac6791fbf92cfd118c5fea96f9a0",
+      "body_sha256": "877b16d70965c60bb79e3eb7a2551935b5b3efbcd52f3529db1e5f910bbdbdd3",
+      "scope": "Crear boards de identidad o aplicaciones de una marca mediante imágenes cuando se solicite ese resultado."
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/brutalist-skill/SKILL.md",
+      "original_name": "industrial-brutalist-ui",
+      "name": "industrial-brutalist-ui",
+      "canonical": "skills/frontend/styles/industrial-brutalist-ui/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/brutalist-skill/received-profile.md",
+      "bytes": 8456,
+      "sha256": "fffbaac8597f07679e9d87145533567658aedba3b5eca6f16a7075a333048caa",
+      "body_sha256": "f18f43d6b4a5fa99f240ce2d8a808ef218928cb0c058dbb87ee59d3c456089d2",
+      "scope": "Explorar una dirección industrial/brutalista si el brief la pide; no aplicarla por defecto al dashboard."
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/gpt-tasteskill/SKILL.md",
+      "original_name": "gpt-taste",
+      "name": "gpt-taste",
+      "canonical": "skills/frontend/styles/gpt-taste/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/gpt-tasteskill/received-profile.md",
+      "bytes": 8384,
+      "sha256": "d2dfb60b01f5b45bdc2d25a3c6a7eed04d6ec59715361182c2f49369a3f87a77",
+      "body_sha256": "7072b4e0caae69545a639d0674a8c073e559f4196a5c5ea6f6110a1af1119464",
+      "scope": "Explorar composición y movimiento para una landing expresiva; no imponer AIDA o GSAP a pantallas de operación."
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/image-to-code/SKILL.md",
+      "original_name": "image-to-code",
+      "name": "image-to-code",
+      "canonical": "skills/frontend/visual-assets/image-to-code/SKILL.md",
+      "snapshot": "skills/frontend/received/imagegen-skills-beb16b0d0f4d/received-profile.md",
+      "bytes": 36442,
+      "sha256": "4c060a8064a8b13380bc2ef3d6e6a1d0b1e316aa093cd9807d0ce9e4eeb037fa",
+      "body_sha256": "fe44c8a58d63491f5368669d1677486b1e8302a23da1095a1819185aa1569a1e",
+      "scope": "Implementar una web desde imágenes suministradas o conceptos visuales pedidos; no generar imágenes nuevas si ya existe la referencia objetivo.",
+      "upstream": "https://github.com/Leonxlnx/imagegen-skills",
+      "revision": "beb16b0d0f4dae9a6f5cb04ea41e97b93a54ab8e"
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/imagegen-frontend-web/SKILL.md",
+      "original_name": "imagegen-frontend-web",
+      "name": "imagegen-frontend-web",
+      "canonical": "skills/frontend/visual-assets/imagegen-frontend-web/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/imagegen-frontend-web/received-profile.md",
+      "bytes": 36854,
+      "sha256": "6b5c2256522fdba1e3313eafa3d743b960a7b13ec029d3e6586e04b23327c1f8",
+      "body_sha256": "1e3a013ea8f40e95665c07135b9a293049c91a29ba3f60769b32836b597f9ce5",
+      "scope": "Preparar imágenes de referencia para secciones web cuando se soliciten conceptos visuales; la imagen no sustituye implementación."
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/minimalist-skill/SKILL.md",
+      "original_name": "minimalist-ui",
+      "name": "minimalist-ui",
+      "canonical": "skills/frontend/styles/minimalist-ui/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/minimalist-skill/received-profile.md",
+      "bytes": 8212,
+      "sha256": "769ab38eed137bb22c7c09ee08ebb628e9acf3ad37f138d43f772e3af83933e4",
+      "body_sha256": "4c57d9826dd01bf57efe1d5edb3b9021c7aea4e3963c616c15886b49ce08cdc7",
+      "scope": "Explorar una dirección editorial minimalista solicitada; conservar tokens existentes en ajustes de producto."
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/output-skill/SKILL.md",
+      "original_name": "full-output-enforcement",
+      "name": "full-output-enforcement",
+      "canonical": "skills/engineering/full-output-enforcement/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/output-skill/received-profile.md",
+      "bytes": 2592,
+      "sha256": "e5bf48b1ae561511439cf71672209a10a88cee0968cc925909ff861dfa0a96a7",
+      "body_sha256": "1fafe3c2cc0df7985f90faa5b84d3c22a5b7d22cc46031ce72e087af9e2e9d9a",
+      "scope": "Completar implementaciones y archivos sin placeholders cuando se requiere código completo; no obliga a imprimir todos los archivos en la respuesta."
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/redesign-skill/SKILL.md",
+      "original_name": "redesign-existing-projects",
+      "name": "redesign-existing-projects",
+      "canonical": "skills/frontend/review/redesign-existing-projects/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/redesign-skill/received-profile.md",
+      "bytes": 16267,
+      "sha256": "a75d547d04595fe97a5d377dddf145d029d51487a4f2a0a5a9d3b532ca3b84cd",
+      "body_sha256": "32457c5a3fdcbe3600fa44e791f707dc433a2288923e636af8f0a934674a2c9d",
+      "scope": "Mejorar una interfaz existente con auditoría previa, conservando flujos, rutas y contratos."
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/soft-skill/SKILL.md",
+      "original_name": "high-end-visual-design",
+      "name": "high-end-visual-design",
+      "canonical": "skills/frontend/styles/high-end-visual-design/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/soft-skill/received-profile.md",
+      "bytes": 10561,
+      "sha256": "e1e32f5e2d420872c6c7332b53d5ff7721946766b78c4822b424c2d512c8fdbc",
+      "body_sha256": "66edee94389aa380e539f1fe7da6c3af64b0dc06d0130e61f4a866c6747623b4",
+      "scope": "Explorar una dirección visual suave y cuidada si se pide; no impone fuentes, sombras o animaciones ajenas al producto."
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/stitch-skill/SKILL.md",
+      "original_name": "stitch-design-taste",
+      "name": "stitch-design-taste",
+      "canonical": "skills/frontend/design-systems/stitch-design-taste/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/stitch-skill/received-profile.md",
+      "bytes": 11851,
+      "sha256": "46bdb08fee2dded38b6ba0a051230a502d6ac6e4044afd47592cb40c256028b5",
+      "body_sha256": "b6809ab9630967c57e718078a911a5bcd8b59f771e8534996c0579162fa885a1",
+      "scope": "Preparar un DESIGN.md semántico para herramientas de diseño; Google Stitch es opcional y requiere una herramienta disponible."
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/SKILL.md",
+      "original_name": "design-taste-frontend",
+      "name": "design-taste-frontend",
+      "canonical": "skills/frontend/landing-pages/design-taste-frontend/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-6010f91a9935/received-profile.md",
+      "bytes": 38458,
+      "sha256": "d955dae4ba8ab2d994f4bb06b4bf412a1d9875433a8597939c391f4bae91dd7a",
+      "body_sha256": "308bddbf5025cdece6d8b7d513d9cff8ac012ca33a2da3a6deda66656361f6ed",
+      "scope": "Diseñar o revisar páginas públicas y pantallas de aplicaciones con dirección artística, composiciones y reglas específicas para cada superficie.",
+      "upstream": "https://github.com/Leonxlnx/taste-skill",
+      "revision": "6010f91a9935f1c167dfc500fb1a475681892e6b"
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill-v1/SKILL.md",
+      "original_name": "design-taste-frontend-v1",
+      "name": "design-taste-frontend-v1",
+      "canonical": "skills/frontend/landing-pages/design-taste-frontend-v1/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/taste-skill-v1/received-profile.md",
+      "bytes": 21172,
+      "sha256": "43f6f3ed310642931dcebf978a6844d09d6b220c3fa89a177a041d60d06004ed",
+      "body_sha256": "dd40e1652a7c3f5aec469786260fb2cb02787b413bf6efdcfd32976d014f1df5",
+      "scope": "Usar el procedimiento v1 de taste solo cuando se solicite compatibilidad con esa variante; alternativa al actual."
+    },
+    {
+      "kind": "skill",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill-v2-experimental/SKILL.md",
+      "original_name": "design-taste-frontend-v2-experimental",
+      "name": "design-taste-frontend-v2-experimental",
+      "canonical": "skills/frontend/landing-pages/design-taste-frontend-v2-experimental/SKILL.md",
+      "snapshot": "skills/frontend/received/taste-skill-main/skills/taste-skill-v2-experimental/received-profile.md",
+      "bytes": 89635,
+      "sha256": "eed1412f267baabb9329cece8cf6caf1f19c3abfcc5c150da05c6b0b392a72fb",
+      "body_sha256": "2249dc11a5bf9e259484f7ea3e06eeb94a4ba7b072cc7b1816ee58836fb7cfe4",
+      "scope": "Usar la variante histórica experimental de taste solo si se pide ese procedimiento; alternativa al actual y al v1."
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "README.md",
+      "active_resource": "skills/frontend/received/web-design-skills-main/source-notice.md",
+      "bytes": 15614,
+      "sha256": "3cbc0454cad31f975959a235cd8ff8a2539e390cbc59f0a55e9b82a0f00254bc"
+    },
+    {
+      "kind": "skill",
+      "repo": "web-design-skills-main",
+      "original_path": "01-frontend-design/SKILL.md",
+      "original_name": "frontend-design",
+      "name": "frontend-design",
+      "canonical": "skills/frontend/landing-pages/frontend-design/SKILL.md",
+      "snapshot": "skills/frontend/received/web-design-skills-main/01-frontend-design/received-profile.md",
+      "bytes": 5203,
+      "sha256": "0d810d107af6cfcb119e24ada938a5b54e9e2690f97700e5a9ea7cddc054ada2",
+      "body_sha256": "b544fee570796d9f186f9f7a7ac48c69ebaa222dc1e49853e17982aec05533d5",
+      "scope": "Diseñar una superficie web con una dirección visual intencional, conservando el stack y los contratos del producto."
+    },
+    {
+      "kind": "skill",
+      "repo": "web-design-skills-main",
+      "original_path": "02-responsive-design/SKILL.md",
+      "original_name": "responsive-design",
+      "name": "responsive-design-web-patterns",
+      "canonical": "skills/frontend/responsive/responsive-design-web-patterns/SKILL.md",
+      "snapshot": "skills/frontend/received/web-design-skills-main/02-responsive-design/received-profile.md",
+      "bytes": 9393,
+      "sha256": "41b1b3a91115c7785860e3b95465b9c9daf4ec347e246011fe3f11f0041c474b",
+      "body_sha256": "8b0c03335f000939d347d28c401057cde0912d4520a0cee410b3459b9d955964",
+      "scope": "Consultar los patrones responsive de web-design-skills como alternativa a responsive-design; no duplicar ambos procedimientos."
+    },
+    {
+      "kind": "skill",
+      "repo": "web-design-skills-main",
+      "original_path": "skills/web-design-guidelines/SKILL.md",
+      "original_name": "web-design-guidelines",
+      "name": "web-design-guidelines",
+      "canonical": "skills/frontend/review/web-design-guidelines/SKILL.md",
+      "snapshot": "skills/frontend/received/vercel-agent-skills-063bee94c3f4/received-profile.md",
+      "bytes": 1231,
+      "sha256": "f4647ca866a3accf763777f83e7682954f0187cd6bea7eea0399796652414e8f",
+      "body_sha256": "0c32d86cde536150628bcad6ff3a6a8313054d2cbb03dc51baa6c02b6cff8149",
+      "scope": "Revisar archivos de UI contra Web Interface Guidelines, con versión/fuente y límites de evidencia explícitos.",
+      "upstream": "https://github.com/vercel-labs/agent-skills",
+      "revision": "063bee94c3f4df8453406c830b0a7df0f2860278"
+    },
+    {
+      "kind": "skill",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/SKILL.md",
+      "original_name": "theme-factory",
+      "name": "theme-factory",
+      "canonical": "skills/frontend/design-systems/theme-factory/SKILL.md",
+      "snapshot": "skills/frontend/received/web-design-skills-main/04-theme-factory/received-profile.md",
+      "bytes": 4317,
+      "sha256": "d57b2a2e80737fdc33e9f97e7eb6685c393a84ba6f6f9e03fd39966541559b75",
+      "body_sha256": "494737fbf387aa855ce2c596ead0f46a2e34e22c1e83b6445b64c9f61f1df0ed",
+      "scope": "Proponer temas para artefactos o nuevas superficies; no reemplazar la paleta actual sin un encargo de rediseño."
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/themes/arctic-frost.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/themes/arctic-frost.md",
+      "bytes": 544,
+      "sha256": "868a75a8fb5b2a61d0f0ab87c437fe632d3cbab6371c418f06aa2816ac109ae0"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/themes/botanical-garden.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/themes/botanical-garden.md",
+      "bytes": 519,
+      "sha256": "222cb8e7496abc9b75b29453c809fb9839e7e4b01fa45deecdd896b38d087765"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/themes/desert-rose.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/themes/desert-rose.md",
+      "bytes": 496,
+      "sha256": "bd065b8629be3b64655183927e248e3d892a27b8d184b009cfba89c96102744f"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/themes/forest-canopy.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/themes/forest-canopy.md",
+      "bytes": 506,
+      "sha256": "ecb722efa24688e808b5bf323c334ca2349e989cfddd72ce8400ce5d4c4bd3e7"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/themes/golden-hour.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/themes/golden-hour.md",
+      "bytes": 528,
+      "sha256": "3444a00df971d3c2f06b665e21a2e9eb5d7d7d6f6281f2758773b8345776a139"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/themes/midnight-galaxy.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/themes/midnight-galaxy.md",
+      "bytes": 513,
+      "sha256": "0e134c4c0324df41e34ac314269aa6829cd378cf3c304b31858d0cd158d2f944"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/themes/modern-minimalist.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/themes/modern-minimalist.md",
+      "bytes": 549,
+      "sha256": "b8bc572b75948d4df69c401af703b9262ed6820a3ceb270da30a529e92763614"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/themes/ocean-depths.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/themes/ocean-depths.md",
+      "bytes": 555,
+      "sha256": "a7ad8eec85341dbfcb2665da827a4b6a4baee08ab3335ac02421f18e6b46b2e2"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/themes/sunset-boulevard.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/themes/sunset-boulevard.md",
+      "bytes": 558,
+      "sha256": "658af11ab04be4923692571081ffb42a428141ae537703117b9236d9f8ee22a3"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/themes/tech-innovation.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/themes/tech-innovation.md",
+      "bytes": 547,
+      "sha256": "183648163026dd5eeba3df5effa335b55ba333c3ee1fe215278605e55f40a52a"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/design-md/arctic-frost.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/design-md/arctic-frost.md",
+      "bytes": 6343,
+      "sha256": "b225d7ed26e86ec43cea5503988eadf4c3bb0b01442df73aaa052541c5eee954"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/design-md/botanical-garden.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/design-md/botanical-garden.md",
+      "bytes": 6418,
+      "sha256": "48468179b24ee9ba94c3e5c831b9503a049169890481567810a86cc48417841c"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/design-md/desert-rose.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/design-md/desert-rose.md",
+      "bytes": 6345,
+      "sha256": "59d843c0481e59286c7eb49dfb59287cdcf7a12070068f72ae5cf95dafdebfe8"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/design-md/forest-canopy.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/design-md/forest-canopy.md",
+      "bytes": 6304,
+      "sha256": "f5007c64b82ebf62ce838be16a3ced9bf892172d5de12aeb06ba4517180a17a9"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/design-md/golden-hour.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/design-md/golden-hour.md",
+      "bytes": 6399,
+      "sha256": "1370fbe72614769c7c618512453fb356124c3e3d250aeffef5cd67fcd997401b"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/design-md/midnight-galaxy.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/design-md/midnight-galaxy.md",
+      "bytes": 6973,
+      "sha256": "6fa243472cca291f1e989dc5e2daaf29fe3e603f5fbed102b922fc5f8e2c16be"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/design-md/modern-minimalist.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/design-md/modern-minimalist.md",
+      "bytes": 6163,
+      "sha256": "046ff0d1a860df9e2a4dd8e8f33f49d26521347dd77242d77a25faca07d59f3e"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/design-md/ocean-depths.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/design-md/ocean-depths.md",
+      "bytes": 6073,
+      "sha256": "1c1b35cfe8d740e5e5a634a5ce8c59a1de5efe0bd41a1fb05c445765a1e4c33e"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/design-md/sunset-boulevard.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/design-md/sunset-boulevard.md",
+      "bytes": 6393,
+      "sha256": "ec5f5be8c43e7faefe95d6b6619d8ed783f0f4766512da524983d1b0aff8ed7d"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "04-theme-factory/design-md/tech-innovation.md",
+      "active_resource": "skills/frontend/design-systems/theme-factory/design-md/tech-innovation.md",
+      "bytes": 6808,
+      "sha256": "62440fbdacbffcc8671b26b25b58a01e0abe45bb06a082ef3117fb078babc30e"
+    },
+    {
+      "kind": "skill",
+      "repo": "web-design-skills-main",
+      "original_path": "05-website-rebuild/SKILL.md",
+      "original_name": "website-rebuild",
+      "name": "website-rebuild",
+      "canonical": "skills/frontend/landing-pages/website-rebuild/SKILL.md",
+      "snapshot": "skills/frontend/received/web-design-skills-main/05-website-rebuild/received-profile.md",
+      "bytes": 18541,
+      "sha256": "d88b85b1675a504a6b7d5ac18c135259f4b306b5ef7a6ec4ae6a5dd8ad8138f0",
+      "body_sha256": "68ff295f382496b02dee1b19e5b62f07eb8d909d48e085d7830e9ae6793bf0c2",
+      "scope": "Planificar o realizar una reconstrucción web amplia si está solicitada; adaptar el proceso completo a Next/React y al alcance autorizado."
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "05-website-rebuild/references/accessibility-spec.md",
+      "active_resource": "skills/frontend/landing-pages/website-rebuild/references/accessibility-spec.md",
+      "bytes": 4117,
+      "sha256": "bb3ed2871e9adf438631418f579cb2198b6e20538b7932dce1e91c2d32debc11"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "05-website-rebuild/references/design-rules.md",
+      "active_resource": "skills/frontend/landing-pages/website-rebuild/references/design-rules.md",
+      "bytes": 4337,
+      "sha256": "32db1c0e37a21a9785b6aaed56cd3585909b09f48e9735992319a24e363f62a4"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "05-website-rebuild/references/nano-banana.md",
+      "active_resource": "skills/frontend/landing-pages/website-rebuild/references/nano-banana.md",
+      "bytes": 1442,
+      "sha256": "2b3dc2d6ee912f07cdaf6b42dfa1262f9112a7ee21c04f9ccdc904cfdb4cd91f"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "05-website-rebuild/references/phase-details.md",
+      "active_resource": "skills/frontend/landing-pages/website-rebuild/references/phase-details.md",
+      "bytes": 17473,
+      "sha256": "e17a9c5b05b80638749370c88268647a90ab4effca247604464ce1c12079ec96"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "05-website-rebuild/scripts/contrast-check.js",
+      "active_resource": "skills/frontend/landing-pages/website-rebuild/scripts/contrast-check.js",
+      "bytes": 4609,
+      "sha256": "aff7803dbc86f9d7d5a78b9f3a509ac483b24015d26851bafaf87e05dbe35aa5"
+    },
+    {
+      "kind": "skill",
+      "repo": "web-design-skills-main",
+      "original_path": "06-local-business-rebuild/SKILL.md",
+      "original_name": "local-business-rebuild",
+      "name": "local-business-rebuild",
+      "canonical": "skills/frontend/landing-pages/local-business-rebuild/SKILL.md",
+      "snapshot": "skills/frontend/received/web-design-skills-main/06-local-business-rebuild/received-profile.md",
+      "bytes": 27899,
+      "sha256": "aaa8dfd26c63762e68705f9acd81ad784857cbb45a13bd68cb7aa5e341ff9681",
+      "body_sha256": "927fada5767b00d7aa15fd0d9fa8b5f29aefd94483b7847ce2818a4ab3addee3",
+      "scope": "Preparar una web de negocio local desde contenido del brief; scraping, contacto y publicación requieren alcance propio."
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "06-local-business-rebuild/references/accessibility-spec.md",
+      "active_resource": "skills/frontend/landing-pages/local-business-rebuild/references/accessibility-spec.md",
+      "bytes": 4117,
+      "sha256": "bb3ed2871e9adf438631418f579cb2198b6e20538b7932dce1e91c2d32debc11"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "06-local-business-rebuild/references/design-rules.md",
+      "active_resource": "skills/frontend/landing-pages/local-business-rebuild/references/design-rules.md",
+      "bytes": 4337,
+      "sha256": "32db1c0e37a21a9785b6aaed56cd3585909b09f48e9735992319a24e363f62a4"
+    },
+    {
+      "kind": "skill",
+      "repo": "web-design-skills-main",
+      "original_path": "07-azerbaijan-website-build/SKILL.md",
+      "original_name": "azerbaijan-website-build",
+      "name": "multilingual-business-design",
+      "canonical": "skills/frontend/landing-pages/multilingual-business-design/SKILL.md",
+      "snapshot": "skills/frontend/received/web-design-skills-main/07-azerbaijan-website-build/received-profile.md",
+      "bytes": 29186,
+      "sha256": "03d0da999bc25a4f2e4fd2d24e38347657ae4dd6e89286f9ef1f262e7ce28029",
+      "body_sha256": "9adecbcbbf0bd904f2ed4d822e30472c5bc48128d78657b0939185952458bee3",
+      "scope": "Diseñar una web comercial multilingüe con entrevista, identidad e i18n; locales y referencias regionales se eligen por producto."
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "07-azerbaijan-website-build/references/accessibility-spec.md",
+      "active_resource": "skills/frontend/landing-pages/multilingual-business-design/references/accessibility-spec.md",
+      "bytes": 4117,
+      "sha256": "bb3ed2871e9adf438631418f579cb2198b6e20538b7932dce1e91c2d32debc11"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "07-azerbaijan-website-build/references/azerbaijani-design-guide.md",
+      "active_resource": "skills/frontend/landing-pages/multilingual-business-design/references/azerbaijani-design-guide.md",
+      "bytes": 11877,
+      "sha256": "9f9922736a1071524881b9eeca1dd7cdd33f637f10d18f35b832e6e0b3cd96c7"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "07-azerbaijan-website-build/references/design-rules.md",
+      "active_resource": "skills/frontend/landing-pages/multilingual-business-design/references/design-rules.md",
+      "bytes": 7971,
+      "sha256": "0c39cbe91b74a2a99842b1ed0bd422f64b45c08cb6075aa454aec33a642bcdb9"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "07-azerbaijan-website-build/references/i18n-spec.md",
+      "active_resource": "skills/frontend/landing-pages/multilingual-business-design/references/i18n-spec.md",
+      "bytes": 29567,
+      "sha256": "2f6a3ad1218676d86ef50159c07edddfa93f2fcd795552ef1fc0252d2e314b9b"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "07-azerbaijan-website-build/references/interview-questionnaire.md",
+      "active_resource": "skills/frontend/landing-pages/multilingual-business-design/references/interview-questionnaire.md",
+      "bytes": 19621,
+      "sha256": "19e64f4528058c2655ef656d2d95949d78cd446334005fdb21a85ae087ee4b9b"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "07-azerbaijan-website-build/references/nano-banana-logo.md",
+      "active_resource": "skills/frontend/landing-pages/multilingual-business-design/references/nano-banana-logo.md",
+      "bytes": 13705,
+      "sha256": "0d2c05303109e4a09689266b2aa31de7005546c6f132159baeb29b287c2d713d"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "07-azerbaijan-website-build/scripts/contrast-check.js",
+      "active_resource": "skills/frontend/landing-pages/multilingual-business-design/scripts/contrast-check.js",
+      "bytes": 4609,
+      "sha256": "aff7803dbc86f9d7d5a78b9f3a509ac483b24015d26851bafaf87e05dbe35aa5"
+    },
+    {
+      "kind": "skill",
+      "repo": "web-design-skills-main",
+      "original_path": "08-design-system-generator/SKILL.md",
+      "original_name": "design-system-generator",
+      "name": "design-system-generator",
+      "canonical": "skills/frontend/design-systems/design-system-generator/SKILL.md",
+      "snapshot": "skills/frontend/received/web-design-skills-main/08-design-system-generator/received-profile.md",
+      "bytes": 18808,
+      "sha256": "723a5e87169b93839feef9ae35036278cfeda167c348cfc4c2670d3747aa8be6",
+      "body_sha256": "431f8fc64b1f8a3add025de7302626c6e1efe24297af72debaa48bef77d5e783",
+      "scope": "Producir un DESIGN.md estructurado para un sistema de diseño; partir de tokens y componentes existentes cuando los haya."
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/design-md-format.md",
+      "active_resource": "skills/frontend/design-references/design-md-format.md",
+      "bytes": 23771,
+      "sha256": "9beb696f907e0926930596fd5757e5783fa629cd2ee474bf3fc5baecfdaba716"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/design-md-index.md",
+      "active_resource": "skills/frontend/design-references/design-md-index.md",
+      "bytes": 4518,
+      "sha256": "2d260bea48964f7f39aa05326df7a78f9e67436cad5f252fa28b62c5942bc7ce"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/references/by-aesthetic/bold-energetic/nike.md",
+      "active_resource": "skills/frontend/design-references/references/by-aesthetic/bold-energetic/nike.md",
+      "bytes": 19985,
+      "sha256": "8cd272c53978d296b981896f30a332f7177d2428e2eb43afe9387075f2f1622a"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/references/by-aesthetic/bold-energetic/spotify.md",
+      "active_resource": "skills/frontend/design-references/references/by-aesthetic/bold-energetic/spotify.md",
+      "bytes": 12955,
+      "sha256": "72e964a6cf551d0603f9854f2f42ee08e97ad4d9e17e037f50f6233508288295"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/references/by-aesthetic/clean-professional/shopify.md",
+      "active_resource": "skills/frontend/design-references/references/by-aesthetic/clean-professional/shopify.md",
+      "bytes": 19983,
+      "sha256": "4cdb6d902d5b9c0ef209077bacd602bc2bc9777d594ada42adeb24477982ed77"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/references/by-aesthetic/clean-professional/wise.md",
+      "active_resource": "skills/frontend/design-references/references/by-aesthetic/clean-professional/wise.md",
+      "bytes": 8464,
+      "sha256": "c6efbcaa4cd1eb27bf7d9da6762afb7ae24142e1de04fae67149ece9f19b0a94"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/references/by-aesthetic/dark-premium/linear.md",
+      "active_resource": "skills/frontend/design-references/references/by-aesthetic/dark-premium/linear.md",
+      "bytes": 22446,
+      "sha256": "46d064b1bf9acd444ea678eed5dba6b8ed07b8ed2826564ddd967f3350044a58"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/references/by-aesthetic/dark-premium/vercel.md",
+      "active_resource": "skills/frontend/design-references/references/by-aesthetic/dark-premium/vercel.md",
+      "bytes": 19454,
+      "sha256": "66cefda964967ac09981fbb28be965afe256053859976caabac897d8e1d232df"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/references/by-aesthetic/luxury-minimal/apple.md",
+      "active_resource": "skills/frontend/design-references/references/by-aesthetic/luxury-minimal/apple.md",
+      "bytes": 20415,
+      "sha256": "40b693a04ee09cab54649709803c25fd6edfd2b7073488c9f44d440accb95ded"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/references/by-aesthetic/luxury-minimal/stripe.md",
+      "active_resource": "skills/frontend/design-references/references/by-aesthetic/luxury-minimal/stripe.md",
+      "bytes": 20447,
+      "sha256": "a1ee8c949bd3893e1b66972379ec3fb5cb1730ac294188cf808035f29e2fdaef"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/references/by-aesthetic/warm-editorial/airbnb.md",
+      "active_resource": "skills/frontend/design-references/references/by-aesthetic/warm-editorial/airbnb.md",
+      "bytes": 14048,
+      "sha256": "12928732c390dc0607e9d7e24ba49097707f3c440d5257041705639999bf0ec8"
+    },
+    {
+      "kind": "resource",
+      "repo": "web-design-skills-main",
+      "original_path": "00-design-references/references/by-aesthetic/warm-editorial/notion.md",
+      "active_resource": "skills/frontend/design-references/references/by-aesthetic/warm-editorial/notion.md",
+      "bytes": 18346,
+      "sha256": "3ef4d40e5ec11bbc190d784ebd497230261c4bf401b8b430ee43d68e8fbf5e2a"
+    },
+    {
+      "kind": "resource",
+      "repo": "ai-design-skills-main",
+      "original_path": "LICENSE",
+      "active_resource": "skills/frontend/received/ai-design-skills-main/LICENSE",
+      "bytes": 1062,
+      "sha256": "5f9af6ce7083838497676a8dfa651ad8e2559fdabd4586afc73587beec476b0e"
+    },
+    {
+      "kind": "skill",
+      "repo": "ai-design-skills-main",
+      "original_path": "skills/landing-page-design/SKILL.md",
+      "original_name": "landing-page-design",
+      "name": "landing-page-design",
+      "canonical": "skills/frontend/landing-pages/landing-page-design/SKILL.md",
+      "snapshot": "skills/frontend/received/ai-design-skills-main/skills/landing-page-design/received-profile.md",
+      "bytes": 16528,
+      "sha256": "3aae79f3d33ea293491fe6251f9fee56ee0cbb7aa66d41b3f29cfc662e4bbdd6",
+      "body_sha256": "4c4dfb227a06bde2ac8a33c547603a4a7ae5c19cc0f46abf09a579f35b34cbe4",
+      "scope": "Diseñar una landing con una oferta, audiencia y CTA: estrategia, copy, SEO, composición y estados; no impone su sistema visual al dashboard."
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/assets/app.css",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/assets/app.css",
+      "bytes": 15918,
+      "sha256": "16518c3a999fb81b2698137f1f743128c189272e8b1d411c4b02598c6755b67f"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/assets/base.css",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/assets/base.css",
+      "bytes": 6520,
+      "sha256": "aa6ea21613c79e06e06dea3d33200c78590c89b0346bb976ec07947bb45ceafa"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/assets/base.js",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/assets/base.js",
+      "bytes": 2162,
+      "sha256": "8d50416125596b84c0083d5d5ffba09add57db4b06cbf0eedac2d4999b7653bc"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/assets/charts.js",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/assets/charts.js",
+      "bytes": 58705,
+      "sha256": "89071120bd09eb276d9e568bab433ed035ea8b3a1b72750a1fa204a63e3d4ab4"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/assets/scenes/stage.css",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/assets/scenes/stage.css",
+      "bytes": 1141,
+      "sha256": "b5c587dac45ac6fcc34ae7cb4aa2b3e43797b2ef5d71fd32b48483bda3fca3e0"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/assets/scenes/stage.js",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/assets/scenes/stage.js",
+      "bytes": 7522,
+      "sha256": "3012ade75e01a9c0c81b5835a60e9ade965ed310cd58d85a7ad10e4ed4a1ad16"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/library/app.json",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/library/app.json",
+      "bytes": 74229,
+      "sha256": "3678ccbe1e8d05feff6d4f07fa16a0d610aefeea5e697e842a876713ba763cf5"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/library/directions.json",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/library/directions.json",
+      "bytes": 61466,
+      "sha256": "d71e3824af33a92d9e1ca543e17f80baa5b7a30c815df5125cfe3300a14892c1"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/library/heroes.json",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/library/heroes.json",
+      "bytes": 108240,
+      "sha256": "98d5e01104412a5fb27936f9c686f3bc0a5f76ce0793186d3de46b982c65b172"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/library/motions.json",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/library/motions.json",
+      "bytes": 9033,
+      "sha256": "51815dd09a823c829897f99ed9ea7dc5c35bd305ac989b8a0632ea6d42a3f08b"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/library/palettes.json",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/library/palettes.json",
+      "bytes": 34753,
+      "sha256": "a14be9f45baba848c53436f4aa44eb4f1925ad3e232c5d1dcddf4f565661a525"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/library/photos.json",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/library/photos.json",
+      "bytes": 160632,
+      "sha256": "8fc3b76bca90f44675bd99d99bb4ce95b0756c6c5d4141b7e917d11d90e61520"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/library/sections.json",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/library/sections.json",
+      "bytes": 276146,
+      "sha256": "7c2c8a470a22501176948661f803434db8c542a511281752c717252de80c1ad8"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/library/sites.json",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/library/sites.json",
+      "bytes": 869073,
+      "sha256": "a2bc4d0cff8ebff481f0dfd4879c106d5e1e16cb3122f9ab3702184a5e1f3502"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/library/type.json",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/library/type.json",
+      "bytes": 82290,
+      "sha256": "01a36c53c4398f48ff945b0f31a256281c1c0c1075729747c11bec70867b6232"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/app-screens.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/app-screens.md",
+      "bytes": 85358,
+      "sha256": "55e937ec30de605b53a11310b446f328a3ce7403de24fff008920a00be1a5ed4"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/colour.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/colour.md",
+      "bytes": 6853,
+      "sha256": "6556bcc7eed48b7bc2d0d281c28bf57c1b75e94d7ca0bde49f5d9df8c6a09351"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/copy.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/copy.md",
+      "bytes": 9436,
+      "sha256": "676edbe75d5f3cfd8a793010ea9f730525ae074b231a674c2426264d3398262e"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/critique.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/critique.md",
+      "bytes": 11157,
+      "sha256": "9c2f4392674530b3f02ac529fba53d82ab37b85f401c4c1989fbe98d6217f0b4"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/imagery.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/imagery.md",
+      "bytes": 51025,
+      "sha256": "518def6b2c643b295e13e66b09b66f2e3fc1421d3cf6c7dbb1dc749097ad2ad9"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/layout.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/layout.md",
+      "bytes": 18315,
+      "sha256": "40080640719b07737afb94a8868afef87767a1ab4892814d9b6882e2d283453b"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/motion.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/motion.md",
+      "bytes": 55400,
+      "sha256": "79f94d8469898d2bf6186c198ad86ddf691a67c6536eaec36a4ec101285d9a37"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/research.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/research.md",
+      "bytes": 24262,
+      "sha256": "83433646a352cae588591e05bc0a75fe1deadff55ede8851bc8dd5dd483adfc5"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/scenes.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/scenes.md",
+      "bytes": 9817,
+      "sha256": "733ac7258a1a28f2f6ae8205bc36ba66c563594ad0a2e2f829c5eaaba3199a61"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/tells.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/tells.md",
+      "bytes": 7420,
+      "sha256": "8e6de4411c43d3108f832b3f33bb1a2a838148a72b92a176df893b67d99a0da9"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/references/type.md",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/references/type.md",
+      "bytes": 8495,
+      "sha256": "6353ff1d0ce2f9913628c88fbcb7dad3cc3877e61196848bce99e33a17d20611"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/scripts/assets.mjs",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/scripts/assets.mjs",
+      "bytes": 64522,
+      "sha256": "b4b4b99b5634735f5a0b4213169cda5240ee6bbed8ed8042ad1bcf2b6607c1fa"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/scripts/draw.mjs",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/scripts/draw.mjs",
+      "bytes": 54140,
+      "sha256": "6c2047d207d2400d3b099956dfe2ac306203b614246e66bc8760212a7f797dbf"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/scripts/inspect.mjs",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/scripts/inspect.mjs",
+      "bytes": 27839,
+      "sha256": "9482c546288d4d5c738a915905959e99394551ec27bc202ed443af12a02bd1f7"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/scripts/lib/app-draw.mjs",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/scripts/lib/app-draw.mjs",
+      "bytes": 14715,
+      "sha256": "aa0802d341d19b53ec14ec21746e428be49a8ec3ed7b30253194105fc18a8df6"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/scripts/lib/cdp.mjs",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/scripts/lib/cdp.mjs",
+      "bytes": 11920,
+      "sha256": "320fb75c6454a97b88458e5c33559a1188042aa0041bd5eff53455900236c88a"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/scripts/lib/probe.mjs",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/scripts/lib/probe.mjs",
+      "bytes": 81280,
+      "sha256": "c14fd0bed7727855a1f3fcf5ade945fba97f314562fd7430354168b2da25433b"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/scripts/lib/rules.mjs",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/scripts/lib/rules.mjs",
+      "bytes": 37284,
+      "sha256": "5de058543b3bd6f3dd2f85ff1c1e5e1f91918ba9f4454e7ee0b8934c607982f9"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/scripts/lint.mjs",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/scripts/lint.mjs",
+      "bytes": 11747,
+      "sha256": "05f2fae2f56fc051b539cdbacb43a6f78fbbfb9644bb74aa11be472ff12dcaf5"
+    },
+    {
+      "kind": "resource",
+      "repo": "taste-skill-main",
+      "original_path": "skills/taste-skill/scripts/scenes.mjs",
+      "active_resource": "skills/frontend/landing-pages/design-taste-frontend/scripts/scenes.mjs",
+      "bytes": 8980,
+      "sha256": "234ec582e2b841457c33033feeeba8535f9ac285495a74d08dc533a1566c90d5"
+    }
+  ],
+  "excluded": [
+    {
+      "repo": "avoid-ai-design-main",
+      "original_path": "scripts/detect.test.mjs",
+      "reason": "Tooling de instalación/mantenimiento/tests del repo de origen; no es dependencia del procedimiento de diseño adaptado."
+    },
+    {
+      "repo": "design-guide-main",
+      "original_path": "scripts/check-secrets.py",
+      "reason": "Tooling de instalación/mantenimiento/tests del repo de origen; no es dependencia del procedimiento de diseño adaptado."
+    },
+    {
+      "repo": "design-guide-main",
+      "original_path": "scripts/design-guide-doctor.py",
+      "reason": "Tooling de instalación/mantenimiento/tests del repo de origen; no es dependencia del procedimiento de diseño adaptado."
+    },
+    {
+      "repo": "design-guide-main",
+      "original_path": "scripts/evaluate-review-output.py",
+      "reason": "Tooling de instalación/mantenimiento/tests del repo de origen; no es dependencia del procedimiento de diseño adaptado."
+    },
+    {
+      "repo": "design-guide-main",
+      "original_path": "scripts/smoke-aides.py",
+      "reason": "Tooling de instalación/mantenimiento/tests del repo de origen; no es dependencia del procedimiento de diseño adaptado."
+    },
+    {
+      "repo": "design-guide-main",
+      "original_path": "scripts/sync-aide.sh",
+      "reason": "Tooling de instalación/mantenimiento/tests del repo de origen; no es dependencia del procedimiento de diseño adaptado."
+    },
+    {
+      "repo": "taste-skill-main",
+      "original_path": "skills/imagegen-frontend-mobile/SKILL.md",
+      "name": "imagegen-frontend-mobile",
+      "reason": "Especialidad dedicada a apps nativas iOS/Android; exclusión de móvil nativo ya indicada por el usuario."
+    },
+    {
+      "repo": "design-guide-main",
+      "original_path": "scripts/verify-product-journeys.py",
+      "reason": "Workflow de release/cross-AIDE del repo de origen; depende de sus fixtures e instalador, no del producto."
+    },
+    {
+      "repo": "no-slop-ui-master",
+      "original_path": "scripts/validate_skill_repo.py",
+      "reason": "Validador de estructura del repo upstream: exige README/demos/workflows no importados; no es helper del diseño."
+    }
+  ]
+}

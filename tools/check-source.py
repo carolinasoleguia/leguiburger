@@ -1,4 +1,5 @@
 """Check tracked source, never print a secret value or inspect ignored local env files."""
+import hashlib
 import pathlib
 import re
 import subprocess
@@ -13,6 +14,14 @@ patterns = [
     re.compile(rb"postgres(?:ql)?://[^\s:/]+:[^\s@]{8,}@[^\s]+supabase\.(?:co|com)"),
     re.compile(rb"\bAPP_USR-[0-9]{8,}-[A-Za-z0-9-]{20,}"),
 ]
+# These preserved security guides list PEM header patterns, without key material.
+# Pin the whole file: any edit removes the exception, and every other secret
+# pattern is still scanned even when the documentation matches its known hash.
+documented_pem_patterns = {
+    "skills/originals/first-import/security/security-senior-secops.md": "80f83d40f631134ab458247433b616e8fbdfdc0c7bdc568e356d4e6902385359",
+    "skills/security/security-senior-secops/SKILL.md": "ae542f06bec50b876d3d3b67022712800e9bcbc0af1e0c57b5f591a912d4e8e4",
+    "skills/security/security-senior-secops/references/original-profile.md": "80f83d40f631134ab458247433b616e8fbdfdc0c7bdc568e356d4e6902385359",
+}
 failed = False
 for name in sorted(set(paths)):
     if not name:
@@ -25,7 +34,10 @@ for name in sorted(set(paths)):
         failed = True
         continue
     data = path.read_bytes()
-    if any(pattern.search(data) for pattern in patterns):
+    scan_data = data
+    if hashlib.sha256(data).hexdigest() == documented_pem_patterns.get(name):
+        scan_data = re.sub(rb"(?m)^-----BEGIN (?:RSA |EC )PRIVATE KEY-----\r?$", b"[documented PEM header pattern]", data)
+    if any(pattern.search(scan_data) for pattern in patterns):
         print(f"Potential credential in {name}; value redacted")
         failed = True
     if name.startswith("database/migrations/") and b"\r\n" in data:

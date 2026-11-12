@@ -12,7 +12,6 @@ import { useAuth } from "../composables/useAuth.js";
 import AppIcon from "./AppIcon.vue";
 import BrandLogo from "./BrandLogo.vue";
 import ThemeToggle from "./ThemeToggle.vue";
-import MotionToggle from "./MotionToggle.vue";
 import { getJSON } from "../services/api.js";
 import {
   authRequest,
@@ -79,10 +78,10 @@ const baseNavigation = computed(() =>
         { label: "Restaurantes", to: "/restaurants", icon: "burger" },
         { label: "Locales", to: "/locations", icon: "store" },
 
-        { label: "Cobros", to: "/payments", icon: "grid" },
+        { label: "Cobros", to: "/payments", icon: "card" },
         { label: "Invitaciones", to: "/team/invitations", icon: "users" },
-        { label: "Actividad", to: "/audit", icon: "grid" },
-        { label: "Seguridad", to: "/account/security", icon: "grid" },
+        { label: "Actividad", to: "/audit", icon: "activity" },
+        { label: "Seguridad", to: "/account/security", icon: "shield" },
       ]
     : props.role === "admin"
       ? [
@@ -92,10 +91,10 @@ const baseNavigation = computed(() =>
           { label: "Locales", to: "/locations", icon: "store" },
           { label: "Producción", to: "/admin/production", icon: "flame" },
           { label: "Catálogo", to: "/admin/catalog", icon: "burger" },
-          { label: "Cobros", to: "/payments", icon: "grid" },
+          { label: "Cobros", to: "/payments", icon: "card" },
           { label: "Invitaciones", to: "/team/invitations", icon: "users" },
-          { label: "Actividad", to: "/audit", icon: "grid" },
-          { label: "Seguridad", to: "/account/security", icon: "grid" },
+          { label: "Actividad", to: "/audit", icon: "activity" },
+          { label: "Seguridad", to: "/account/security", icon: "shield" },
         ]
       : [
           {
@@ -104,29 +103,29 @@ const baseNavigation = computed(() =>
             icon: "grid",
           },
           ...(auth.userRole.value === "cashier"
-            ? [{ label: "Cobros", to: "/payments", icon: "grid" }]
+            ? [{ label: "Cobros", to: "/payments", icon: "card" }]
             : []),
-          { label: "Seguridad", to: "/account/security", icon: "grid" },
+          { label: "Seguridad", to: "/account/security", icon: "shield" },
         ],
 );
 const navigation = computed(() => {
   const shared = [
     { label: "Novedades", to: "/notifications", icon: "clock" },
-    { label: "Soporte y continuidad", to: "/care", icon: "store" },
+    { label: "Soporte y continuidad", to: "/care", icon: "support" },
   ];
   const operational = [
     ...(["owner", "super_admin", "admin", "cashier"].includes(
       auth.userRole.value,
     )
       ? [
-          { label: "Caja y pedidos", to: "/orders", icon: "burger" },
+          { label: "Caja y pedidos", to: "/orders", icon: "receipt" },
           { label: "Clientes", to: "/customers", icon: "users" },
         ]
       : []),
     { label: "Cocina", to: "/kitchen", icon: "flame" },
-    { label: "Stock e insumos", to: "/inventory", icon: "store" },
+    { label: "Stock e insumos", to: "/inventory", icon: "box" },
     ...(["owner", "super_admin", "admin"].includes(auth.userRole.value)
-      ? [{ label: "Gastos", to: "/expenses", icon: "grid" }]
+      ? [{ label: "Gastos", to: "/expenses", icon: "receipt" }]
       : []),
   ];
   return [
@@ -236,7 +235,7 @@ async function logout() {
       <div class="workspace-label">
         <span class="live-dot" />{{ roleLabel }}
       </div>
-      <span class="nav-heading">ESPACIO DE TRABAJO</span>
+      <span class="nav-heading">Espacio de trabajo</span>
       <label v-if="assignedLocations.length > 1" class="input-group"
         >Local de trabajo<select
           :value="auth.tenantId.value"
@@ -261,7 +260,7 @@ async function logout() {
           class="nav-link"
           :class="{ active: activeItem?.to === item.to }"
           :aria-current="activeItem?.to === item.to ? 'page' : undefined"
-          ><AppIcon :name="item.icon" /><span>{{ item.label }}</span
+          ><AppIcon :name="item.icon" :size="18" /><span>{{ item.label }}</span
           ><span v-if="activeItem?.to === item.to" class="nav-active-dot"
         /></router-link>
       </nav>
@@ -302,7 +301,7 @@ async function logout() {
               : role === "admin"
                 ? "Administrador"
                 : "Equipo"
-          }}</span><MotionToggle /><ThemeToggle /><span class="avatar avatar-small">{{
+          }}</span><ThemeToggle /><span class="avatar avatar-small">{{
             initials
           }}</span>
         </div>

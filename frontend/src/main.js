@@ -11,6 +11,8 @@ import { installFormCare } from './plugins/formCare.js'
 import { reportClientError } from './services/monitoring.js'
 import { installActivity } from './services/activity.js'
 
+document.documentElement.dataset.motion = 'full'
+localStorage.removeItem('legui-motion')
 const app = createApp(App)
 installFormCare(app, router)
 installActivity(router)

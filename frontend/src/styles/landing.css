@@ -3077,3 +3077,16 @@
 @keyframes panelViewIn { from { opacity:.4; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 .landing[data-paused=true] .demoStage *, .landing [data-in-view=false] :is(.waveform i,.phone,.paper,.sceneGlow,.typing i) { animation-play-state:paused !important; }
 .landing[data-paused=true] :deep(.burger-demo *) { animation-play-state:paused !important; }
+
+/* Unslop polish: retain the chosen burger illustration and animated structure. */
+.landing .heroEyebrow > span { box-shadow: none; }
+.landing .primary { box-shadow: none; }
+.landing .primary:hover { transform: translateY(-1px); box-shadow: none; }
+.landing .primary:active { transform: translateY(1px); }
+.landing :is(.primary, .darkButton, .textLink) { transition-timing-function: cubic-bezier(.22, 1, .36, 1); }
+.landing .panelControlsLabel { text-transform: none; letter-spacing: 0; }
+.landing .panelControls input:checked + span { background: #30291f; box-shadow: inset 3px 0 0 var(--green); }
+.landing[data-theme=light] .panelControls input:checked + span { background: #e8ded1; box-shadow: inset 3px 0 0 var(--green); }
+.landing .featuredPlan { background: #28221a; box-shadow: none; }
+.landing[data-theme=light] .featuredPlan { background: #f3eadc; }
+.landing .panelPreview { font-variant-numeric: tabular-nums; }

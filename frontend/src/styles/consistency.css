@@ -11,7 +11,7 @@
   letter-spacing: -0.035em;
   margin: 0 0 10px;
   color: var(--text);
-  font-weight: 650;
+  font-weight: 600;
 }
 .app-shell .section-header p:not(.eyebrow) {
   font-size: 14px;
@@ -54,9 +54,9 @@
 }
 .app-shell :is(.data-table, .table-scroll table) th {
   color: var(--text-muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
   font-weight: 600;
   background: var(--surface-raised);
 }
@@ -299,5 +299,87 @@
 @media (prefers-reduced-motion: reduce) {
   .state-spinner {
     animation: none;
+  }
+}
+
+/* Quiet chrome lets the restaurant's activity carry the accent. */
+.app-shell {
+  --border: color-mix(in srgb, var(--text) 11%, var(--surface));
+  font-variant-numeric: tabular-nums;
+}
+.app-shell .eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.app-shell .nav-link.active {
+  border-color: var(--border);
+  background: var(--surface-raised);
+}
+.app-shell .nav-link.active:hover {
+  color: var(--accent);
+}
+.app-shell .nav-link > svg {
+  flex: 0 0 18px;
+}
+.app-shell .sidebar-note {
+  color: var(--text-muted);
+}
+.app-shell .metric-grid article {
+  padding: 24px;
+}
+.app-shell .metric-grid h3 {
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.app-shell .metric-grid strong {
+  font-weight: 600;
+}
+.app-shell :is(.metric-grid > article, .tenant-product-card):hover {
+  border-color: var(--control-border);
+  box-shadow: none;
+}
+.app-shell .bar-chart {
+  background: repeating-linear-gradient(
+    to top,
+    var(--border) 0 1px,
+    transparent 1px 25%
+  );
+}
+.app-shell .bar-chart .bar {
+  border-radius: 3px 3px 0 0;
+}
+.app-shell .report-row > :last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell .stable-overview .metric-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.app-shell .overview-page > .workspace-filters > label {
+  width: 160px;
+  flex: 1 1 160px;
+}
+.overview-period-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 44px;
+}
+.overview-period-actions .text-button {
+  min-height: 44px;
+}
+@media (max-width: 1100px) {
+  .app-shell .stable-overview .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 540px) {
+  .app-shell .stable-overview .metric-grid {
+    grid-template-columns: 1fr;
+  }
+  .app-shell .overview-page > .workspace-filters > label {
+    flex-basis: 100%;
   }
 }

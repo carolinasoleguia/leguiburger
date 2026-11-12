@@ -26,32 +26,6 @@
   animation: app-spin 0.85s linear infinite;
   flex: none;
 }
-.app-progress {
-  position: fixed;
-  inset: 0 0 auto;
-  height: 3px;
-  z-index: 20000;
-  overflow: hidden;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
-.app-progress > span {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 35%;
-  border-radius: 3px;
-  background: var(--accent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 50%, transparent);
-  animation: progress-travel 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.progress-enter-active,
-.progress-leave-active {
-  transition: opacity 180ms ease;
-}
-.progress-enter-from,
-.progress-leave-to {
-  opacity: 0;
-}
 .screen-enter-active {
   transition: opacity 180ms ease;
 }
@@ -348,8 +322,8 @@
     box-shadow 180ms ease;
 }
 .app-shell :is(.metric-grid > article, .tenant-product-card):hover {
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-  box-shadow: 0 6px 24px rgb(0 0 0 / 0.05);
+  border-color: var(--control-border);
+  box-shadow: none;
 }
 .app-shell tbody tr {
   animation: row-reveal 300ms var(--motion-ease) both;
@@ -430,14 +404,6 @@ button.is-pending :is(.spinner, .app-spinner-wrap) {
 @keyframes app-spin {
   to {
     transform: rotate(360deg);
-  }
-}
-@keyframes progress-travel {
-  from {
-    transform: translateX(-110%);
-  }
-  to {
-    transform: translateX(390%);
   }
 }
 @keyframes skeleton-shimmer {
@@ -529,7 +495,6 @@ button.is-pending :is(.spinner, .app-spinner-wrap) {
   html:not([data-motion="full"]) .dashboard-skeleton *,
   html:not([data-motion="full"]) .dashboard-skeleton *::after,
   html:not([data-motion="full"]) .app-spinner,
-  html:not([data-motion="full"]) .app-progress > span,
   html:not([data-motion="full"]) .modal-enter-active,
   html:not([data-motion="full"]) .modal-leave-active,
   html:not([data-motion="full"]) .modal-enter-active > .modal-card,
@@ -542,10 +507,6 @@ button.is-pending :is(.spinner, .app-spinner-wrap) {
   }
   html:not([data-motion="full"]) .skeleton-bone::after {
     display: none;
-  }
-  html:not([data-motion="full"]) .app-progress > span {
-    width: 100%;
-    opacity: 0.65;
   }
   html:not([data-motion="full"]) .screen-enter-active,
   html:not([data-motion="full"]) .screen-leave-active {
@@ -562,7 +523,6 @@ html[data-motion="reduced"] .app-shell *::before,
 html[data-motion="reduced"] .dashboard-skeleton *,
 html[data-motion="reduced"] .dashboard-skeleton *::after,
 html[data-motion="reduced"] .app-spinner,
-html[data-motion="reduced"] .app-progress > span,
 html[data-motion="reduced"] .modal-enter-active,
 html[data-motion="reduced"] .modal-leave-active,
 html[data-motion="reduced"] .modal-enter-active > .modal-card,
@@ -575,10 +535,6 @@ html[data-motion="reduced"] .skeleton-bone {
 }
 html[data-motion="reduced"] .skeleton-bone::after {
   display: none;
-}
-html[data-motion="reduced"] .app-progress > span {
-  width: 100%;
-  opacity: 0.65;
 }
 html[data-motion="reduced"] .screen-enter-active,
 html[data-motion="reduced"] .screen-leave-active {

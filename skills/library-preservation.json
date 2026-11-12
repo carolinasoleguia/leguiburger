@@ -1,0 +1,1687 @@
+{
+  "brand": "AI Toque",
+  "date": "2026-10-13",
+  "schema_version": 1,
+  "method": "Entire bodies and resources of selected specialties preserved; unrelated platform-specific profiles excluded by user; exact received snapshots retained for selected scope.",
+  "batches": [
+    {
+      "name": "first-import",
+      "files": 84,
+      "origin": "User-supplied import preserved in verified local backup",
+      "received_files": 91
+    },
+    {
+      "name": "second-import",
+      "files": 90,
+      "origin": "User-supplied import preserved in verified local backup",
+      "received_files": 113
+    }
+  ],
+  "files": [
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/.claude-plugin/plugin.json",
+      "snapshot": "originals/first-import/developer-essentials/.claude-plugin/plugin.json",
+      "sha256": "01f3f350f2f56d920479b7f64685acb385db0a17d469be002957ad1cb826904b",
+      "bytes": 343
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/.codex-plugin/plugin.json",
+      "snapshot": "originals/first-import/developer-essentials/.codex-plugin/plugin.json",
+      "sha256": "68eeb29d6b0654956c144474f3963d49b5ef2f82e79e3f6999b6af2215e9c4ae",
+      "bytes": 1096
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/agents/monorepo-architect.md",
+      "snapshot": "originals/first-import/developer-essentials/agents/monorepo-architect.md",
+      "sha256": "8d3e4c4cc317916eb5d8a1e61c64fd4a302d37d88232cd8d50a1c0ea3b889fb0",
+      "bytes": 1795,
+      "name": "monorepo-architect",
+      "kind": "agent",
+      "canonical": "engineering/monorepo-architect/SKILL.md",
+      "body_sha256": "784300e42870236e4054f60e3143c8390fd61cc70b2570e4a125670283325170"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/auth-implementation-patterns/SKILL.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/auth-implementation-patterns/original-skill.md",
+      "sha256": "1fc61d6074ace3d3db9d527ef92a7188118ff305b6ea98e0f9356545c6e15996",
+      "bytes": 2677,
+      "name": "auth-implementation-patterns",
+      "kind": "skill",
+      "canonical": "security/auth-implementation-patterns/SKILL.md",
+      "body_sha256": "60e453aafbfb012652a4bba69afe2fd17c6cb530dba4cfa3f0443582fa34e488"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/auth-implementation-patterns/references/details.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/auth-implementation-patterns/references/details.md",
+      "sha256": "cc556cbe7ac5987f40a332b5f77709aef9983dcc4ef29d10ebf1487f26eb7a64",
+      "bytes": 13674,
+      "active_resource": "security/auth-implementation-patterns/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/code-review-excellence/SKILL.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/code-review-excellence/original-skill.md",
+      "sha256": "014fff1c8db75807106484d5b16451607f0dde266ae50182a2753d68ad3449ed",
+      "bytes": 13225,
+      "name": "code-review-excellence",
+      "kind": "skill",
+      "canonical": "engineering/code-review-excellence/SKILL.md",
+      "body_sha256": "59f4f67ae00af090c3f2f8c2d6ad2eb798c5df837d3280faabc0511ba22ae1e2"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/debugging-strategies/SKILL.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/debugging-strategies/original-skill.md",
+      "sha256": "f7361b6e479a148fa609aa2b0c377fd09ed254985aa5763f509be38f7e7e9c0d",
+      "bytes": 11879,
+      "name": "debugging-strategies",
+      "kind": "skill",
+      "canonical": "engineering/debugging-strategies/SKILL.md",
+      "body_sha256": "0970440f89f9a7e04c36caf1f68ca9a39f639d49699032eb6d4f156cffd12e4c"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/e2e-testing-patterns/SKILL.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/e2e-testing-patterns/original-skill.md",
+      "sha256": "1653690dde9eeca6dcb66086277791c2a3ccc2b37eaab6ec9b627a10adfb94be",
+      "bytes": 4019,
+      "name": "e2e-testing-patterns",
+      "kind": "skill",
+      "canonical": "testing/e2e-testing-patterns/SKILL.md",
+      "body_sha256": "0358b72a71b5ef5d0b9f5e55dd3b26c8e8794d7c7255249d26c685320a4c6dfd"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/e2e-testing-patterns/references/details.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/e2e-testing-patterns/references/details.md",
+      "sha256": "3b6a4f1e1298aeeedefe9922c199c0549b2a74780429bd907c5aae8245f320c4",
+      "bytes": 10286,
+      "active_resource": "testing/e2e-testing-patterns/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/error-handling-patterns/SKILL.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/error-handling-patterns/original-skill.md",
+      "sha256": "5fb7f4d995fc05386a8c04b045f96fd3cb652cbd31fd52d78966f86323b373b8",
+      "bytes": 4090,
+      "name": "error-handling-patterns",
+      "kind": "skill",
+      "canonical": "engineering/error-handling-patterns/SKILL.md",
+      "body_sha256": "cb3fdf921a1954f2d263eb7fe314fe4d40590d7def80dc556aa7faf37bad0b78"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/error-handling-patterns/references/details.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/error-handling-patterns/references/details.md",
+      "sha256": "6f6a48bdee3b8fccf5b73725e798725970826a53c0bb2d4cc2a8e19b1e69466f",
+      "bytes": 12510,
+      "active_resource": "engineering/error-handling-patterns/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/git-advanced-workflows/SKILL.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/git-advanced-workflows/original-skill.md",
+      "sha256": "05205690ef34b05d1ae2596a59f9897680511198b16b38e9a6c1bf04e8da9711",
+      "bytes": 5036,
+      "name": "git-advanced-workflows",
+      "kind": "skill",
+      "canonical": "engineering/git-advanced-workflows/SKILL.md",
+      "body_sha256": "3fff798c1bf1280c19f6f054907db9f9bcf7d5064fcde7a985ee458c1f0ad49c"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/git-advanced-workflows/references/details.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/git-advanced-workflows/references/details.md",
+      "sha256": "66ef1df71f2fb9cb6a86bb24e33175a3b2a2889afa245c7e6fa9bea8ac10cd44",
+      "bytes": 3999,
+      "active_resource": "engineering/git-advanced-workflows/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/monorepo-management/SKILL.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/monorepo-management/original-skill.md",
+      "sha256": "d34706cfb810e5cd512cf5adc0aae5382ef7f7df33ad1c764a2fcda47c1fc851",
+      "bytes": 5150,
+      "name": "monorepo-management",
+      "kind": "skill",
+      "canonical": "engineering/monorepo-management/SKILL.md",
+      "body_sha256": "7aed46140cc1b0101ed3b0b4d7258597090ccdd50d6868383f71fe3b7430225b"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/monorepo-management/references/details.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/monorepo-management/references/details.md",
+      "sha256": "5857fcb93aa53bb6f70ed228ddef84d89535d13d3409fd9af5fba13f0c861e9f",
+      "bytes": 7410,
+      "active_resource": "engineering/monorepo-management/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/sql-optimization-patterns/SKILL.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/sql-optimization-patterns/original-skill.md",
+      "sha256": "cfe8234323daaeb47577261c96933f519004fad2f45f1460f340b883af5d7354",
+      "bytes": 5961,
+      "name": "sql-optimization-patterns",
+      "kind": "skill",
+      "canonical": "database/sql-optimization-patterns/SKILL.md",
+      "body_sha256": "f403c8524214fc4ad0eb816cc9c4fb6bbd6c1a5901380d8d6c7e5805b429b6eb"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "developer-essentials/skills/sql-optimization-patterns/references/details.md",
+      "snapshot": "originals/first-import/developer-essentials/skills/sql-optimization-patterns/references/details.md",
+      "sha256": "e1b8db12016767f08d2ee85791c856c273cb8db0adbe19415e0d1ed6e4a48887",
+      "bytes": 6847,
+      "active_resource": "database/sql-optimization-patterns/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/.claude-plugin/plugin.json",
+      "snapshot": "originals/first-import/python-development/.claude-plugin/plugin.json",
+      "sha256": "0679b195fc05eae34da785dbdfc7a900f1ab8b40ff9b0dc798ae680c59a22957",
+      "bytes": 286
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/.codex-plugin/plugin.json",
+      "snapshot": "originals/first-import/python-development/.codex-plugin/plugin.json",
+      "sha256": "047e655126478efa191bd101e7f1cc8a9ab69cd30c32a32e95083776b425695d",
+      "bytes": 1161
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/agents/fastapi-pro.md",
+      "snapshot": "originals/first-import/python-development/agents/fastapi-pro.md",
+      "sha256": "8bfe30788186844526259259bd6383f9b7e2bfb6970ae1033857b8ba4908f0eb",
+      "bytes": 5978,
+      "name": "python-development-fastapi-pro",
+      "kind": "agent",
+      "canonical": "python/python-development-fastapi-pro/SKILL.md",
+      "body_sha256": "9cbdd8188c043139f4cad183f3adcc1a2a0b84e8246fa0a4bd42b06a412c1cf7"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/agents/python-pro.md",
+      "snapshot": "originals/first-import/python-development/agents/python-pro.md",
+      "sha256": "5c764591a3d06efac4495c30f80f1d37f460d7d833498eeed8441cf6a1f32f50",
+      "bytes": 6744,
+      "name": "python-pro",
+      "kind": "agent",
+      "canonical": "python/python-pro/SKILL.md",
+      "body_sha256": "500b35d451ca83e6c3f4dc9134fa913d2807d273e74853ee60ada5a64c162855"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/commands/python-scaffold.md",
+      "snapshot": "originals/first-import/python-development/commands/python-scaffold.md",
+      "sha256": "05c77e110cc24bcff85aeabce5cd8913e6cafb140d40dd244bf67520372f61f3",
+      "bytes": 7588,
+      "name": "python-scaffold",
+      "kind": "command",
+      "canonical": "python/python-scaffold/SKILL.md",
+      "body_sha256": "fa6c2878c958e7acd52d744905d4e37b1a4860ec804ff7d55ac3cb86cfeed5d1"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/async-python-patterns/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/async-python-patterns/original-skill.md",
+      "sha256": "beeac92f802f21a968088e5d12fc587833b772ad69806eddf6812f1a2e9c7a57",
+      "bytes": 7522,
+      "name": "async-python-patterns",
+      "kind": "skill",
+      "canonical": "python/async-python-patterns/SKILL.md",
+      "body_sha256": "8ba937488bd61e2b1f79735ced64a29c5c8933164527bbe9f6677cc8f5d09dd6"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/async-python-patterns/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/async-python-patterns/references/details.md",
+      "sha256": "94df4840e91f1d237ba9d3d9bbcb7073be90c42e17ea94ebcb364370920081fa",
+      "bytes": 12523,
+      "active_resource": "python/async-python-patterns/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-anti-patterns/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-anti-patterns/original-skill.md",
+      "sha256": "5d8074ae2408afca827b384e26d151630901a6e6f876dad6acad299e497e8be3",
+      "bytes": 8161,
+      "name": "python-anti-patterns",
+      "kind": "skill",
+      "canonical": "python/python-anti-patterns/SKILL.md",
+      "body_sha256": "b15fdcb60dd5485fca8f2ee9750e2b49e1469790f0a477ee8eb89291bee36f57"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-background-jobs/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-background-jobs/original-skill.md",
+      "sha256": "ea99e3f1d4df0e0c7260e3d6436003ea980c55d8b1ad6950ba63048491eb531e",
+      "bytes": 7312,
+      "name": "python-background-jobs",
+      "kind": "skill",
+      "canonical": "python/python-background-jobs/SKILL.md",
+      "body_sha256": "716f6af2a7db16c8a1180ec3abb1735669b0e88d8a3a231c41c2a41e2afc369d"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-background-jobs/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-background-jobs/references/details.md",
+      "sha256": "96268f59787cba8297e5d0a811fcc3c1fe70ec2ea1a4f1fcb939f67c6ca45ba2",
+      "bytes": 3429,
+      "active_resource": "python/python-background-jobs/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-code-style/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-code-style/original-skill.md",
+      "sha256": "82699eefa7996bf06bbf85219f547eae0140a181ee3699444e2cbd665b7caba7",
+      "bytes": 7970,
+      "name": "python-code-style",
+      "kind": "skill",
+      "canonical": "python/python-code-style/SKILL.md",
+      "body_sha256": "4a15c5cab5ae9ccd815f5b2e2b609b24d8c2ba8bca802e21d28c348e3c650611"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-configuration/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-configuration/original-skill.md",
+      "sha256": "18db193c4242684c60527e51bd1db5ff6327b7a4c875f1f63fbfe46b2dd23680",
+      "bytes": 6219,
+      "name": "python-configuration",
+      "kind": "skill",
+      "canonical": "python/python-configuration/SKILL.md",
+      "body_sha256": "8dd541db3737c7839772b78f8ae8a4b511c827410a2a4ca7a6032a05dd6b3d6a"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-configuration/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-configuration/references/details.md",
+      "sha256": "10f2cb813e20ab446a9578c0200955875c63ff98918b6a84e44f1fc6a0eef209",
+      "bytes": 4011,
+      "active_resource": "python/python-configuration/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-design-patterns/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-design-patterns/original-skill.md",
+      "sha256": "42c99b3bc55a56a65cd3f16aa24ea50672ce0fa4893eb0f34bba0cdb8a0e3319",
+      "bytes": 4729,
+      "name": "python-design-patterns",
+      "kind": "skill",
+      "canonical": "python/python-design-patterns/SKILL.md",
+      "body_sha256": "ebcdff54554c03f3a26d21cd5a9c4caefa1ad16f09b7d6c5363f2a351e34ea4d"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-design-patterns/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-design-patterns/references/details.md",
+      "sha256": "5d85b7a1745446432060bb31ee1fa686d5a41d86cfaf3687dd2710b47b72e5ea",
+      "bytes": 10996,
+      "active_resource": "python/python-design-patterns/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-error-handling/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-error-handling/original-skill.md",
+      "sha256": "796346a50615010c4fea52ecb93784ebf232c5d4c9f0691bfc668529d9592543",
+      "bytes": 6164,
+      "name": "python-error-handling",
+      "kind": "skill",
+      "canonical": "python/python-error-handling/SKILL.md",
+      "body_sha256": "b127ab5510f6d0895ea4b5ad23a5d37ae4f7d4dd255485e8cc3ccada03e56370"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-error-handling/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-error-handling/references/details.md",
+      "sha256": "022c6c6bfb362d861258763712a05f62ccac09120866355582f874db14735c82",
+      "bytes": 4791,
+      "active_resource": "python/python-error-handling/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-observability/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-observability/original-skill.md",
+      "sha256": "bf547d6ee0284ce20bbe521af3e40d53ca9481634dfeaaf16f25c88de6828f56",
+      "bytes": 7098,
+      "name": "python-observability",
+      "kind": "skill",
+      "canonical": "python/python-observability/SKILL.md",
+      "body_sha256": "624c4851babdfee2c71a4b20c95a8c975b9464b8e73403a359de25469c708e95"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-observability/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-observability/references/details.md",
+      "sha256": "38ec551a90f38896a24437e149bac7bc980234970821a505b3f80555d787fbfe",
+      "bytes": 5033,
+      "active_resource": "python/python-observability/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-packaging/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-packaging/original-skill.md",
+      "sha256": "744653d7bca3b0cfcb50155a3bb9ef56c7aba7eb4923091d07e75171261e5b49",
+      "bytes": 3930,
+      "name": "python-packaging",
+      "kind": "skill",
+      "canonical": "python/python-packaging/SKILL.md",
+      "body_sha256": "bacb3abae33ec71c2fed73440be52233c1d850505a59b08b1fcebcb3e11b0d43"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-packaging/references/advanced-patterns.md",
+      "snapshot": "originals/first-import/python-development/skills/python-packaging/references/advanced-patterns.md",
+      "sha256": "ab47dec3bf71c066e5d262eb6159b966ea95067ac23b27d8607d36d89f0e00ca",
+      "bytes": 6728,
+      "active_resource": "python/python-packaging/references/advanced-patterns.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-packaging/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-packaging/references/details.md",
+      "sha256": "4bf009076d1e89cd2bf9bfffeea645095f10cd88f8fcc8b03c137303ebef27dc",
+      "bytes": 7474,
+      "active_resource": "python/python-packaging/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-performance-optimization/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-performance-optimization/original-skill.md",
+      "sha256": "807aa725cc2b46b4d68a11a52e5b345be0449e80b7f4b60c32bfd2c35345afb5",
+      "bytes": 3253,
+      "name": "python-performance-optimization",
+      "kind": "skill",
+      "canonical": "python/python-performance-optimization/SKILL.md",
+      "body_sha256": "e155b1caf73ddadbeb936717b1419b130d50f6c58a57d5acca4494b2ee2edf35"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-performance-optimization/references/advanced-patterns.md",
+      "snapshot": "originals/first-import/python-development/skills/python-performance-optimization/references/advanced-patterns.md",
+      "sha256": "dc1bca8a377572ba1583316b8288af0e5ca2d2be864dc33889b2d3b1ee5c2abf",
+      "bytes": 10527,
+      "active_resource": "python/python-performance-optimization/references/advanced-patterns.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-performance-optimization/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-performance-optimization/references/details.md",
+      "sha256": "8643031fabcbaf555ae1b4e702f1b5159689a31a4b286280d4df2822c9731281",
+      "bytes": 7421,
+      "active_resource": "python/python-performance-optimization/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-project-structure/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-project-structure/original-skill.md",
+      "sha256": "c53696fb8d9014abc280fc0e64220cae0d087766a16380e211a6745e481dae65",
+      "bytes": 6727,
+      "name": "python-project-structure",
+      "kind": "skill",
+      "canonical": "python/python-project-structure/SKILL.md",
+      "body_sha256": "f1462bd5a225edc650f06acbc2dc123b4321a30ec9a721a34277a334e21af63e"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-resilience/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-resilience/original-skill.md",
+      "sha256": "ddf3a7dc5bd59dd228a65a3ee7ae60fe740e9dc6e98bfac0ce0be5330fcc5332",
+      "bytes": 6031,
+      "name": "python-resilience",
+      "kind": "skill",
+      "canonical": "python/python-resilience/SKILL.md",
+      "body_sha256": "d378faf60c98505fc71d597db23f508985da6314576877ca37e1d0da929b97d8"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-resilience/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-resilience/references/details.md",
+      "sha256": "bacdee07c89f21324069904107b99224afd9b65415f56da8974b20aa03e4aff4",
+      "bytes": 5376,
+      "active_resource": "python/python-resilience/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-resource-management/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-resource-management/original-skill.md",
+      "sha256": "1d60cbc5ce7a9e86fa7f64e147f04f21d5d174b56bf96f5f628c905892068aa5",
+      "bytes": 7012,
+      "name": "python-resource-management",
+      "kind": "skill",
+      "canonical": "python/python-resource-management/SKILL.md",
+      "body_sha256": "3fa8fd8fc9b11aa164cfb17ec541eac9719e6ab73be7ce22d8fedcc628752942"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-resource-management/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-resource-management/references/details.md",
+      "sha256": "b9cf1a36f6172812c3509e8a88e2d19de76d9e1fe2c4598df10558b372e88022",
+      "bytes": 4721,
+      "active_resource": "python/python-resource-management/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-testing-patterns/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-testing-patterns/original-skill.md",
+      "sha256": "a1020718f31629c2a5b20731cad1804dbb81b18800495c5cebdf16e6cac9c175",
+      "bytes": 7282,
+      "name": "python-testing-patterns",
+      "kind": "skill",
+      "canonical": "python/python-testing-patterns/SKILL.md",
+      "body_sha256": "19eb067d7cc80d832e4cc3af86e9c1ca2a50ec8b2de3d5241df720320a1bfb56"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-testing-patterns/references/advanced-patterns.md",
+      "snapshot": "originals/first-import/python-development/skills/python-testing-patterns/references/advanced-patterns.md",
+      "sha256": "f560ee8b3cffc0fe971e78269bed21dc74f541c2056eae58d34259d9e537176a",
+      "bytes": 9454,
+      "active_resource": "python/python-testing-patterns/references/advanced-patterns.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-testing-patterns/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-testing-patterns/references/details.md",
+      "sha256": "baaa88e2997d960c19f981248b9e3e850e36e2cdf4d97b50297f5d9764826349",
+      "bytes": 9261,
+      "active_resource": "python/python-testing-patterns/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-type-safety/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/python-type-safety/original-skill.md",
+      "sha256": "7798dd109350b73c80bb4642f6e5a0ebaa2ae392484a213d4b44b35e9b4dad66",
+      "bytes": 5763,
+      "name": "python-type-safety",
+      "kind": "skill",
+      "canonical": "python/python-type-safety/SKILL.md",
+      "body_sha256": "be9833b372020b4580e82908e83f07ceb472ae827f623561a87abf0a1559fff1"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/python-type-safety/references/details.md",
+      "snapshot": "originals/first-import/python-development/skills/python-type-safety/references/details.md",
+      "sha256": "c31ae289ec8de07220ddac57434fb0b764216af8a435dcc078c446d82e6862b5",
+      "bytes": 5862,
+      "active_resource": "python/python-type-safety/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/uv-package-manager/SKILL.md",
+      "snapshot": "originals/first-import/python-development/skills/uv-package-manager/original-skill.md",
+      "sha256": "14df843d2d7958257e47933961914ff6598adb8422e4759000586c43ce80ab2c",
+      "bytes": 7108,
+      "name": "uv-package-manager",
+      "kind": "skill",
+      "canonical": "python/uv-package-manager/SKILL.md",
+      "body_sha256": "8672aae7e28d1885e28432d68020eab322aa53ea78044750bde195fadefa1fdc"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "python-development/skills/uv-package-manager/references/advanced-patterns.md",
+      "snapshot": "originals/first-import/python-development/skills/uv-package-manager/references/advanced-patterns.md",
+      "sha256": "5750de438fa2456c37640f6efcb87c423fe2919510da4e67e564b2af7972c0bc",
+      "bytes": 8634,
+      "active_resource": "python/uv-package-manager/references/advanced-patterns.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-ai-generated-code-auditor.md",
+      "snapshot": "originals/first-import/security/security-ai-generated-code-auditor.md",
+      "sha256": "ac2196a914bfb00dddfef93edb9eef1860f924f9582d814cd303ab45e4fc71bc",
+      "bytes": 17126
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-appsec-engineer.md",
+      "snapshot": "originals/first-import/security/security-appsec-engineer.md",
+      "sha256": "29282b0e428402e514a3632395af8fc56723e3a20bc4d9b4892aa223f25575e6",
+      "bytes": 28614
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-architect.md",
+      "snapshot": "originals/first-import/security/security-architect.md",
+      "sha256": "5345349534d46b3cd9edd5843550a1921dcb6873215f2dee2ca2c8f535fe3f9e",
+      "bytes": 18277
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-cloud-security-architect.md",
+      "snapshot": "originals/first-import/security/security-cloud-security-architect.md",
+      "sha256": "fa18b1e1ed59534c1126f4b44ef06419f3975d98675b37d54ee11a9e3f970d1b",
+      "bytes": 24587
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-compliance-auditor.md",
+      "snapshot": "originals/first-import/security/security-compliance-auditor.md",
+      "sha256": "ebb550ceef8011be23fe5a6fab0a7b3f77c2433f4d6aa22617a7eb87db97274f",
+      "bytes": 7213
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-incident-responder.md",
+      "snapshot": "originals/first-import/security/security-incident-responder.md",
+      "sha256": "be8d0eedd37ddc79767e8fcff518b1d7c565a4e388624a7d62c099270bc0b9e3",
+      "bytes": 24924
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-penetration-tester.md",
+      "snapshot": "originals/first-import/security/security-penetration-tester.md",
+      "sha256": "f52c2524309fb048250b412daa6a2ad0a906b5daff01f64f195052d024b9e1a0",
+      "bytes": 21436
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-secrets-credential-engineer.md",
+      "snapshot": "originals/first-import/security/security-secrets-credential-engineer.md",
+      "sha256": "260bca8dff41a1c0fb502fd895fd149f2632b30156a2fe327b52b3ef3d3d75f6",
+      "bytes": 14165
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-senior-secops.md",
+      "snapshot": "originals/first-import/security/security-senior-secops.md",
+      "sha256": "80f83d40f631134ab458247433b616e8fbdfdc0c7bdc568e356d4e6902385359",
+      "bytes": 31900
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-threat-detection-engineer.md",
+      "snapshot": "originals/first-import/security/security-threat-detection-engineer.md",
+      "sha256": "8c8758663f93e94e27c1d7c21e33a08448ae4dd314fc5d24d91c6289806b9e78",
+      "bytes": 25775
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security/security-threat-intelligence-analyst.md",
+      "snapshot": "originals/first-import/security/security-threat-intelligence-analyst.md",
+      "sha256": "536ca88a00075f68aa9b6fd48f86b41d44b962b54f148ca55cd87c8b6dbddadc",
+      "bytes": 28473
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-compliance/.claude-plugin/plugin.json",
+      "snapshot": "originals/first-import/security-compliance/.claude-plugin/plugin.json",
+      "sha256": "84fb72cebc687867910d4502cdf2a8fc0a51365eb5c4c2dc550354b8505ab9ad",
+      "bytes": 294
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-compliance/agents/security-auditor.md",
+      "snapshot": "originals/first-import/security-compliance/agents/security-auditor.md",
+      "sha256": "c6872ac56afaa3ffd099c6f36a6137aa770962bff7b3b0511b39c027484305b6",
+      "bytes": 9614,
+      "name": "security-compliance-security-auditor",
+      "kind": "agent",
+      "canonical": "security/security-compliance-security-auditor/SKILL.md",
+      "body_sha256": "1d0278895982f6050647214d7e071eaf7354638dd6ec2188bdf50038fb0e1b22"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-compliance/commands/compliance-check.md",
+      "snapshot": "originals/first-import/security-compliance/commands/compliance-check.md",
+      "sha256": "c1cd9bd9da180ba64adf99a64bd3d022db953800d72cb784138e2a1815f91507",
+      "bytes": 29963,
+      "name": "compliance-check",
+      "kind": "command",
+      "canonical": "security/compliance-check/SKILL.md",
+      "body_sha256": "56cefc415c0f0f621ee84f366fb0cde2034915c379cd8b577fe45911d7ea5e48"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/.claude-plugin/plugin.json",
+      "snapshot": "originals/first-import/security-scanning/.claude-plugin/plugin.json",
+      "sha256": "c540fc383d2666bbee1cfb5e59603f979e3d732a7032d646cf816ceb5fe3b465",
+      "bytes": 314
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/.codex-plugin/plugin.json",
+      "snapshot": "originals/first-import/security-scanning/.codex-plugin/plugin.json",
+      "sha256": "14fbd5571a32df8d030b6cda6df3791ef0d985a12edae3c6aa899ad215540b95",
+      "bytes": 891
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/agents/security-auditor.md",
+      "snapshot": "originals/first-import/security-scanning/agents/security-auditor.md",
+      "sha256": "8c01b76d526c83a5646b77ee70a4cf33aaf0a5eee826ab949ea6ed97f1319cfa",
+      "bytes": 9612,
+      "name": "security-scanning-security-auditor",
+      "kind": "agent",
+      "canonical": "security/security-scanning-security-auditor/SKILL.md",
+      "body_sha256": "1d0278895982f6050647214d7e071eaf7354638dd6ec2188bdf50038fb0e1b22"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/agents/threat-modeling-expert.md",
+      "snapshot": "originals/first-import/security-scanning/agents/threat-modeling-expert.md",
+      "sha256": "43996cc279e63aeae24a036f8670d7d7c589d80176ee133adc9dc5d9a8561386",
+      "bytes": 1722,
+      "name": "threat-modeling-expert",
+      "kind": "agent",
+      "canonical": "security/threat-modeling-expert/SKILL.md",
+      "body_sha256": "8de94d76d6f9245f67f6e9e5b03c9ceaef8ddd26221bebb04836fda0cb0d09ce"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/commands/security-dependencies.md",
+      "snapshot": "originals/first-import/security-scanning/commands/security-dependencies.md",
+      "sha256": "b0f24b1071d8400601a9f8b2591e1b4b308aad48cefd7b9c61cdb8d31cd7c27a",
+      "bytes": 16621,
+      "name": "security-dependencies",
+      "kind": "command",
+      "canonical": "security/security-dependencies/SKILL.md",
+      "body_sha256": "beda120580009bbe5ef7560bd291787e29dd1d6b0c33dc5ab92fade59827c1e3"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/commands/security-hardening.md",
+      "snapshot": "originals/first-import/security-scanning/commands/security-hardening.md",
+      "sha256": "7ea62235fa36df451c4d1067c842fafed4c143c484d26a12f596d799148511c0",
+      "bytes": 22500,
+      "name": "security-hardening",
+      "kind": "command",
+      "canonical": "security/security-hardening/SKILL.md",
+      "body_sha256": "9f5acd251f7599d4f3eaab8dba8963d659307d8c5121c25219de6e79e1d430c3"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/commands/security-sast.md",
+      "snapshot": "originals/first-import/security-scanning/commands/security-sast.md",
+      "sha256": "665d6725b5e7ddda6f1da521ac7625c015275d8fb94759d0f6d9456c1dfbf8af",
+      "bytes": 14137,
+      "name": "security-sast",
+      "kind": "command",
+      "canonical": "security/security-sast/SKILL.md",
+      "body_sha256": "6500d85dcf9e265249f1fef12341c8ccf5b1fe415c0f408b64f6087170e36e67"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/skills/attack-tree-construction/SKILL.md",
+      "snapshot": "originals/first-import/security-scanning/skills/attack-tree-construction/original-skill.md",
+      "sha256": "69021049bd4c57a1b65ea29b79f4770e2b546ba1d9797fcd5e61909a47375d91",
+      "bytes": 2613,
+      "name": "attack-tree-construction",
+      "kind": "skill",
+      "canonical": "security/attack-tree-construction/SKILL.md",
+      "body_sha256": "256b607f1aa4cdff3db6320207e086da1ad0ef48f6a79caa198c678fb7d2e39d"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/skills/attack-tree-construction/references/details.md",
+      "snapshot": "originals/first-import/security-scanning/skills/attack-tree-construction/references/details.md",
+      "sha256": "0d9f9efa4402a9e1846d2f922e44f9027e2d8c1ebc282f4326a9eb082cc9f5b3",
+      "bytes": 19817,
+      "active_resource": "security/attack-tree-construction/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/skills/sast-configuration/SKILL.md",
+      "snapshot": "originals/first-import/security-scanning/skills/sast-configuration/original-skill.md",
+      "sha256": "f9c0aae423d2963356d4751bca507054689c15f7c3cdecfaf01e06c8cd98531e",
+      "bytes": 5403,
+      "name": "sast-configuration",
+      "kind": "skill",
+      "canonical": "security/sast-configuration/SKILL.md",
+      "body_sha256": "2a110bdd899117ee7dd068cca05bd54e81489559da47e6f3309c2e2c74ecb5e4"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/skills/security-requirement-extraction/SKILL.md",
+      "snapshot": "originals/first-import/security-scanning/skills/security-requirement-extraction/original-skill.md",
+      "sha256": "bf391927dc404280e0f4d8c0ec20513c579fc6c277dfd04ad5a8e0a730ce8dde",
+      "bytes": 2537,
+      "name": "security-requirement-extraction",
+      "kind": "skill",
+      "canonical": "security/security-requirement-extraction/SKILL.md",
+      "body_sha256": "79908af51ca66217cfedf2ba60dd3cd6fb514e74da3997cdbde85d101ee5aa57"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/skills/security-requirement-extraction/references/details.md",
+      "snapshot": "originals/first-import/security-scanning/skills/security-requirement-extraction/references/details.md",
+      "sha256": "e304b0e15e876dfc99e09302491fa1c635e0a509e5a04b91ed1047b6400f12da",
+      "bytes": 21889,
+      "active_resource": "security/security-requirement-extraction/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/skills/stride-analysis-patterns/SKILL.md",
+      "snapshot": "originals/first-import/security-scanning/skills/stride-analysis-patterns/original-skill.md",
+      "sha256": "b7cfab85be4d04a81d22f79cc3b0e95aab8aa3ae4dfacbcf44de076dbeb16f1e",
+      "bytes": 2452,
+      "name": "stride-analysis-patterns",
+      "kind": "skill",
+      "canonical": "security/stride-analysis-patterns/SKILL.md",
+      "body_sha256": "0cad40b02c84e5c33c3bb2e9410aefb254889870f90166d8325b6ab59b87c28a"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/skills/stride-analysis-patterns/references/details.md",
+      "snapshot": "originals/first-import/security-scanning/skills/stride-analysis-patterns/references/details.md",
+      "sha256": "c386eb04dacbbb52eaaed318e7681549c40bd4686cce2f0d17d24f1c03ae1049",
+      "bytes": 18499,
+      "active_resource": "security/stride-analysis-patterns/references/details.md"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/skills/threat-mitigation-mapping/SKILL.md",
+      "snapshot": "originals/first-import/security-scanning/skills/threat-mitigation-mapping/original-skill.md",
+      "sha256": "40cf933689b7783480fbf567c9b7573a9626977912acf7fcb808287934c7dfa8",
+      "bytes": 3346,
+      "name": "threat-mitigation-mapping",
+      "kind": "skill",
+      "canonical": "security/threat-mitigation-mapping/SKILL.md",
+      "body_sha256": "ec24a4dbc7ae1fe7e2df5220af275c288b9126a33b412f3b2d6eb9061687b56d"
+    },
+    {
+      "batch": "first-import",
+      "original_path": "security-scanning/skills/threat-mitigation-mapping/references/details.md",
+      "snapshot": "originals/first-import/security-scanning/skills/threat-mitigation-mapping/references/details.md",
+      "sha256": "767e373e9a7b321095352f856499965a4abe999f247cde2415edcf2e038a045b",
+      "bytes": 23581,
+      "active_resource": "security/threat-mitigation-mapping/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "agent-orchestration/.claude-plugin/plugin.json",
+      "snapshot": "originals/second-import/agent-orchestration/.claude-plugin/plugin.json",
+      "sha256": "499001de222b147a6c0d5aa5dd702ed573ac847c75b9b71517585a19c1cb0c76",
+      "bytes": 264
+    },
+    {
+      "batch": "second-import",
+      "original_path": "agent-orchestration/agents/context-manager.md",
+      "snapshot": "originals/second-import/agent-orchestration/agents/context-manager.md",
+      "sha256": "24efe4654f96c52335e6d02482e8111d3cffdc0e5bd76037be264a5dba668b4c",
+      "bytes": 7888,
+      "name": "agent-orchestration-context-manager",
+      "kind": "agent",
+      "canonical": "agents/agent-orchestration-context-manager/SKILL.md",
+      "body_sha256": "fdf4c83aa0cb8d258e22278858598fffc1b55e5960921d6dff3a27ad20047662"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "agent-orchestration/commands/improve-agent.md",
+      "snapshot": "originals/second-import/agent-orchestration/commands/improve-agent.md",
+      "sha256": "6e503bf88fa2a0e5045e077382edb692b95a867f5d47130ad57e538411af97c2",
+      "bytes": 9220,
+      "name": "improve-agent",
+      "kind": "command",
+      "canonical": "agents/improve-agent/SKILL.md",
+      "body_sha256": "04bba07e93577464d91a1b2fe081b77af1e578bbcb3a8fdd56404e938e082c35"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "agent-orchestration/commands/multi-agent-optimize.md",
+      "snapshot": "originals/second-import/agent-orchestration/commands/multi-agent-optimize.md",
+      "sha256": "691ae0e145920893531073096e7e6e21fea6dc015ee84d7e056617e1c87929ed",
+      "bytes": 5905,
+      "name": "multi-agent-optimize",
+      "kind": "command",
+      "canonical": "agents/multi-agent-optimize/SKILL.md",
+      "body_sha256": "a5ba7b4c9fbde12e4f4d560f9c43fe5a0da1e71d485363d9ed7ecadedbb6fe9f"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-api-security/.claude-plugin/plugin.json",
+      "snapshot": "originals/second-import/backend-api-security/.claude-plugin/plugin.json",
+      "sha256": "4c1958eface8a57cc6c563c239e873a4f8517b9821412b1afdb087c967a3c5f4",
+      "bytes": 295
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-api-security/agents/backend-architect.md",
+      "snapshot": "originals/second-import/backend-api-security/agents/backend-architect.md",
+      "sha256": "b4ace51a888c063d6f8cc5ea9e6cc4dc279692829894ee42ff7fe56872c07fbd",
+      "bytes": 18357,
+      "name": "backend-api-security-backend-architect",
+      "kind": "agent",
+      "canonical": "backend/backend-api-security-backend-architect/SKILL.md",
+      "body_sha256": "3a2dde07554513c27d813efd9f6b7dd1a74b894964c421930b8ac3fc1e48673d"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-api-security/agents/backend-security-coder.md",
+      "snapshot": "originals/second-import/backend-api-security/agents/backend-security-coder.md",
+      "sha256": "6cb40057bea051720e32abcef6680299c17ef648c4ec6f89f6c0dbc70750ba92",
+      "bytes": 9453,
+      "name": "backend-api-security-backend-security-coder",
+      "kind": "agent",
+      "canonical": "security/backend-api-security-backend-security-coder/SKILL.md",
+      "body_sha256": "dde43a03eb2bf975b0c1a59c15ac1062c11b229ed7120b068b32a49dd863ff98"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/.claude-plugin/plugin.json",
+      "snapshot": "originals/second-import/backend-development/.claude-plugin/plugin.json",
+      "sha256": "d34cfc4eb73f8a7017712c3addf8da32414c41dc45dae10a241ed8de9cfb9f05",
+      "bytes": 295
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/.codex-plugin/plugin.json",
+      "snapshot": "originals/second-import/backend-development/.codex-plugin/plugin.json",
+      "sha256": "5b71bcf3d879bdce210490af34acae788c853265be5ec9b8fecfec80f3dbe7a1",
+      "bytes": 980
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/agents/backend-architect.md",
+      "snapshot": "originals/second-import/backend-development/agents/backend-architect.md",
+      "sha256": "66598cd9077472e0d9a3406ea46635d12766defac27f84090f93c1903bcd3da2",
+      "bytes": 18356,
+      "name": "backend-development-backend-architect",
+      "kind": "agent",
+      "canonical": "backend/backend-development-backend-architect/SKILL.md",
+      "body_sha256": "3a2dde07554513c27d813efd9f6b7dd1a74b894964c421930b8ac3fc1e48673d"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/agents/event-sourcing-architect.md",
+      "snapshot": "originals/second-import/backend-development/agents/event-sourcing-architect.md",
+      "sha256": "907c1f38973cf90e8492b767f6b05d797f55229c1539798fee2b552e3c6fdc5b",
+      "bytes": 1861,
+      "name": "event-sourcing-architect",
+      "kind": "agent",
+      "canonical": "backend/event-sourcing-architect/SKILL.md",
+      "body_sha256": "cfc4cdf464f198926265a6490a6621d4ffc7621ea5217b4b43cbe7993728625e"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/agents/performance-engineer.md",
+      "snapshot": "originals/second-import/backend-development/agents/performance-engineer.md",
+      "sha256": "9e8d94ef79d66d3c74d810c55206af7ec92d26f6c63c90298f006a107c2d6870",
+      "bytes": 2587,
+      "name": "backend-development-performance-engineer",
+      "kind": "agent",
+      "canonical": "backend/backend-development-performance-engineer/SKILL.md",
+      "body_sha256": "09ab697997e2da8b6dbf7e20b308ca45589c8440a325362016ec679291c0a904"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/agents/security-auditor.md",
+      "snapshot": "originals/second-import/backend-development/agents/security-auditor.md",
+      "sha256": "2f99b7bc863b221d0b38e4dd6976be854bf843fbddcc88145e97573e10e70e32",
+      "bytes": 2121,
+      "name": "backend-development-security-auditor",
+      "kind": "agent",
+      "canonical": "security/backend-development-security-auditor/SKILL.md",
+      "body_sha256": "75cc4c84df535597160973781293a3c677d7766fb505214e9bd9d8404871bf79"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/agents/tdd-orchestrator.md",
+      "snapshot": "originals/second-import/backend-development/agents/tdd-orchestrator.md",
+      "sha256": "bb380ef9f2d9e22972ba8c82283ca42108257401138fc43d92e911aef3c65595",
+      "bytes": 9862,
+      "name": "backend-development-tdd-orchestrator",
+      "kind": "agent",
+      "canonical": "testing/backend-development-tdd-orchestrator/SKILL.md",
+      "body_sha256": "f14e6418ca0365368ecbebe3d6a9bf5dbd11daab1294f14aa62fb8251223bb5c"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/agents/test-automator.md",
+      "snapshot": "originals/second-import/backend-development/agents/test-automator.md",
+      "sha256": "317e434b4164805dae27bdfca4ab20cd75cc167e5c1a163dd31d127561a72077",
+      "bytes": 2291,
+      "name": "backend-development-test-automator",
+      "kind": "agent",
+      "canonical": "testing/backend-development-test-automator/SKILL.md",
+      "body_sha256": "aa6e1b9beed05b482d850b3c8d6d48b07153b06f1823a491fc145fb4b69a09e9"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/commands/feature-development.md",
+      "snapshot": "originals/second-import/backend-development/commands/feature-development.md",
+      "sha256": "0a3315c4c555ae99c7a3d3cfc29b5a2d1f8c0c5e422c5f2c7a0fce5959b055d2",
+      "bytes": 15280,
+      "name": "feature-development",
+      "kind": "command",
+      "canonical": "backend/feature-development/SKILL.md",
+      "body_sha256": "2306917a20fabf4dde709e2d82033388ce63c9fe357bc840b5a5212bc8610c14"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/api-design-principles/SKILL.md",
+      "snapshot": "originals/second-import/backend-development/skills/api-design-principles/original-skill.md",
+      "sha256": "1f6166c23c0a0f32d703c19d84b3c30c2873daefb9e8732339a009934fa17013",
+      "bytes": 3603,
+      "name": "api-design-principles",
+      "kind": "skill",
+      "canonical": "api/api-design-principles/SKILL.md",
+      "body_sha256": "241fd29835fb88b761a1207e71b55bd03be884feb1832c7e1cbdf472eed81bc8"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/api-design-principles/assets/api-design-checklist.md",
+      "snapshot": "originals/second-import/backend-development/skills/api-design-principles/assets/api-design-checklist.md",
+      "sha256": "ef98cb8910cdc555514198df7becc6de8b04e1a98e2291b1440bc62e14cd07e5",
+      "bytes": 3884,
+      "active_resource": "api/api-design-principles/assets/api-design-checklist.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/api-design-principles/assets/rest-api-template.py",
+      "snapshot": "originals/second-import/backend-development/skills/api-design-principles/assets/rest-api-template.py",
+      "sha256": "b359cda817740ee2cd3c9a901d7d5a14178cc0e2dcb46b75af053e5cc4d6012c",
+      "bytes": 5323,
+      "active_resource": "api/api-design-principles/assets/rest-api-template.py"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/api-design-principles/references/details.md",
+      "snapshot": "originals/second-import/backend-development/skills/api-design-principles/references/details.md",
+      "sha256": "e8b19b192ab1e1e99a5d7fed285670c2cfc0f23877338efe68da56eeaeaf1649",
+      "bytes": 9808,
+      "active_resource": "api/api-design-principles/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/api-design-principles/references/graphql-schema-design.md",
+      "snapshot": "originals/second-import/backend-development/skills/api-design-principles/references/graphql-schema-design.md",
+      "sha256": "0f10cbe2f3d787be9de4ab8dcc88444ac36ab69786973666a229fdbffeb01638",
+      "bytes": 9005,
+      "active_resource": "api/api-design-principles/references/graphql-schema-design.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/api-design-principles/references/rest-best-practices.md",
+      "snapshot": "originals/second-import/backend-development/skills/api-design-principles/references/rest-best-practices.md",
+      "sha256": "675fbafdd5a6d5ac2c17ab97e17c90aa0a10c2a5608860128a8be14764130fae",
+      "bytes": 7571,
+      "active_resource": "api/api-design-principles/references/rest-best-practices.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/architecture-patterns/SKILL.md",
+      "snapshot": "originals/second-import/backend-development/skills/architecture-patterns/original-skill.md",
+      "sha256": "350caf22b856b7d2908a10a69a8cc13e743c757ba9838716051b4e29fc1d7595",
+      "bytes": 7942,
+      "name": "architecture-patterns",
+      "kind": "skill",
+      "canonical": "backend/architecture-patterns/SKILL.md",
+      "body_sha256": "10a3c4bc1fbdd1c3e22a8860d31785498d1cefd52e5860cd105512b74b30afb0"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/architecture-patterns/references/advanced-patterns.md",
+      "snapshot": "originals/second-import/backend-development/skills/architecture-patterns/references/advanced-patterns.md",
+      "sha256": "e1cb31c83b532e579991de277836a1ea5e3d88b2ca30fc8ac16f6047ceca439e",
+      "bytes": 15329,
+      "active_resource": "backend/architecture-patterns/references/advanced-patterns.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/architecture-patterns/references/details.md",
+      "snapshot": "originals/second-import/backend-development/skills/architecture-patterns/references/details.md",
+      "sha256": "a53411600b253b343247db9d86140f3136ee7bd26a67aa8411962bcc1f5ff981",
+      "bytes": 10993,
+      "active_resource": "backend/architecture-patterns/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/cqrs-implementation/SKILL.md",
+      "snapshot": "originals/second-import/backend-development/skills/cqrs-implementation/original-skill.md",
+      "sha256": "03102920d27186143fe6349cda929b50c18733e989bc3f2b491667f26fa9fe34",
+      "bytes": 3447,
+      "name": "cqrs-implementation",
+      "kind": "skill",
+      "canonical": "backend/cqrs-implementation/SKILL.md",
+      "body_sha256": "f686f0bf290fc47eb58eb4659736f9a2415104d4fa1aef140a4e76d6c2d86eeb"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/cqrs-implementation/references/details.md",
+      "snapshot": "originals/second-import/backend-development/skills/cqrs-implementation/references/details.md",
+      "sha256": "ecdf4fe73147a7b6cd0147dfec957f02afb9a7e04ead29534faebe92ddd7b6aa",
+      "bytes": 12656,
+      "active_resource": "backend/cqrs-implementation/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/event-store-design/SKILL.md",
+      "snapshot": "originals/second-import/backend-development/skills/event-store-design/original-skill.md",
+      "sha256": "66bcb9ad668a029829ad5b573457f61ebb987018dc4d60023352fac8cd5d5400",
+      "bytes": 4148,
+      "name": "event-store-design",
+      "kind": "skill",
+      "canonical": "backend/event-store-design/SKILL.md",
+      "body_sha256": "fda3cd6b27a987fd7a3c4cbe00695d3db69ff08658e3cf36c61face2c2331e53"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/event-store-design/references/details.md",
+      "snapshot": "originals/second-import/backend-development/skills/event-store-design/references/details.md",
+      "sha256": "485be108607252e1a7ba2948c5c81c4ee7573c9b5386e7a62f98a5f0f0c1ec51",
+      "bytes": 11449,
+      "active_resource": "backend/event-store-design/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/microservices-patterns/SKILL.md",
+      "snapshot": "originals/second-import/backend-development/skills/microservices-patterns/original-skill.md",
+      "sha256": "c9d34026de5eb5b9f730604d1979df9aaa58dd7fa40c022e071da5ca65d68759",
+      "bytes": 2125,
+      "name": "microservices-patterns",
+      "kind": "skill",
+      "canonical": "backend/microservices-patterns/SKILL.md",
+      "body_sha256": "e43bec571d99a81d9812e934a81b1b412d40373485f589b6a6662c073a088844"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/microservices-patterns/references/details.md",
+      "snapshot": "originals/second-import/backend-development/skills/microservices-patterns/references/details.md",
+      "sha256": "d5317e835b4e72d1bc8cdf3e65c2a54b928f474fcc5a8c967171ed12da695d92",
+      "bytes": 14455,
+      "active_resource": "backend/microservices-patterns/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/projection-patterns/SKILL.md",
+      "snapshot": "originals/second-import/backend-development/skills/projection-patterns/original-skill.md",
+      "sha256": "b05b06b24ea2c6287d4b3957547b263df43c2cc945ea3acdcd58f513a0bda1d5",
+      "bytes": 2666,
+      "name": "projection-patterns",
+      "kind": "skill",
+      "canonical": "backend/projection-patterns/SKILL.md",
+      "body_sha256": "03939f92528c49f926a344df0bab3cc43fc6d654dcba1fce5e8287ac69011788"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/projection-patterns/references/details.md",
+      "snapshot": "originals/second-import/backend-development/skills/projection-patterns/references/details.md",
+      "sha256": "d69c4e5a1f3643d6e603601f84a949d3f724837e358d2310e06e5c846e405d30",
+      "bytes": 14266,
+      "active_resource": "backend/projection-patterns/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/saga-orchestration/SKILL.md",
+      "snapshot": "originals/second-import/backend-development/skills/saga-orchestration/original-skill.md",
+      "sha256": "95372f5b8235053557c135d9d8a6d785d2feb9af1187230a72c8285aa38793f5",
+      "bytes": 6045,
+      "name": "saga-orchestration",
+      "kind": "skill",
+      "canonical": "backend/saga-orchestration/SKILL.md",
+      "body_sha256": "02a42ae1b311e816f19df33ece9559a9f4dc562246a95d0d98fda6d0a0445a60"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/saga-orchestration/references/advanced-patterns.md",
+      "snapshot": "originals/second-import/backend-development/skills/saga-orchestration/references/advanced-patterns.md",
+      "sha256": "0134efa44616be80b4eff1576847a05a1e6742df69eb31446a4e2b5135375b34",
+      "bytes": 15201,
+      "active_resource": "backend/saga-orchestration/references/advanced-patterns.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "backend-development/skills/saga-orchestration/references/details.md",
+      "snapshot": "originals/second-import/backend-development/skills/saga-orchestration/references/details.md",
+      "sha256": "cbf86878798e444c22a8669bbd74d0d5344cf7d129dec9ce5bd21688b29a61ed",
+      "bytes": 10076,
+      "active_resource": "backend/saga-orchestration/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "code-refactoring/.claude-plugin/plugin.json",
+      "snapshot": "originals/second-import/code-refactoring/.claude-plugin/plugin.json",
+      "sha256": "2cf4734925da8b89498fe1f8d59d8238fa9110d742b775316a1f8587ac22d6f4",
+      "bytes": 269
+    },
+    {
+      "batch": "second-import",
+      "original_path": "code-refactoring/agents/code-reviewer.md",
+      "snapshot": "originals/second-import/code-refactoring/agents/code-reviewer.md",
+      "sha256": "d73ca30b44a0355a270ba2a9008826b00b9b3a18ad180def0633900e7192d0dd",
+      "bytes": 8432,
+      "name": "code-refactoring-code-reviewer",
+      "kind": "agent",
+      "canonical": "engineering/code-refactoring-code-reviewer/SKILL.md",
+      "body_sha256": "29559c1c369b708b3a7f6bbbd3620560dfcc92515030a1677f3bc9c65b71aeac"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "code-refactoring/agents/legacy-modernizer.md",
+      "snapshot": "originals/second-import/code-refactoring/agents/legacy-modernizer.md",
+      "sha256": "99e479e746b011d8d9a7fd8b7443c8e39b55cc7947b649f36d9293030efbf3a6",
+      "bytes": 1242,
+      "name": "code-refactoring-legacy-modernizer",
+      "kind": "agent",
+      "canonical": "engineering/code-refactoring-legacy-modernizer/SKILL.md",
+      "body_sha256": "2d259d3f6c9ecf4d69e675a9492b3561075797821bdc6c980940531bdab50e72"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "code-refactoring/commands/context-restore.md",
+      "snapshot": "originals/second-import/code-refactoring/commands/context-restore.md",
+      "sha256": "184a7f9d2601ac066e2acd3b92c5b9638ba85d92b913a928a44e41fcad90afeb",
+      "bytes": 5521,
+      "name": "context-restore",
+      "kind": "command",
+      "canonical": "agents/context-restore/SKILL.md",
+      "body_sha256": "5204dcddbacd986bdaa3942987c3f5c68d83351a357bf28b8b51b09b8b399dcf"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "code-refactoring/commands/refactor-clean.md",
+      "snapshot": "originals/second-import/code-refactoring/commands/refactor-clean.md",
+      "sha256": "5a2b4965abd44895f5d19da185ab6b39db1db3d65ad532f9fd655b4dcd535937",
+      "bytes": 23266,
+      "name": "refactor-clean",
+      "kind": "command",
+      "canonical": "engineering/refactor-clean/SKILL.md",
+      "body_sha256": "4dba5e9c040e4a8a786c84883901fee875a57d5783fc41342b47dfa2dff408f8"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "code-refactoring/commands/tech-debt.md",
+      "snapshot": "originals/second-import/code-refactoring/commands/tech-debt.md",
+      "sha256": "5fbff524acf9d98fa824cd6a331385b7ddea74e12eb2912958dd17cd345c67c4",
+      "bytes": 9864,
+      "name": "tech-debt",
+      "kind": "command",
+      "canonical": "engineering/tech-debt/SKILL.md",
+      "body_sha256": "937923a4f140b7c013ded093b4f87ffe47cf14a37a8b3f176466724a82d2ad6e"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-design/.claude-plugin/plugin.json",
+      "snapshot": "originals/second-import/database-design/.claude-plugin/plugin.json",
+      "sha256": "ca239b2d2a6ff519913e2c9b441a1819824587f505696c16cb97fadff68cfc7a",
+      "bytes": 257
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-design/.codex-plugin/plugin.json",
+      "snapshot": "originals/second-import/database-design/.codex-plugin/plugin.json",
+      "sha256": "e61a2259973f254177f58765e8b8b106998c4a29fca32af2b5d1eba6de3b6955",
+      "bytes": 667
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-design/agents/database-architect.md",
+      "snapshot": "originals/second-import/database-design/agents/database-architect.md",
+      "sha256": "cada2f67ad4c0e6788007a8d0cef92ba333d88820cb0845e415c7a5d03151f4b",
+      "bytes": 16779,
+      "name": "database-design-database-architect",
+      "kind": "agent",
+      "canonical": "database/database-design-database-architect/SKILL.md",
+      "body_sha256": "e49aa5f8d1ea7144f9e16368f2c688ddc0a525fa73dcedb7d83f74419ab7bde0"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-design/agents/sql-pro.md",
+      "snapshot": "originals/second-import/database-design/agents/sql-pro.md",
+      "sha256": "6eb2fdb139b7971ae98b604ad7d22f6710f904ca74cf00e8961dbe81159513d7",
+      "bytes": 7171,
+      "name": "sql-pro",
+      "kind": "agent",
+      "canonical": "database/sql-pro/SKILL.md",
+      "body_sha256": "012302d488f44d899e2327da92deb582b287008a78a4dcd9f63f2db07b8285a9"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-design/skills/postgresql-table-design/SKILL.md",
+      "snapshot": "originals/second-import/database-design/skills/postgresql-table-design/original-skill.md",
+      "sha256": "1e27b0fac6d88a710cd925b831608ca202c40ade4f4e285a8e027dcf2f9a44ea",
+      "bytes": 7912,
+      "name": "postgresql-table-design",
+      "kind": "skill",
+      "canonical": "database/postgresql-table-design/SKILL.md",
+      "body_sha256": "d89f713f1603e3c28f343273eee96320fe89b09bd04531cf93b07396fca37b9e"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-design/skills/postgresql-table-design/references/details.md",
+      "snapshot": "originals/second-import/database-design/skills/postgresql-table-design/references/details.md",
+      "sha256": "fac8b43c75ed30d95f2ab12886021f26bb8b03f8fed0cea2929b8de18953023a",
+      "bytes": 12094,
+      "active_resource": "database/postgresql-table-design/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-migrations/.claude-plugin/plugin.json",
+      "snapshot": "originals/second-import/database-migrations/.claude-plugin/plugin.json",
+      "sha256": "7eba253fc802c343d64785afba25a6712b4b0544ff25b34196e9a9d9f4211cdc",
+      "bytes": 265
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-migrations/agents/database-admin.md",
+      "snapshot": "originals/second-import/database-migrations/agents/database-admin.md",
+      "sha256": "b376aa6ce872d9e63d9b75668916a00b8488c7ad5cbe0af2cbb63cf59e690860",
+      "bytes": 9760,
+      "name": "database-admin",
+      "kind": "agent",
+      "canonical": "database/database-admin/SKILL.md",
+      "body_sha256": "6c92159b416cf9dc45dea8a0ef51f5ccb1060bab1efcafb330fcd7b5a352511c"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-migrations/agents/database-optimizer.md",
+      "snapshot": "originals/second-import/database-migrations/agents/database-optimizer.md",
+      "sha256": "fc3afa4b622ec767278e31ebd8fc2dfed4ba87cf3226683813ca52666d9f1855",
+      "bytes": 10022,
+      "name": "database-migrations-database-optimizer",
+      "kind": "agent",
+      "canonical": "database/database-migrations-database-optimizer/SKILL.md",
+      "body_sha256": "dc6510d35300d71662899a0844967c454b090b5a539fb186b4b8663240b6feb3"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-migrations/commands/migration-observability.md",
+      "snapshot": "originals/second-import/database-migrations/commands/migration-observability.md",
+      "sha256": "e6e931784a8ed8f81e430efbb2f56b55a4fa828216ade5a7b2e6c4de0440e924",
+      "bytes": 12672,
+      "name": "migration-observability",
+      "kind": "command",
+      "canonical": "database/migration-observability/SKILL.md",
+      "body_sha256": "5500c87ae975208549cd65d56d05914604a0a885215adef4d5b22699a228b00d"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "database-migrations/commands/sql-migrations.md",
+      "snapshot": "originals/second-import/database-migrations/commands/sql-migrations.md",
+      "sha256": "96f64ab67f5001239cad6394ac65c0efb57aff581076e6bc3ab6cb94f1b83024",
+      "bytes": 14453,
+      "name": "sql-migrations",
+      "kind": "command",
+      "canonical": "database/sql-migrations/SKILL.md",
+      "body_sha256": "8e75128968226cb5051fc1b7b676616038c756617b5d56eb85a20e0dec39befb"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/README.md",
+      "snapshot": "originals/second-import/ui-design/README.md",
+      "sha256": "dba53294a454150467548528a52729bcc5d1e312e0cb1350491e5180b2b7273b",
+      "bytes": 4127
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/.claude-plugin/plugin.json",
+      "snapshot": "originals/second-import/ui-design/.claude-plugin/plugin.json",
+      "sha256": "d3164217a60d49d4d97bd7ec85df3a3bc3182da93babe03201e13bf3b83b1fc3",
+      "bytes": 320
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/.codex-plugin/plugin.json",
+      "snapshot": "originals/second-import/ui-design/.codex-plugin/plugin.json",
+      "sha256": "dbd305d7cdfa5a34fcfe2a1e22ebf28391207fe483ac7281f2b371079b5f25b6",
+      "bytes": 981
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/agents/accessibility-expert.md",
+      "snapshot": "originals/second-import/ui-design/agents/accessibility-expert.md",
+      "sha256": "b3aa7a39667be536a9624108635d0f04858cf069b932dfdcf7c7719f42514267",
+      "bytes": 6862,
+      "name": "accessibility-expert",
+      "kind": "agent",
+      "canonical": "frontend/accessibility/accessibility-expert/SKILL.md",
+      "body_sha256": "fc99494ad8545460bf947149149f739b29508f49f16166354af5111974e8a039"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/agents/design-system-architect.md",
+      "snapshot": "originals/second-import/ui-design/agents/design-system-architect.md",
+      "sha256": "7bcf449dc55d13abe70461eb39b3765311af45760dc07967ca198edadcb0e612",
+      "bytes": 6862,
+      "name": "design-system-architect",
+      "kind": "agent",
+      "canonical": "frontend/design-systems/design-system-architect/SKILL.md",
+      "body_sha256": "b6027757dc0ded21448599b2d502e516daeea9c064d02720c574ac2d68d78d79"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/agents/ui-designer.md",
+      "snapshot": "originals/second-import/ui-design/agents/ui-designer.md",
+      "sha256": "4cc5e5f7ac82324cfc2b7f4099528ad7f80ba5d8d29750b34eea3e6e3db49a9c",
+      "bytes": 6302,
+      "name": "ui-designer",
+      "kind": "agent",
+      "canonical": "frontend/components/ui-designer/SKILL.md",
+      "body_sha256": "fbf73f4c7720cd0e0357a26f8e2208c8cbc88ce6c7ba3c7b2f1fac326ff73174"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/commands/accessibility-audit.md",
+      "snapshot": "originals/second-import/ui-design/commands/accessibility-audit.md",
+      "sha256": "42e2c75de425af140676de4855d4eb99a29865624937e49af8e7a10ded541995",
+      "bytes": 10763,
+      "name": "accessibility-audit",
+      "kind": "command",
+      "canonical": "frontend/accessibility/accessibility-audit/SKILL.md",
+      "body_sha256": "0a75ef575bdedca9ddb37237dc15d2903868597a97d5f7482f11ebd7c9dc53b5"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/commands/create-component.md",
+      "snapshot": "originals/second-import/ui-design/commands/create-component.md",
+      "sha256": "62fa43d304fce16d3a5f5104e56e777ea3a34e2feb4f5476f82cc836eae78793",
+      "bytes": 10193,
+      "name": "create-component",
+      "kind": "command",
+      "canonical": "frontend/components/create-component/SKILL.md",
+      "body_sha256": "c088e6ce1232e30860dd16c7528a94ba628e0d2052b91502052f693c1ff2ee83"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/commands/design-review.md",
+      "snapshot": "originals/second-import/ui-design/commands/design-review.md",
+      "sha256": "defa0f093b4339ee5c905c8809ebdcaa2b1ab0d8403d8c5e7c02260b470c2505",
+      "bytes": 7019,
+      "name": "design-review",
+      "kind": "command",
+      "canonical": "frontend/review/design-review/SKILL.md",
+      "body_sha256": "e270be86988d20062a7618f341168c015466415f03eb91e242e37db45b85f761"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/commands/design-system-setup.md",
+      "snapshot": "originals/second-import/ui-design/commands/design-system-setup.md",
+      "sha256": "75f2c7123453d6ad02aaee8434b0e64e7683d972ee5445848e1b450ef7a9c24d",
+      "bytes": 13962,
+      "name": "design-system-setup",
+      "kind": "command",
+      "canonical": "frontend/design-systems/design-system-setup/SKILL.md",
+      "body_sha256": "993c2d073452c5bbfab064753b7b511d6fa0ce420ed5194f1924899a25580532"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/accessibility-compliance/SKILL.md",
+      "snapshot": "originals/second-import/ui-design/skills/accessibility-compliance/original-skill.md",
+      "sha256": "3ad0fbcb0a69b69e70652641a8eeb59f168cceb4bc9d9b9c8b47154072b9e1a2",
+      "bytes": 2402,
+      "name": "accessibility-compliance",
+      "kind": "skill",
+      "canonical": "frontend/accessibility/accessibility-compliance/SKILL.md",
+      "body_sha256": "37d048b9e08b08ccc53a474b25d1ce7b4cd7f3ce044bcca0ad0015ddb392b478"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/accessibility-compliance/references/aria-patterns.md",
+      "snapshot": "originals/second-import/ui-design/skills/accessibility-compliance/references/aria-patterns.md",
+      "sha256": "72e2f2cb2d168bb5d82260b703be863a6371284ba3cf4ac22da28a309728c14a",
+      "bytes": 13204,
+      "active_resource": "frontend/accessibility/accessibility-compliance/references/aria-patterns.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/accessibility-compliance/references/details.md",
+      "snapshot": "originals/second-import/ui-design/skills/accessibility-compliance/references/details.md",
+      "sha256": "1789504a4268186e62126059da48d8deb95d36631fac6263b368e715df2ca2fb",
+      "bytes": 9668,
+      "active_resource": "frontend/accessibility/accessibility-compliance/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/accessibility-compliance/references/mobile-accessibility.md",
+      "snapshot": "originals/second-import/ui-design/skills/accessibility-compliance/references/mobile-accessibility.md",
+      "sha256": "b293d6c2b0a44c7f6ebb4848f7fe09d33713e91bbb1b97d88a561e7360b90201",
+      "bytes": 13077,
+      "active_resource": "frontend/accessibility/accessibility-compliance/references/mobile-accessibility.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/accessibility-compliance/references/wcag-guidelines.md",
+      "snapshot": "originals/second-import/ui-design/skills/accessibility-compliance/references/wcag-guidelines.md",
+      "sha256": "09bf683d0e15c7100bd9d1bc4a5e7bf019c580fd447bceccdd0ee30d4ccc01ce",
+      "bytes": 14206,
+      "active_resource": "frontend/accessibility/accessibility-compliance/references/wcag-guidelines.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/design-system-patterns/SKILL.md",
+      "snapshot": "originals/second-import/ui-design/skills/design-system-patterns/original-skill.md",
+      "sha256": "618355f0e6c6ba8ca5d231035c9da18302fe6894aedce565743e9181b6c928ee",
+      "bytes": 4003,
+      "name": "design-system-patterns",
+      "kind": "skill",
+      "canonical": "frontend/design-systems/design-system-patterns/SKILL.md",
+      "body_sha256": "c5ec41fec1bb77c5f2c53b25020774800f8e05732e859202e05bb348699a5a6d"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/design-system-patterns/references/component-architecture.md",
+      "snapshot": "originals/second-import/ui-design/skills/design-system-patterns/references/component-architecture.md",
+      "sha256": "84dc16ed581c1ad72e34b93ba84bcfa9223d30f9c42eb7e36654bbbe8daefc61",
+      "bytes": 15293,
+      "active_resource": "frontend/design-systems/design-system-patterns/references/component-architecture.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/design-system-patterns/references/design-tokens.md",
+      "snapshot": "originals/second-import/ui-design/skills/design-system-patterns/references/design-tokens.md",
+      "sha256": "44bd27e26f072a3facd6cd841140d403805106c9c5d5e39fc33bf6ffccf8af64",
+      "bytes": 11269,
+      "active_resource": "frontend/design-systems/design-system-patterns/references/design-tokens.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/design-system-patterns/references/details.md",
+      "snapshot": "originals/second-import/ui-design/skills/design-system-patterns/references/details.md",
+      "sha256": "1f1792e8b20c24c2be2acd46e7da85928578d108006594f3ae35d93f9108ff6d",
+      "bytes": 5566,
+      "active_resource": "frontend/design-systems/design-system-patterns/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/design-system-patterns/references/theming-architecture.md",
+      "snapshot": "originals/second-import/ui-design/skills/design-system-patterns/references/theming-architecture.md",
+      "sha256": "24c9efec7c809a4d6797e6a11bc66ce08c5d708211caac14266ce5754c83cc75",
+      "bytes": 12365,
+      "active_resource": "frontend/design-systems/design-system-patterns/references/theming-architecture.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/interaction-design/SKILL.md",
+      "snapshot": "originals/second-import/ui-design/skills/interaction-design/original-skill.md",
+      "sha256": "87f2765ed1deeef3f1c06f9e4338ff103c391c6c4adcdffc885f3516b7c34ff2",
+      "bytes": 7572,
+      "name": "interaction-design",
+      "kind": "skill",
+      "canonical": "frontend/components/interaction-design/SKILL.md",
+      "body_sha256": "dcb129b86b92028a34050a4d4dcebc572743f21114e2eaaa637733003b7e0d06"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/interaction-design/references/animation-libraries.md",
+      "snapshot": "originals/second-import/ui-design/skills/interaction-design/references/animation-libraries.md",
+      "sha256": "92da251d881a6a0647f09b83c9cf8cbdfb5d408d54e1098097bb0eda336e6d0f",
+      "bytes": 10919,
+      "active_resource": "frontend/components/interaction-design/references/animation-libraries.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/interaction-design/references/microinteraction-patterns.md",
+      "snapshot": "originals/second-import/ui-design/skills/interaction-design/references/microinteraction-patterns.md",
+      "sha256": "c276b03468bacacf7a7d8d95c70114d9724854ac2e084ad63f0b6e1ef00a948a",
+      "bytes": 13510,
+      "active_resource": "frontend/components/interaction-design/references/microinteraction-patterns.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/interaction-design/references/scroll-animations.md",
+      "snapshot": "originals/second-import/ui-design/skills/interaction-design/references/scroll-animations.md",
+      "sha256": "34f32ef74c4f44bf57a721f95cd523b63dd1d02711f16ccb8472d1d7a4f78a35",
+      "bytes": 9345,
+      "active_resource": "frontend/components/interaction-design/references/scroll-animations.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/responsive-design/SKILL.md",
+      "snapshot": "originals/second-import/ui-design/skills/responsive-design/original-skill.md",
+      "sha256": "c8bd56f8fc0f122c4ff392b02617f0e6bb4a353b2d0189235c6ee77cdcfe8690",
+      "bytes": 1989,
+      "name": "responsive-design",
+      "kind": "skill",
+      "canonical": "frontend/responsive/responsive-design/SKILL.md",
+      "body_sha256": "8469863d8bd329c5197b1b742ab68f1c2c4dce71289aa5cecc986055aa4b0772"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/responsive-design/references/breakpoint-strategies.md",
+      "snapshot": "originals/second-import/ui-design/skills/responsive-design/references/breakpoint-strategies.md",
+      "sha256": "d086c14641856aacdd38fd8aebf2988fb0055b7ed1b8773feb3104e69c7d1506",
+      "bytes": 10658,
+      "active_resource": "frontend/responsive/responsive-design/references/breakpoint-strategies.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/responsive-design/references/container-queries.md",
+      "snapshot": "originals/second-import/ui-design/skills/responsive-design/references/container-queries.md",
+      "sha256": "67b1697186a531751ec2aa364506919b9ae44680744603613c511d5132eb5a24",
+      "bytes": 9913,
+      "active_resource": "frontend/responsive/responsive-design/references/container-queries.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/responsive-design/references/details.md",
+      "snapshot": "originals/second-import/ui-design/skills/responsive-design/references/details.md",
+      "sha256": "6b8d84250249319719fc5d4a545628267edd16b8763c107536cf7341d37740b4",
+      "bytes": 10667,
+      "active_resource": "frontend/responsive/responsive-design/references/details.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/responsive-design/references/fluid-layouts.md",
+      "snapshot": "originals/second-import/ui-design/skills/responsive-design/references/fluid-layouts.md",
+      "sha256": "d67ad19e57b015101da5d4c4a9208015909f60b89db5b7922d0bf9ca17673860",
+      "bytes": 10731,
+      "active_resource": "frontend/responsive/responsive-design/references/fluid-layouts.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/visual-design-foundations/SKILL.md",
+      "snapshot": "originals/second-import/ui-design/skills/visual-design-foundations/original-skill.md",
+      "sha256": "0c6970d14f5d5df55c63d1be995205d140489e2d0c39896657fabee6f6a5df84",
+      "bytes": 7218,
+      "name": "visual-design-foundations",
+      "kind": "skill",
+      "canonical": "frontend/design-systems/visual-design-foundations/SKILL.md",
+      "body_sha256": "2e793932c7fd65cb35f22761130b6c9056c0732cbdb455d586fcad23d02fd9ef"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/visual-design-foundations/references/color-systems.md",
+      "snapshot": "originals/second-import/ui-design/skills/visual-design-foundations/references/color-systems.md",
+      "sha256": "9ba288fbead974f0b6424ca04acee68e6ede07be62c5121142084e6afa82f871",
+      "bytes": 10744,
+      "active_resource": "frontend/design-systems/visual-design-foundations/references/color-systems.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/visual-design-foundations/references/spacing-iconography.md",
+      "snapshot": "originals/second-import/ui-design/skills/visual-design-foundations/references/spacing-iconography.md",
+      "sha256": "04835fad7ba356d9d10b46a9f6911a6b535095964a238f39f100b0dd1c4d90b5",
+      "bytes": 10691,
+      "active_resource": "frontend/design-systems/visual-design-foundations/references/spacing-iconography.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/visual-design-foundations/references/typography-systems.md",
+      "snapshot": "originals/second-import/ui-design/skills/visual-design-foundations/references/typography-systems.md",
+      "sha256": "93be8eeb9c2a5e26205f657ea13a34bb832ba686c0458ee3db2877e6b4b066fc",
+      "bytes": 8895,
+      "active_resource": "frontend/design-systems/visual-design-foundations/references/typography-systems.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/web-component-design/SKILL.md",
+      "snapshot": "originals/second-import/ui-design/skills/web-component-design/original-skill.md",
+      "sha256": "a7978f5e9e3fa7129cf3eb8d607cedece4e207011321893d9a3c5dd92cf32603",
+      "bytes": 7475,
+      "name": "web-component-design",
+      "kind": "skill",
+      "canonical": "frontend/components/web-component-design/SKILL.md",
+      "body_sha256": "76ac30fce28f4df72f5a58284abffd9667388b330f7bc80d07cae8d7f3753aa3"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/web-component-design/references/accessibility-patterns.md",
+      "snapshot": "originals/second-import/ui-design/skills/web-component-design/references/accessibility-patterns.md",
+      "sha256": "cecf82569bb7cbe89c96bd1d00ac0bee91d121515f19908a26e15634d13d3e3b",
+      "bytes": 15848,
+      "active_resource": "frontend/components/web-component-design/references/accessibility-patterns.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/web-component-design/references/component-patterns.md",
+      "snapshot": "originals/second-import/ui-design/skills/web-component-design/references/component-patterns.md",
+      "sha256": "a258c10793aae4b2628ff291fc7557d5605c73821d4946b98b923d6ef014c787",
+      "bytes": 9730,
+      "active_resource": "frontend/components/web-component-design/references/component-patterns.md"
+    },
+    {
+      "batch": "second-import",
+      "original_path": "ui-design/skills/web-component-design/references/css-styling-approaches.md",
+      "snapshot": "originals/second-import/ui-design/skills/web-component-design/references/css-styling-approaches.md",
+      "sha256": "fe34ea85c3c3116982783c9148217c5642a15fcb73207458326ed91de05e592e",
+      "bytes": 12783,
+      "active_resource": "frontend/components/web-component-design/references/css-styling-approaches.md"
+    }
+  ],
+  "excluded_specialties": [
+    {
+      "name": "backend-development-graphql-architect",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "bazel-build-optimization",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "mobile-android-design",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "mobile-ios-design",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "nx-workspace-patterns",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "python-development-django-pro",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "react-native-design",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "security-blockchain-security-auditor",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "temporal-python-pro",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "temporal-python-testing",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "turborepo-caching",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    },
+    {
+      "name": "workflow-orchestration-patterns",
+      "reason": "Excluded by user: outside the shared Python/FastAPI, Next/React, PostgreSQL/Supabase stack."
+    }
+  ]
+}

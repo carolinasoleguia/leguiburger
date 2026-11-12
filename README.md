@@ -8,6 +8,7 @@ LeguiBurger organiza marcas, sucursales, catálogo, equipo, producción y operac
 - `frontend/`: aplicación Vue.
 - `database/migrations/`: migraciones incrementales versionadas.
 - `cmd/migrate/`: ensayo, aplicación y verificación de migraciones.
+- `skills/`: biblioteca de Al Toque y `unslop`, con [adaptación a LeguiBurger](skills/leguiburger-context.md).
 
 ## Desarrollo local
 
