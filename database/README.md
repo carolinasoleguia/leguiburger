@@ -77,3 +77,5 @@ go test ./internal/operations -run TestDatabaseIntegration -count=1 -v -args -db
 La segunda prueba es explícita y apunta únicamente al proyecto LeguiBurger indicado en el test. Hace llamadas HTTP al handler dentro de una transacción externa; las transacciones de los endpoints usan savepoints y al finalizar se revierte todo. No genera pedidos, ventas ni cobros reales persistentes.
 
 La integración con un proveedor de pago requiere validar firmas/notificaciones y consultar el pago al proveedor. La tabla de webhooks está preparada para deduplicar ingresos; una notificación por sí sola no acredita dinero ni habilita una membresía.
+
+La migración `202611120003_shopper_accounts` agrega cuentas privadas de compradores globales, sesiones/acciones de correo, vínculos de compras, preferencias auditadas y cupones por marca/sucursal con usos. No agrega un rol a usuarios/colaboradores ni importa datos comerciales. Ver [cuentas de compradores](../docs/cuentas-compradores.md).

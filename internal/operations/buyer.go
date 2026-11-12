@@ -6,9 +6,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"leguiburger/internal/buyeraccess"
 	"leguiburger/internal/orderstream"
+	"leguiburger/internal/shopperidentity"
 	"math/big"
 	"net/http"
 	"net/mail"
@@ -21,6 +23,9 @@ type BuyerOptions struct {
 	OnlinePaymentAvailable func(context.Context, string) (bool, error)
 }
 type BuyerBasket struct {
+	CouponCode       string             `json:"coupon_code,omitempty"`
+	ShopperID        string             `json:"-"`
+	CouponLock       bool               `json:"-"`
 	Items            []OrderItemRequest `json:"items"`
 	Fulfillment      string             `json:"fulfillment"`
 	ShippingMethodID *string            `json:"shipping_method_id,omitempty"`
@@ -50,13 +55,16 @@ type BuyerLine struct {
 	Note      string       `json:"note"`
 }
 type BuyerQuote struct {
-	Items        []BuyerLine `json:"items"`
-	Subtotal     string      `json:"subtotal"`
-	Shipping     string      `json:"shipping"`
-	ShippingName string      `json:"shipping_name"`
-	Total        string      `json:"total"`
-	Currency     string      `json:"currency"`
-	Digest       string      `json:"digest"`
+	Discount      string      `json:"discount"`
+	CouponID      string      `json:"-"`
+	CouponPercent int         `json:"-"`
+	Items         []BuyerLine `json:"items"`
+	Subtotal      string      `json:"subtotal"`
+	Shipping      string      `json:"shipping"`
+	ShippingName  string      `json:"shipping_name"`
+	Total         string      `json:"total"`
+	Currency      string      `json:"currency"`
+	Digest        string      `json:"digest"`
 }
 
 func buyerProblem(e error) error {
@@ -96,6 +104,11 @@ func (h *Handler) buyerWrap(fn func(*http.Request) (Result, error)) http.Handler
 	}
 }
 func validateBuyerBasket(input *BuyerBasket) error {
+	input.CouponCode = strings.ToUpper(strings.TrimSpace(input.CouponCode))
+	if len(input.CouponCode) > 32 {
+		return badInput("Cupón inválido")
+	}
+
 	if input.Fulfillment == "" {
 		input.Fulfillment = "pickup"
 	}
@@ -141,6 +154,44 @@ func buyerLocation(tx *gorm.DB, id string) (Scope, error) {
 }
 func quoteBuyer(tx *gorm.DB, scope Scope, input BuyerBasket) (BuyerQuote, error) {
 	quote := BuyerQuote{Currency: "ARS", Items: []BuyerLine{}, Shipping: "0.00"}
+	var coupon struct {
+		ID      string
+		Percent int
+		Minimum string
+	}
+	if input.CouponCode != "" {
+		if input.ShopperID == "" {
+			return quote, unauthorized()
+		}
+		lock := " FOR SHARE OF c"
+		if input.CouponLock {
+			lock = " FOR UPDATE OF c"
+		}
+		q := tx.Raw(`SELECT c.id::text,c.percent,c.minimum::text FROM legui_private.shopper_coupons c WHERE c.code=? AND c.brand_id=? AND (c.tenant_id IS NULL OR c.tenant_id=?) AND (c.shopper_id IS NULL OR c.shopper_id=?) AND c.active AND c.expires_at>clock_timestamp()`+lock, input.CouponCode, scope.BrandID, scope.TenantID, input.ShopperID).Scan(&coupon)
+		if q.Error != nil {
+			return quote, q.Error
+		}
+		if q.RowsAffected != 1 {
+			return quote, conflict("El cupón no está disponible para tu cuenta y este local")
+		}
+		var used, own int64
+		if e := tx.Raw(`SELECT count(*) FROM legui_private.shopper_coupon_uses WHERE coupon_id=?`, coupon.ID).Scan(&used).Error; e != nil {
+			return quote, e
+		}
+		if e := tx.Raw(`SELECT count(*) FROM legui_private.shopper_coupon_uses WHERE coupon_id=? AND shopper_id=?`, coupon.ID, input.ShopperID).Scan(&own).Error; e != nil {
+			return quote, e
+		}
+		var max int64
+		if e := tx.Raw(`SELECT max_uses FROM legui_private.shopper_coupons WHERE id=?`, coupon.ID).Scan(&max).Error; e != nil {
+			return quote, e
+		}
+		if own > 0 || used >= max {
+			return quote, conflict("El cupón ya fue utilizado o agotó sus usos")
+		}
+		quote.CouponID = coupon.ID
+		quote.CouponPercent = coupon.Percent
+	}
+	discounts := new(big.Rat)
 	subtotal := new(big.Rat)
 	usedProducts, usedExtras := map[string]int64{}, map[string]int64{}
 	for _, item := range input.Items {
@@ -160,6 +211,11 @@ func quoteBuyer(tx *gorm.DB, scope Scope, input BuyerBasket) (BuyerQuote, error)
 		unit, e := priceRat(p.Price)
 		if e != nil {
 			return quote, e
+		}
+		if coupon.Percent > 0 {
+			discount, _ := priceRat(new(big.Rat).Mul(unit, big.NewRat(int64(coupon.Percent), 100)).FloatString(2))
+			unit.Sub(unit, discount)
+			discounts.Add(discounts, new(big.Rat).Mul(discount, big.NewRat(int64(item.Quantity), 1)))
 		}
 		line := BuyerLine{ProductID: item.ProductID, Name: p.Name, Quantity: item.Quantity, Extras: []BuyerExtra{}, Note: strings.TrimSpace(item.Note)}
 		for _, extra := range item.Extras {
@@ -207,7 +263,21 @@ func quoteBuyer(tx *gorm.DB, scope Scope, input BuyerBasket) (BuyerQuote, error)
 		quote.Shipping = shipping.FloatString(2)
 		quote.ShippingName = row.Name
 	}
-	quote.Subtotal = subtotal.FloatString(2)
+	if coupon.ID != "" && discounts.Sign() <= 0 {
+		return quote, badInput("El cupón no genera descuento en estos productos")
+	}
+	quote.Discount = discounts.FloatString(2)
+	quote.Subtotal = new(big.Rat).Add(subtotal, discounts).FloatString(2)
+	if coupon.ID != "" {
+		minimum, e := priceRat(coupon.Minimum)
+		if e != nil {
+			return quote, e
+		}
+		gross, _ := priceRat(quote.Subtotal)
+		if gross.Cmp(minimum) < 0 {
+			return quote, conflict("El carrito no alcanza el mínimo del cupón")
+		}
+	}
 	quote.Total = new(big.Rat).Add(subtotal, shipping).FloatString(2)
 	raw, e := canonicalJSON(struct {
 		Tenant string
@@ -236,6 +306,9 @@ func (h *Handler) buyerQuote(r *http.Request) (Result, error) {
 	if e = buyeraccess.Rate(r.Context(), h.repo.DB, r, "quote:"+id, 240); e != nil {
 		return Result{}, e
 	}
+	if profile, err := shopperidentity.Current(r.Context(), h.repo.DB, r); err == nil {
+		input.ShopperID = profile.ID
+	}
 	var quote BuyerQuote
 	e = h.repo.DB.WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
 		scope, e := buyerLocation(tx, id)
@@ -252,7 +325,7 @@ func (h *Handler) buyerQuote(r *http.Request) (Result, error) {
 	return Result{Data: data}, nil
 }
 func (h *Handler) buyerReceiptData(r *http.Request, db *gorm.DB, grant buyeraccess.Grant) (json.RawMessage, error) {
-	data, e := jsonQuery(db, `SELECT jsonb_build_object('id',o.id,'status',s.code,'created_at',o.created_at,'currency',o.currency,'total_due',o.total_due::text,'total_paid',o.total_paid::text,'shipping',o.shipping_cost::text,'fulfillment',o.fulfillment,'payment_method',o.buyer_payment_method,'payment',(SELECT jsonb_build_object('state',x.state,'amount',x.amount::text,'checkout_url',CASE WHEN x.state='created' AND x.expires_at>clock_timestamp() AND o.total_due>o.total_paid AND s.code NOT IN ('pending','canceled','rejected') THEN x.checkout_url ELSE NULL END) FROM legui_private.mp_checkouts x WHERE x.order_id=o.id AND x.tenant_id=o.tenant_id AND x.purpose='order' AND x.state IN ('prepared','submitting','created','review') AND (x.expires_at>clock_timestamp() OR x.state IN ('submitting','review')) ORDER BY x.created_at DESC LIMIT 1),'business',b.name,'location',coalesce(nullif(t.display_name,''),t.subdomain),'tenant_id',t.id,'items',coalesce((SELECT jsonb_agg(jsonb_build_object('name',d.product_name,'quantity',d.quantity,'unit_price',d.final_price_unit::text,'note',d.preparation_note,'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('name',x.extra_name,'quantity',x.quantity,'price',x.extra_price_charged::text)) FROM public.order_detail_extras x WHERE x.order_detail_id=d.id),'[]'::jsonb))) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb))::text payload FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id JOIN public.tenants t ON t.id=o.tenant_id JOIN public.brands b ON b.id=t.brand_id WHERE o.id=? AND o.tenant_id=?`, grant.OrderID, grant.TenantID)
+	data, e := jsonQuery(db, `SELECT jsonb_build_object('id',o.id,'status',s.code,'created_at',o.created_at,'currency',o.currency,'subtotal',o.subtotal::text,'discount',o.total_discounts::text,'total_due',o.total_due::text,'total_paid',o.total_paid::text,'shipping',o.shipping_cost::text,'fulfillment',o.fulfillment,'payment_method',o.buyer_payment_method,'payment',(SELECT jsonb_build_object('state',x.state,'amount',x.amount::text,'checkout_url',CASE WHEN x.state='created' AND x.expires_at>clock_timestamp() AND o.total_due>o.total_paid AND s.code NOT IN ('pending','canceled','rejected') THEN x.checkout_url ELSE NULL END) FROM legui_private.mp_checkouts x WHERE x.order_id=o.id AND x.tenant_id=o.tenant_id AND x.purpose='order' AND x.state IN ('prepared','submitting','created','review') AND (x.expires_at>clock_timestamp() OR x.state IN ('submitting','review')) ORDER BY x.created_at DESC LIMIT 1),'business',b.name,'location',coalesce(nullif(t.display_name,''),t.subdomain),'tenant_id',t.id,'items',coalesce((SELECT jsonb_agg(jsonb_build_object('name',d.product_name,'quantity',d.quantity,'unit_price',d.final_price_unit::text,'note',d.preparation_note,'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('name',x.extra_name,'quantity',x.quantity,'price',x.extra_price_charged::text)) FROM public.order_detail_extras x WHERE x.order_detail_id=d.id),'[]'::jsonb))) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb))::text payload FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id JOIN public.tenants t ON t.id=o.tenant_id JOIN public.brands b ON b.id=t.brand_id WHERE o.id=? AND o.tenant_id=?`, grant.OrderID, grant.TenantID)
 	if e != nil {
 		return nil, e
 	}
@@ -263,12 +336,16 @@ func (h *Handler) buyerReceiptData(r *http.Request, db *gorm.DB, grant buyeracce
 		online, _ = h.buyer.OnlinePaymentAvailable(r.Context(), grant.TenantID)
 	}
 	out["online_available"] = online
-	out["tracking_path"] = "/order#token=" + buyeraccess.TrackingToken(buyeraccess.Token(r))
+	if r.Header.Get("X-Shopper-Order") == "" {
+		out["tracking_path"] = "/order#token=" + buyeraccess.TrackingToken(buyeraccess.Token(r))
+	} else {
+		out["account_payment_key"] = uuid.NewSHA1(uuid.NameSpaceOID, []byte("account-payment:"+grant.OrderID)).String()
+	}
 	return json.Marshal(out)
 }
 func (h *Handler) buyerReceipt(r *http.Request) (Result, error) {
-	grant, e := buyeraccess.Resolve(r.Context(), h.repo.DB, buyeraccess.Token(r), false)
-	if e == nil && r.Header.Get("Authorization") == "" && grant.TenantID != r.Header.Get("X-Buyer-Tenant") {
+	grant, e := buyeraccess.ResolveRequest(r.Context(), h.repo.DB, r, false)
+	if e == nil && r.Header.Get("Authorization") == "" && r.Header.Get("X-Shopper-Order") == "" && grant.TenantID != r.Header.Get("X-Buyer-Tenant") {
 		return Result{}, notFound()
 	}
 	if e != nil {
@@ -326,6 +403,10 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 	if e = buyeraccess.Rate(r.Context(), h.repo.DB, r, "order:"+id, 30); e != nil {
 		return Result{}, e
 	}
+	if profile, err := shopperidentity.Current(r.Context(), h.repo.DB, r); err == nil {
+		input.ShopperID = profile.ID
+	}
+	input.CouponLock = true
 	encoded, _ := canonicalJSON(input)
 	digest := buyeraccess.Digest(id + "\n" + string(encoded))
 	var result Result
@@ -335,6 +416,12 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 		}
 		if e := tx.Exec(`SELECT pg_advisory_xact_lock(hashtextextended(?,0))`, "buyer:"+id+":"+key).Error; e != nil {
 			return e
+		}
+		if input.ShopperID != "" {
+			p, e := shopperidentity.Lock(r.Context(), tx, r)
+			if e != nil || p.ID != input.ShopperID {
+				return unauthorized()
+			}
 		}
 		var prior struct{ OrderID, AccessDigest, RequestDigest string }
 		q := tx.Raw(`SELECT order_id::text,access_digest,request_digest FROM legui_private.buyer_orders WHERE tenant_id=? AND creation_key=?`, id, key).Scan(&prior)
@@ -390,6 +477,22 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 		orderID, e := idFromJSON(order)
 		if e != nil {
 			return e
+		}
+		if input.ShopperID != "" {
+			if e = tx.Exec(`INSERT INTO legui_private.shopper_orders(order_id,shopper_id) VALUES(?,?)`, orderID, input.ShopperID).Error; e != nil {
+				return e
+			}
+		}
+		if quote.CouponID != "" {
+			if e = tx.Exec(`UPDATE public.order_details SET discount_unit=round(list_price_unit*?::numeric/100,2),final_price_unit=list_price_unit-round(list_price_unit*?::numeric/100,2) WHERE order_id=?`, quote.CouponPercent, quote.CouponPercent, orderID).Error; e != nil {
+				return e
+			}
+			if e = tx.Exec(`UPDATE public.orders SET total_discounts=(SELECT sum(quantity*discount_unit) FROM public.order_details WHERE order_id=?) WHERE id=?`, orderID, orderID).Error; e != nil {
+				return e
+			}
+			if e = tx.Exec(`INSERT INTO legui_private.shopper_coupon_uses(coupon_id,shopper_id,order_id,discount) VALUES(?,?,?,?::numeric)`, quote.CouponID, input.ShopperID, orderID, quote.Discount).Error; e != nil {
+				return e
+			}
 		}
 		if e = tx.Exec(`UPDATE public.orders SET buyer_name=?,buyer_phone=?,buyer_email=?,fulfillment=?,buyer_payment_method=? WHERE id=? AND tenant_id=?`, input.Name, input.Phone, input.Email, input.Fulfillment, input.PaymentMethod, orderID, id).Error; e != nil {
 			return e

@@ -1,4 +1,6 @@
 <script setup>
+import { useRoute } from "vue-router";
+import { shopper, loadShopper } from "../composables/useShopper.js";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { useOrderStream } from "../composables/useOrderStream.js";
 import { notifyOrderChange } from "../composables/useOrderSound.js";
@@ -7,7 +9,13 @@ import { money, statusLabels } from "../composables/useWorkspace.js";
 const props = defineProps({
   tenant: { type: String, required: true },
   menu: Object,
+  orderId: String,
 });
+const emit = defineEmits(["closed"]);
+function closePanel() {
+  panel.value = false;
+  if (props.orderId) emit("closed");
+}
 const cart = ref([]),
   selected = ref(null),
   extras = ref([]),
@@ -26,6 +34,7 @@ const fulfillment = ref("pickup"),
   email = ref(""),
   address = ref(""),
   payment = ref("at_local");
+const couponCode = ref(String(useRoute().query.cupon || ""));
 const recoveryMissing = ref(false);
 const storageKey = "legui-buyer:" + props.tenant;
 let access = null,
@@ -42,6 +51,11 @@ try {
 
 async function bootstrapBuyer(fresh = false) {
   checkingSession.value = true;
+  if (props.orderId) {
+    access = { key: "", paymentKey: crypto.randomUUID() };
+    checkingSession.value = false;
+    return true;
+  }
   try {
     const run = async () => {
       const response = await fetch(
@@ -131,6 +145,9 @@ const unresolvedPayment = computed(() =>
 );
 function basket() {
   return {
+    ...(couponCode.value && shopper.profile
+      ? { coupon_code: couponCode.value }
+      : {}),
     items: cart.value.map((x) => ({
       product_id: x.id,
       quantity: x.quantity,
@@ -154,7 +171,12 @@ async function request(path, body, authenticated = false, key = "") {
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
-        ...(authenticated ? { "X-Buyer-Tenant": props.tenant } : {}),
+        ...(authenticated
+          ? {
+              "X-Buyer-Tenant": props.tenant,
+              ...(props.orderId ? { "X-Shopper-Order": props.orderId } : {}),
+            }
+          : {}),
         ...(key ? { "Idempotency-Key": key } : {}),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -174,6 +196,11 @@ async function request(path, body, authenticated = false, key = "") {
     controllers.delete(controller);
   }
 }
+const progressSteps = computed(() =>
+  receipt.value?.fulfillment === "delivery"
+    ? ["pending", "accepted", "preparing", "ready", "dispatched", "delivered"]
+    : ["pending", "accepted", "preparing", "ready", "delivered"],
+);
 const canStartNew = computed(
   () =>
     !!receipt.value &&
@@ -241,6 +268,8 @@ async function refreshReceipt(silent = false) {
       throw new Error("El pedido pertenece a otro local.");
     notifyOrderChange(receipt.value, result);
     receipt.value = result;
+    if (result.account_payment_key && access)
+      access.paymentKey = result.account_payment_key;
     cart.value = [];
     pendingBody = null;
     step.value = "receipt";
@@ -353,6 +382,10 @@ async function pay() {
 }
 async function newOrder() {
   if (!canStartNew.value || busy.value) return;
+  if (props.orderId) {
+    window.location.assign("/catalogo/" + props.tenant);
+    return;
+  }
   if (!(await bootstrapBuyer(true))) return;
   receipt.value = null;
   quote.value = null;
@@ -367,6 +400,14 @@ async function newOrder() {
   address.value = "";
   panel.value = false;
 }
+loadShopper()
+  .then((p) => {
+    if (p && alive) {
+      if (!name.value) name.value = p.name;
+      if (!email.value) email.value = p.email;
+    }
+  })
+  .catch(() => {});
 bootstrapBuyer().then(async (ok) => {
   if (!ok || !alive) return;
   await refreshReceipt(true);
@@ -377,6 +418,7 @@ const { live } = useOrderStream({
   path: "/api/public/buyer-order/events",
   token: () => "",
   tenant: () => props.tenant,
+  order: () => props.orderId || "",
   enabled: () =>
     !!receipt.value &&
     !(
@@ -404,7 +446,7 @@ defineExpose({
 </script>
 <template>
   <button
-    v-if="menu?.ordering_enabled || receipt"
+    v-if="!orderId && (menu?.ordering_enabled || receipt)"
     class="buyer-cart-trigger btn-primary"
     @click="panel = true"
   >
@@ -472,7 +514,7 @@ defineExpose({
       ><div
         v-if="panel"
         class="modal-overlay buyer-overlay"
-        @click.self="panel = false"
+        @click.self="closePanel"
       >
         <section
           v-dialog-care
@@ -492,7 +534,7 @@ defineExpose({
           <button
             class="modal-close"
             aria-label="Cerrar pedido"
-            @click="panel = false"
+            @click="closePanel"
           >
             ×
           </button>
@@ -535,6 +577,25 @@ defineExpose({
                 }}
               </p>
             </div>
+            <ol
+              v-if="!['canceled', 'rejected'].includes(receipt.status)"
+              class="buyer-progress"
+              aria-label="Progreso del pedido"
+            >
+              <li
+                v-for="(stage, index) in progressSteps"
+                :key="stage"
+                :class="{
+                  done: index <= progressSteps.indexOf(receipt.status),
+                }"
+                :aria-current="stage === receipt.status ? 'step' : undefined"
+              >
+                <span>{{ index + 1 }}</span>{{ statusLabels[stage] }}
+              </li>
+            </ol>
+            <p v-if="Number(receipt.discount) > 0" class="buyer-muted">
+              Cupón aplicado: {{ money(receipt.discount) }} de descuento.
+            </p>
             <div
               v-for="(item, index) in receipt.items"
               :key="index"
@@ -676,6 +737,24 @@ defineExpose({
                   </select></label
                 >
               </fieldset>
+              <label v-if="shopper.profile" class="buyer-coupon"
+                >¿Tenés un cupón?<input
+                  v-model="couponCode"
+                  maxlength="32"
+                  placeholder="Código de esta marca"
+                  :disabled="locked"
+                  @input="quote = null"
+              /></label>
+              <p v-else class="buyer-muted">
+                Podés pedir sin cuenta.
+                <router-link :to="`/mi-cuenta?local=${props.tenant}`"
+                  >Ingresá para guardar tus compras y usar cupones.</router-link
+                >
+              </p>
+              <p v-if="quote && Number(quote.discount) > 0" class="buyer-muted">
+                Descuento aplicado: {{ money(quote.discount) }} sobre productos,
+                sin extras ni envío.
+              </p>
               <div class="buyer-total">
                 <span>{{
                   quote ? "Total confirmado" : "Subtotal estimado"
@@ -768,7 +847,7 @@ defineExpose({
                 </button>
               </form>
             </template>
-            <button type="button" class="btn-secondary" @click="panel = false">
+            <button type="button" class="btn-secondary" @click="closePanel">
               Seguir mirando la carta
             </button>
           </template>
@@ -778,6 +857,51 @@ defineExpose({
   </Teleport>
 </template>
 <style scoped>
+.buyer-progress {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+.buyer-progress li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.buyer-progress span {
+  border: 1px solid var(--border);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.buyer-progress .done {
+  color: var(--text);
+}
+.buyer-progress .done span {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+.buyer-coupon {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+.buyer-coupon input {
+  min-height: 44px;
+  padding: 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--field);
+}
 .buyer-cart-trigger {
   position: fixed;
   z-index: 25;

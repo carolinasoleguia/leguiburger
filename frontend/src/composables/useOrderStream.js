@@ -4,6 +4,7 @@ export function useOrderStream({
   path,
   token,
   tenant = () => "",
+  order = () => "",
   enabled,
   refresh,
 }) {
@@ -51,6 +52,7 @@ export function useOrderStream({
           ...(token()
             ? { Authorization: `Bearer ${token()}` }
             : { "X-Buyer-Tenant": tenant() }),
+          ...(order() ? { "X-Shopper-Order": order() } : {}),
           Accept: "text/event-stream",
         },
         signal: controller.signal,

@@ -126,7 +126,10 @@ const navigation = computed(() => {
     { label: "Cocina", to: "/kitchen", icon: "flame" },
     { label: "Stock e insumos", to: "/inventory", icon: "box" },
     ...(["owner", "super_admin", "admin"].includes(auth.userRole.value)
-      ? [{ label: "Gastos", to: "/expenses", icon: "receipt" }]
+      ? [
+          { label: "Gastos", to: "/expenses", icon: "receipt" },
+          { label: "Cupones y compradores", to: "/marketing", icon: "users" },
+        ]
       : []),
   ];
   return [

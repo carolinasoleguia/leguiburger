@@ -91,3 +91,7 @@ func (h *Handler) menuSettings(r *http.Request, p Principal) (Result, error) {
 		return data, 200, e
 	})
 }
+
+func (h *Handler) publicRestaurants(r *http.Request) (Result, error) {
+	return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(SELECT t.id,b.name business,coalesce(nullif(t.display_name,''),t.subdomain) location,t.address FROM public.tenants t JOIN public.brands b ON b.id=t.brand_id WHERE t.active AND t.menu_published AND b.suspended_at IS NULL AND b.closed_at IS NULL ORDER BY b.name,t.id LIMIT 100)v`))
+}

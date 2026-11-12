@@ -29,8 +29,8 @@ func (h *Handler) buyerOrderCheckout(w http.ResponseWriter, r *http.Request) err
 	if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
 		return denied()
 	}
-	grant, e := buyeraccess.Resolve(r.Context(), h.db, buyeraccess.Token(r), false)
-	if e == nil && r.Header.Get("Authorization") == "" && grant.TenantID != r.Header.Get("X-Buyer-Tenant") {
+	grant, e := buyeraccess.ResolveRequest(r.Context(), h.db, r, false)
+	if e == nil && r.Header.Get("Authorization") == "" && r.Header.Get("X-Shopper-Order") == "" && grant.TenantID != r.Header.Get("X-Buyer-Tenant") {
 		return missing()
 	}
 	if e != nil {

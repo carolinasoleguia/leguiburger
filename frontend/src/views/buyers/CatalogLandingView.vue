@@ -101,6 +101,10 @@ function image(url) {
     <header class="public-menu-header">
       <router-link to="/" aria-label="LeguiBurger, inicio"
         ><BrandLogo /></router-link
+      ><router-link
+        class="text-link"
+        :to="`/mi-cuenta?local=${encodeURIComponent(tenant)}`"
+        >Mi cuenta</router-link
       ><ThemeToggle />
     </header>
     <main id="menu-content" class="public-menu-main">

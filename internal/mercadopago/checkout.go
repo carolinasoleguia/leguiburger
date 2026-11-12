@@ -141,7 +141,7 @@ func (h *Handler) beginCheckout(w http.ResponseWriter, r *http.Request, p auth.S
 	e = h.db.WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
 
 		if p.Kind == "buyer" {
-			grant, e := buyeraccess.Resolve(r.Context(), tx, buyeraccess.Token(r), true)
+			grant, e := buyeraccess.ResolveRequest(r.Context(), tx, r, true)
 			if e != nil || grant.OrderID != p.ID || grant.TenantID != p.TenantID {
 				return denied()
 			}

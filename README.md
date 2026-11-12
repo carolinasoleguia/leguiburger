@@ -35,6 +35,9 @@ La guía de [migraciones](database/README.md) explica el ensayo con rollback, la
 
 El seed de un administrador inicial requiere `SEED_OWNER_EMAIL` y `SEED_OWNER_PASSWORD` definidos explícitamente en el entorno. No se ejecuta al iniciar el backend ni al migrar.
 
+Las [cuentas de compradores](docs/cuentas-compradores.md) permiten historial entre marcas,
+seguimiento autenticado, preferencias y cupones emitidos por cada restaurante.
+
 ## API y pruebas
 
 La guía de [soporte y continuidad](docs/soporte-y-continuidad.md) documenta soporte con historial, respaldos cifrados y verificados, cierre de restaurante/cuenta, imágenes seguras, monitoreo y consistencia de pantallas.

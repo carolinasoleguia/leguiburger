@@ -33,6 +33,21 @@ const workspaceViews = {
 };
 const routes = [
   {
+    path: "/mi-cuenta",
+    component: () => import("../views/buyers/ShopperAccountView.vue"),
+    meta: { publicBuyer: true },
+  },
+  {
+    path: "/restaurantes",
+    component: () => import("../views/buyers/RestaurantDirectoryView.vue"),
+    meta: { publicBuyer: true },
+  },
+  {
+    path: "/marketing",
+    component: () => import("../views/shared/MarketingView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin", "admin"] },
+  },
+  {
     path: "/care",
     component: () => import("../views/shared/CareView.vue"),
     meta: { requiresAuth: true },

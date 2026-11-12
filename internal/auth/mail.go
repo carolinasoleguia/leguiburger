@@ -137,3 +137,8 @@ func sendMail(recipient, subject, body string) error {
 	}
 	return client.Quit()
 }
+
+// QueueShopperMail uses the existing encrypted transactional mail outbox.
+func QueueShopperMail(tx *gorm.DB, recipient, subject, body string) error {
+	return enqueueMail(tx, recipient, subject, body, time.Now().Add(time.Hour))
+}

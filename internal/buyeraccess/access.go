@@ -7,7 +7,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"leguiburger/internal/shopperidentity"
 	"net"
 	"net/http"
 	"strings"
@@ -77,4 +79,35 @@ func Rate(ctx context.Context, db *gorm.DB, r *http.Request, scope string, max i
 		return ErrRateLimited
 	}
 	return nil
+}
+
+// ResolveRequest accepts either a browser capability or an authenticated owner.
+// An explicit account-order header never falls back to a guest cookie.
+func ResolveRequest(ctx context.Context, db *gorm.DB, r *http.Request, lock bool) (Grant, error) {
+	if id := r.Header.Get("X-Shopper-Order"); id != "" {
+		if _, e := uuid.Parse(id); e != nil {
+			return Grant{}, ErrInvalid
+		}
+		p, e := shopperidentity.Current(ctx, db, r)
+		if lock {
+			p, e = shopperidentity.Lock(ctx, db, r)
+		}
+		if e != nil {
+			return Grant{}, ErrInvalid
+		}
+		var g Grant
+		sql := `SELECT o.id::text order_id,o.tenant_id::text,t.brand_id::text FROM legui_private.shopper_orders a JOIN public.orders o ON o.id=a.order_id AND o.payment_environment='production' JOIN public.tenants t ON t.id=o.tenant_id AND t.active JOIN public.brands b ON b.id=t.brand_id AND b.suspended_at IS NULL AND b.closed_at IS NULL WHERE a.shopper_id=? AND o.id=?`
+		if lock {
+			sql += ` FOR SHARE OF a,t,b`
+		}
+		q := db.WithContext(ctx).Raw(sql, p.ID, id).Scan(&g)
+		if q.Error != nil {
+			return g, q.Error
+		}
+		if q.RowsAffected != 1 {
+			return g, ErrInvalid
+		}
+		return g, nil
+	}
+	return Resolve(ctx, db, Token(r), lock)
 }

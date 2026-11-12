@@ -21,7 +21,7 @@ func (h *Handler) orderStream(w http.ResponseWriter, r *http.Request, tracking b
 		return
 	}
 	raw := buyeraccess.Token(r)
-	if !buyeraccess.ValidToken(raw) {
+	if !buyeraccess.ValidToken(raw) && r.Header.Get("X-Shopper-Order") == "" {
 		writeError(w, notFound())
 		return
 	}
@@ -29,8 +29,8 @@ func (h *Handler) orderStream(w http.ResponseWriter, r *http.Request, tracking b
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 		if !tracking {
-			grant, e := buyeraccess.Resolve(ctx, h.repo.DB, raw, false)
-			if e == nil && r.Header.Get("Authorization") == "" && grant.TenantID != r.Header.Get("X-Buyer-Tenant") {
+			grant, e := buyeraccess.ResolveRequest(ctx, h.repo.DB, r, false)
+			if e == nil && r.Header.Get("Authorization") == "" && r.Header.Get("X-Shopper-Order") == "" && grant.TenantID != r.Header.Get("X-Buyer-Tenant") {
 				return "", notFound()
 			}
 			return grant.OrderID, e
@@ -50,7 +50,13 @@ func (h *Handler) orderStream(w http.ResponseWriter, r *http.Request, tracking b
 		writeError(w, notFound())
 		return
 	}
-	changed, release, ok := hub.Subscribe(id, buyeraccess.Digest(raw))
+	streamKey := buyeraccess.Digest(raw)
+	if r.Header.Get("X-Shopper-Order") != "" {
+		if c, e := r.Cookie("legui_shopper"); e == nil {
+			streamKey = buyeraccess.Digest(c.Value)
+		}
+	}
+	changed, release, ok := hub.Subscribe(id, streamKey)
 	if !ok {
 		http.Error(w, "stream capacity unavailable", 503)
 		return

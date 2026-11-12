@@ -27,6 +27,7 @@ import (
 	"leguiburger/internal/products"
 	"leguiburger/internal/recipes"
 	"leguiburger/internal/shipping"
+	"leguiburger/internal/shopperidentity"
 	"leguiburger/internal/supplies"
 	"leguiburger/internal/tenantproducts"
 	"leguiburger/internal/tenants"
@@ -167,6 +168,7 @@ func main() {
 		log.Fatalf("Error al configurar autenticacion: %v", err)
 	}
 	auth.RegisterSecurityRoutes(http.DefaultServeMux, db.DB, authSvc)
+	shopperidentity.Register(http.DefaultServeMux, db.DB)
 
 	stream := orderstream.New()
 	streamDSN := os.Getenv("SSE_DATABASE_URL")
