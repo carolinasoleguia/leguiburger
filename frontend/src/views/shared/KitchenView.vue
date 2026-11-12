@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onBeforeUnmount } from "vue";
+import { ref, watch } from "vue";
+import { useOrderStream } from "../../composables/useOrderStream.js";
 import WorkspaceFrame from "../../components/WorkspaceFrame.vue";
 import {
   useWorkspace,
@@ -17,10 +18,37 @@ const w = useWorkspace(async ({ request, tenant, current }) => {
     updated.value = when(new Date());
   }
 });
-const timer = setInterval(() => {
-  if (!document.hidden && !w.busy.value && !w.loading.value) w.refresh();
-}, 30000);
-onBeforeUnmount(() => clearInterval(timer));
+let dirty = false;
+async function refreshKitchen() {
+  if (w.busy.value || w.loading.value) {
+    dirty = true;
+    return;
+  }
+  const tenant = w.tenant.value;
+  try {
+    const data = await w.request("/kitchen");
+    if (tenant === w.tenant.value) {
+      items.value = data.items || [];
+      updated.value = when(new Date());
+    }
+  } catch (e) {
+    w.error.value = e.message;
+  }
+}
+const { live } = useOrderStream({
+  path: "/api/orders/events",
+  token: () => w.auth.state.token,
+  tenant: () => w.tenant.value,
+  headers: () => ({ "X-Tenant-ID": w.tenant.value }),
+  enabled: () => !!w.tenant.value,
+  refresh: refreshKitchen,
+});
+watch([w.busy, w.loading], () => {
+  if (dirty && !w.busy.value && !w.loading.value) {
+    dirty = false;
+    refreshKitchen();
+  }
+});
 function advance(item, status) {
   return w.act(
     () =>
@@ -37,8 +65,9 @@ function advance(item, status) {
   <WorkspaceFrame
     :workspace="w"
     title="La cocina"
-    description="Cada pedido, en su punto. La vista se actualiza cada 30 segundos."
+    description="Cada pedido, en su punto. Los pedidos se actualizan en vivo."
     ><p class="kitchen-update">
+      <span>{{ live ? "En vivo · " : "Actualización automática · " }}</span>
       {{
         updated
           ? `Última actualización: ${updated} · Hasta 100 pedidos activos.`

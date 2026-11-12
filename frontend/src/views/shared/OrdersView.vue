@@ -1,4 +1,7 @@
 <script setup>
+import OrderSoundToggle from "../../components/OrderSoundToggle.vue";
+import { useOrderStream } from "../../composables/useOrderStream.js";
+import { playOrderSound } from "../../composables/useOrderSound.js";
 import LoadingRows from "../../components/LoadingRows.vue";
 import { computed, ref, watch } from "vue";
 import WorkspaceFrame from "../../components/WorkspaceFrame.vue";
@@ -9,6 +12,8 @@ import {
   when,
   statusLabels,
 } from "../../composables/useWorkspace.js";
+const inbox = ref([]),
+  pendingCount = ref(0);
 const orders = ref([]),
   catalog = ref([]),
   customers = ref([]),
@@ -32,12 +37,8 @@ const orders = ref([]),
 const w = useWorkspace(async ({ request, tenant, current }) => {
   orders.value = [];
   catalog.value = [];
-  selected.value = null;
-  detail.value = null;
-  payments.value = [];
-  share.value = "";
   if (!tenant) return;
-  const [list, menu, people] = await Promise.all([
+  const [list, menu, people, pending] = await Promise.all([
     request(`/orders?limit=25&offset=${offset.value}`),
     request(
       `/pos/catalog?limit=25&offset=${catalogOffset.value}&search=${encodeURIComponent(catalogSearch.value)}`,
@@ -45,11 +46,75 @@ const w = useWorkspace(async ({ request, tenant, current }) => {
     request(
       `/crm/customers?limit=25&search=${encodeURIComponent(customerSearch.value)}`,
     ),
+    request("/orders/inbox"),
   ]);
   if (current()) {
     orders.value = list.items || [];
+    setInbox(pending, tenant);
+    if (selected.value) await updateDetail(selected.value, tenant);
     catalog.value = menu.items || [];
     customers.value = people.items || [];
+  }
+});
+let inboxTenant = "",
+  known = null,
+  dirty = false;
+function setInbox(data, tenant) {
+  if (inboxTenant !== tenant) {
+    known = null;
+    inboxTenant = tenant;
+  }
+  const items = data.items || [];
+  if (known && items.some((x) => !known.has(x.id))) playOrderSound();
+  known = new Set(items.map((x) => x.id));
+  inbox.value = items;
+  pendingCount.value = data.pending_count || 0;
+}
+async function updateDetail(id, tenant) {
+  const [order, paid] = await Promise.all([
+    w.request(`/orders/${id}`),
+    w.request(`/orders/${id}/payments`),
+  ]);
+  if (w.tenant.value === tenant && selected.value === id) {
+    detail.value = order;
+    payments.value = paid.items || [];
+  }
+}
+async function refreshInbox() {
+  if (w.busy.value || w.loading.value) {
+    dirty = true;
+    return;
+  }
+  const tenant = w.tenant.value;
+  try {
+    const [list, pending] = await Promise.all([
+      w.request(`/orders?limit=25&offset=${offset.value}`),
+      w.request("/orders/inbox"),
+    ]);
+    if (w.tenant.value !== tenant) return;
+    if (w.busy.value || w.loading.value) {
+      dirty = true;
+      return;
+    }
+    orders.value = list.items || [];
+    setInbox(pending, tenant);
+    if (selected.value) await updateDetail(selected.value, tenant);
+  } catch (e) {
+    w.error.value = e.message;
+  }
+}
+const { live } = useOrderStream({
+  path: "/api/orders/events",
+  token: () => w.auth.state.token,
+  tenant: () => w.tenant.value,
+  headers: () => ({ "X-Tenant-ID": w.tenant.value }),
+  enabled: () => !!w.tenant.value,
+  refresh: refreshInbox,
+});
+watch([w.busy, w.loading], () => {
+  if (dirty && !w.busy.value && !w.loading.value) {
+    dirty = false;
+    refreshInbox();
   }
 });
 const transitions = {
@@ -166,6 +231,13 @@ function revokeLink() {
   );
 }
 watch(w.tenant, () => {
+  selected.value = null;
+  detail.value = null;
+  payments.value = [];
+  share.value = "";
+  inbox.value = [];
+  pendingCount.value = 0;
+  known = null;
   offset.value = 0;
   catalogOffset.value = 0;
   cart.value = [];
@@ -190,6 +262,48 @@ function menuPage(n) {
         >Turnos y arqueo de caja</router-link
       >
     </div>
+    <section
+      class="card operation-form live-inbox"
+      aria-labelledby="inbox-title"
+    >
+      <div class="operation-actions">
+        <h2 id="inbox-title">
+          Por confirmar <span class="badge">{{ pendingCount }}</span>
+        </h2>
+        <OrderSoundToggle new-orders />
+      </div>
+      <p role="status">
+        {{
+          live
+            ? "Pedidos en vivo"
+            : "Actualización automática · reconectando el canal en vivo"
+        }}
+      </p>
+      <p v-if="!inbox.length" class="no-data">
+        No hay pedidos esperando confirmación.
+      </p>
+      <article v-for="item in inbox" :key="item.id" class="report-row">
+        <div>
+          <strong
+            >#{{ item.id.slice(0, 8) }} ·
+            {{ item.buyer_name || "Mostrador" }}</strong
+          ><small class="inbox-deadline"
+            >{{ money(item.total_due) }} · {{ when(item.created_at)
+            }}<template v-if="item.pending_deadline">
+              · Confirmar antes de {{ when(item.pending_deadline) }}</template
+            ></small
+          >
+        </div>
+        <button
+          class="btn-primary"
+          :disabled="w.busy.value"
+          @click="open(item)"
+        >
+          Revisar y confirmar
+        </button>
+      </article>
+      <small v-if="pendingCount > 100">Mostrando los 100 más antiguos.</small>
+    </section>
     <form v-form-care class="card operation-form" @submit.prevent="create">
       <h2>Nuevo pedido de mostrador</h2>
       <div class="form-row">
@@ -487,3 +601,18 @@ function menuPage(n) {
     </section>
   </WorkspaceFrame>
 </template>
+
+<style scoped>
+.live-inbox .operation-actions {
+  justify-content: space-between;
+}
+.inbox-deadline {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--text-muted);
+}
+.live-inbox .report-row {
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+</style>

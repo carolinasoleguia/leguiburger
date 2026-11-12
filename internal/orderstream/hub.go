@@ -53,7 +53,7 @@ func (h *Hub) Subscribe(order, cap string) (<-chan struct{}, func(), bool) {
 	return s.changed, func() { h.mu.Lock(); delete(h.subscriptions, id); h.mu.Unlock() }, true
 }
 func (h *Hub) publish(order string) {
-	if _, e := uuid.Parse(order); e != nil {
+	if _, e := uuid.Parse(strings.TrimPrefix(order, "tenant:")); e != nil {
 		return
 	}
 	h.mu.Lock()

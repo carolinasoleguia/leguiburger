@@ -124,8 +124,17 @@ function image(url) {
               data?.location?.address || " "
             }}
           </p>
-          <p :aria-hidden="!data?.location?.hours || undefined">
-            {{ data?.location?.hours || " " }}
+          <p
+            :aria-hidden="
+              (!data?.location?.hours && !data?.prep_min) || undefined
+            "
+          >
+            {{
+              data?.location?.hours ||
+              (data?.prep_min
+                ? `Preparación estimada: ${data.prep_min}–${data.prep_max} min`
+                : " ")
+            }}
           </p>
           <p :aria-hidden="!data?.location?.phone || undefined">
             {{
@@ -138,7 +147,7 @@ function image(url) {
         {{
           !data || loading
             ? " "
-            : data.ordering_enabled
+            : (data.ordering_ready ?? data.ordering_enabled)
               ? "Elegí tus favoritas. Pedí acá, sin crear una cuenta."
               : "Por ahora, este local comparte su carta sin recibir pedidos online."
         }}
@@ -227,7 +236,7 @@ function image(url) {
                 }}</span>
               </div>
               <button
-                v-if="data.ordering_enabled"
+                v-if="data.ordering_ready ?? data.ordering_enabled"
                 class="btn-primary menu-add"
                 :disabled="!item.available || !checkout?.ready"
                 @click="checkout?.open(item)"

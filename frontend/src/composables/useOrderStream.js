@@ -5,6 +5,7 @@ export function useOrderStream({
   token,
   tenant = () => "",
   order = () => "",
+  headers = () => ({}),
   enabled,
   refresh,
 }) {
@@ -53,6 +54,7 @@ export function useOrderStream({
             ? { Authorization: `Bearer ${token()}` }
             : { "X-Buyer-Tenant": tenant() }),
           ...(order() ? { "X-Shopper-Order": order() } : {}),
+          ...headers(),
           Accept: "text/event-stream",
         },
         signal: controller.signal,
@@ -114,9 +116,16 @@ export function useOrderStream({
     }
   }
   document.addEventListener("visibilitychange", visibility);
-  const unwatch = watch([enabled, token], visibility, {
-    immediate: true,
-  });
+  const unwatch = watch(
+    [enabled, token, tenant, order],
+    () => {
+      controller?.abort();
+      visibility();
+    },
+    {
+      immediate: true,
+    },
+  );
   let lastSync = Date.now();
   const fallback = setInterval(() => {
     if (

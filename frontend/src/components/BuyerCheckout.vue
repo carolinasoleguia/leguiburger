@@ -1,4 +1,5 @@
 <script setup>
+import { confirmAction } from "../services/confirmation.js";
 import { useRoute } from "vue-router";
 import { shopper, loadShopper } from "../composables/useShopper.js";
 import { computed, onBeforeUnmount, ref } from "vue";
@@ -50,6 +51,28 @@ try {
     legacyAccess = saved;
 } catch {}
 
+async function cancelPending() {
+  if (
+    busy.value ||
+    !(await confirmAction(
+      "El local todavía no confirmó tu pedido. ¿Querés cancelarlo?",
+      "Cancelar pedido",
+    ))
+  )
+    return;
+  busy.value = true;
+  error.value = "";
+  try {
+    const data = await request("/api/public/buyer-order/cancel", {}, true);
+    notifyOrderChange(receipt.value, data);
+    receipt.value = data;
+  } catch (e) {
+    error.value = e.message;
+    if (e.status === 409) await refreshReceipt();
+  } finally {
+    busy.value = false;
+  }
+}
 async function bootstrapBuyer(fresh = false) {
   checkingSession.value = true;
   if (props.orderId) {
@@ -210,7 +233,11 @@ const canStartNew = computed(
       (receipt.value.status === "delivered" && !unpaid.value)),
 );
 function open(item) {
-  if (!props.menu?.ordering_enabled || locked.value || receipt.value) {
+  if (
+    !(props.menu?.ordering_ready ?? props.menu?.ordering_enabled) ||
+    locked.value ||
+    receipt.value
+  ) {
     panel.value = true;
     return;
   }
@@ -452,7 +479,9 @@ defineExpose({
 </script>
 <template>
   <button
-    v-if="!orderId && (menu?.ordering_enabled || receipt)"
+    v-if="
+      !orderId && ((menu?.ordering_ready ?? menu?.ordering_enabled) || receipt)
+    "
     class="buyer-cart-trigger btn-primary"
     @click="panel = true"
   >
@@ -583,6 +612,51 @@ defineExpose({
                 }}
               </p>
             </div>
+            <p v-if="receipt.ended_reason" class="inline-notice">
+              {{ receipt.ended_reason }}
+            </p>
+            <p v-if="receipt.status === 'pending' && receipt.pending_deadline">
+              El local puede confirmar hasta las
+              {{
+                new Date(receipt.pending_deadline).toLocaleTimeString("es-AR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              }}. Si no confirma, el pedido se cancelará automáticamente.
+            </p>
+            <p
+              v-if="
+                receipt.prep_min &&
+                !['canceled', 'rejected'].includes(receipt.status)
+              "
+            >
+              Preparación estimada: {{ receipt.prep_min }}–{{
+                receipt.prep_max
+              }}
+              min desde la confirmación.<template
+                v-if="receipt.estimated_ready_at"
+              >
+                Listo aproximadamente a las
+                {{
+                  new Date(receipt.estimated_ready_at).toLocaleTimeString(
+                    "es-AR",
+                    { hour: "2-digit", minute: "2-digit" },
+                  )
+                }}.</template
+              >
+            </p>
+            <button
+              v-if="
+                receipt.status === 'pending' &&
+                Number(receipt.total_paid) === 0 &&
+                !receipt.payment
+              "
+              class="btn-secondary"
+              :disabled="busy"
+              @click="cancelPending"
+            >
+              Cancelar pedido
+            </button>
             <ol
               v-if="!['canceled', 'rejected'].includes(receipt.status)"
               class="buyer-progress"

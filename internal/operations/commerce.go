@@ -193,8 +193,9 @@ func (h *Handler) changeOrderStatus(r *http.Request, p Principal) (Result, error
 			Paid        string
 			Version     int64
 			Environment string
+			Expired     bool
 		}
-		q := tx.Raw(`SELECT s.code status,o.total_paid::text paid,o.version,o.payment_environment AS environment FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id WHERE o.tenant_id=? AND o.id=? FOR UPDATE OF o`, scope.TenantID, id).Scan(&order)
+		q := tx.Raw(`SELECT s.code status,o.total_paid::text paid,o.version,o.payment_environment AS environment,coalesce(o.pending_deadline<clock_timestamp(),false) expired FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id WHERE o.tenant_id=? AND o.id=? FOR UPDATE OF o`, scope.TenantID, id).Scan(&order)
 		if q.Error != nil {
 			return nil, 0, q.Error
 		}
@@ -215,6 +216,9 @@ func (h *Handler) changeOrderStatus(r *http.Request, p Principal) (Result, error
 			return nil, 0, err
 		}
 		if input.Status == "accepted" {
+			if order.Expired {
+				return nil, 0, conflict("El plazo de confirmación de este pedido terminó")
+			}
 			if err := postOrderSale(tx, scope, id, order.Environment); err != nil {
 				return nil, 0, err
 			}
@@ -227,6 +231,13 @@ func (h *Handler) changeOrderStatus(r *http.Request, p Principal) (Result, error
 			if hasPaid {
 				return nil, 0, conflict("Registrá el reintegro completo antes de cancelar un pedido cobrado")
 			}
+			var uncertain bool
+			if e := tx.Raw(`SELECT EXISTS(SELECT 1 FROM legui_private.mp_checkouts WHERE order_id=? AND state IN ('prepared','submitting','created','review') AND(expires_at>clock_timestamp() OR state IN ('submitting','review')))`, id).Scan(&uncertain).Error; e != nil {
+				return nil, 0, e
+			}
+			if uncertain {
+				return nil, 0, conflict("Hay un cobro online en curso; verificá su resolución antes de cancelar")
+			}
 			if err := restoreOrderStock(tx, scope, id); err != nil {
 				return nil, 0, err
 			}
@@ -234,7 +245,7 @@ func (h *Handler) changeOrderStatus(r *http.Request, p Principal) (Result, error
 				return nil, 0, err
 			}
 		}
-		if err := tx.Exec(`UPDATE public.orders SET order_status_id=(SELECT id FROM public.order_statuses_lookup WHERE code=?) WHERE tenant_id=? AND id=?`, input.Status, scope.TenantID, id).Error; err != nil {
+		if err := tx.Exec(`UPDATE public.orders SET order_status_id=(SELECT id FROM public.order_statuses_lookup WHERE code=?),ended_reason=CASE WHEN ? IN ('canceled','rejected') THEN ? ELSE ended_reason END,estimated_ready_at=CASE WHEN ?='accepted' AND prep_max IS NOT NULL THEN clock_timestamp()+make_interval(mins=>prep_max) ELSE estimated_ready_at END WHERE tenant_id=? AND id=?`, input.Status, input.Status, input.Reason, input.Status, scope.TenantID, id).Error; err != nil {
 			return nil, 0, err
 		}
 		data, err := orderJSON(tx, scope.TenantID, id)

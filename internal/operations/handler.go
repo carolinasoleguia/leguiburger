@@ -43,6 +43,9 @@ func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 	if len(options) > 0 {
 		h.buyer = options[0]
 	}
+	mux.HandleFunc("GET /api/orders/events", auth.AuthStreamMiddlewareWithDB(db, h.staffOrderStream))
+	mux.HandleFunc("POST /api/public/buyer-order/cancel", h.buyerWrap(h.buyerCancel))
+	mux.HandleFunc("POST /api/public/newsletter/unsubscribe", h.buyerWrap(h.newsletterUnsubscribe))
 	mux.HandleFunc("POST /api/public/menu/{id}/buyer-session", h.buyerSession)
 	mux.HandleFunc("PATCH /api/shopper/profile", h.buyerWrap(h.shopperContact))
 	mux.HandleFunc("GET /api/shopper/orders", h.buyerWrap(h.shopperOrders))
@@ -59,6 +62,10 @@ func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 	mux.HandleFunc("POST /api/public/menu/{id}/orders", h.buyerWrap(h.buyerCreate))
 	mux.HandleFunc("GET /api/public/buyer-order", h.buyerWrap(h.buyerReceipt))
 	routes := map[string]endpoint{
+		"GET /api/ordering/settings": h.orderingSettings, "PATCH /api/ordering/settings": h.orderingSettings,
+		"GET /api/orders/inbox":        h.orderInbox,
+		"GET /api/marketing/campaigns": h.campaigns, "POST /api/marketing/campaigns": h.campaigns,
+		"GET /api/marketing/campaigns/{id}": h.campaigns, "POST /api/marketing/campaigns/{id}/send": h.campaigns, "POST /api/marketing/campaigns/{id}/cancel": h.campaigns,
 		"GET /api/marketing/customers": h.marketing, "GET /api/marketing/coupons": h.marketing, "POST /api/marketing/coupons": h.marketing, "PATCH /api/marketing/coupons/{id}": h.marketing,
 		"GET /api/menu/settings": h.menuSettings, "PATCH /api/menu/settings": h.menuSettings,
 		"GET /api/cash/shifts": h.cashShifts, "POST /api/cash/shifts": h.openCash, "GET /api/cash/shifts/{id}": h.cashShift, "GET /api/cash/shifts/{id}/entries": h.cashEntries, "POST /api/cash/shifts/{id}/entries": h.moveCash, "POST /api/cash/shifts/{id}/close": h.closeCash,

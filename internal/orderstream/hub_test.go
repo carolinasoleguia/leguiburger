@@ -61,3 +61,37 @@ func TestCapabilityLimit(t *testing.T) {
 		t.Fatal("capability limit missing")
 	}
 }
+
+func TestTenantAndBuyerTopicsStaySeparate(t *testing.T) {
+	h := New()
+	h.setReady(true)
+	a, b := uuid.NewString(), uuid.NewString()
+	buyer, rb, _ := h.Subscribe(a, "buyer")
+	defer rb()
+	staff, rs, _ := h.Subscribe("tenant:"+a, "staff")
+	defer rs()
+	foreign, rf, _ := h.Subscribe("tenant:"+b, "other")
+	defer rf()
+	h.publish("tenant:" + a)
+	select {
+	case <-staff:
+	default:
+		t.Fatal("staff invalidation missing")
+	}
+	select {
+	case <-buyer:
+		t.Fatal("tenant event reached buyer topic")
+	default:
+	}
+	select {
+	case <-foreign:
+		t.Fatal("event reached other tenant")
+	default:
+	}
+	h.publish("tenant:invalid")
+	select {
+	case <-staff:
+		t.Fatal("invalid topic accepted")
+	default:
+	}
+}

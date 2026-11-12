@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"log"
+	"mime"
 	"net"
 	"net/mail"
 	"net/smtp"
@@ -30,7 +32,7 @@ func StartMailWorker(ctx context.Context, database *gorm.DB) {
 		return
 	}
 	go func() {
-		ticker := time.NewTicker(15 * time.Second)
+		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
@@ -46,7 +48,7 @@ func StartMailWorker(ctx context.Context, database *gorm.DB) {
 }
 func deliverOne(ctx context.Context, database *gorm.DB) error {
 	tx := database.WithContext(ctx)
-	if err := tx.Exec(`UPDATE legui_private.mail_outbox SET body_cipher=NULL WHERE expires_at<clock_timestamp() AND body_cipher IS NOT NULL AND (lease_until IS NULL OR lease_until<clock_timestamp())`).Error; err != nil {
+	if err := tx.Exec(`UPDATE legui_private.mail_outbox SET body_cipher=NULL WHERE (expires_at<clock_timestamp() OR NOT legui_private.mail_eligible(id)) AND body_cipher IS NOT NULL AND (lease_until IS NULL OR lease_until<clock_timestamp())`).Error; err != nil {
 		return err
 	}
 	var item struct {
@@ -56,12 +58,19 @@ func deliverOne(ctx context.Context, database *gorm.DB) error {
 		BodyCipher string
 		LeaseToken string
 	}
-	result := tx.Raw(`UPDATE legui_private.mail_outbox SET lease_token=gen_random_uuid(),lease_until=clock_timestamp()+interval '1 minute',attempts=attempts+1 WHERE id=(SELECT id FROM legui_private.mail_outbox WHERE delivered_at IS NULL AND body_cipher IS NOT NULL AND expires_at>clock_timestamp() AND next_attempt_at<=clock_timestamp() AND attempts<8 AND (lease_until IS NULL OR lease_until<clock_timestamp()) ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id::text,recipient,subject,body_cipher,lease_token::text`).Scan(&item)
+	result := tx.Raw(`UPDATE legui_private.mail_outbox SET lease_token=gen_random_uuid(),lease_until=clock_timestamp()+interval '1 minute',attempts=attempts+1 WHERE id=(SELECT id FROM legui_private.mail_outbox WHERE delivered_at IS NULL AND body_cipher IS NOT NULL AND expires_at>clock_timestamp() AND next_attempt_at<=clock_timestamp() AND attempts<8 AND legui_private.mail_eligible(id) AND (lease_until IS NULL OR lease_until<clock_timestamp()) ORDER BY (campaign_id IS NOT NULL),created_at LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id::text,recipient,subject,body_cipher,lease_token::text`).Scan(&item)
 	if result.Error != nil {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
 		return nil
+	}
+	var eligible bool
+	if e := tx.Raw(`SELECT legui_private.mail_eligible(?)`, item.ID).Scan(&eligible).Error; e != nil {
+		return e
+	}
+	if !eligible {
+		return tx.Exec(`UPDATE legui_private.mail_outbox SET body_cipher=NULL,lease_until=NULL WHERE id=? AND lease_token=?`, item.ID, item.LeaseToken).Error
 	}
 	body, err := openSecret(item.BodyCipher, "mail/"+item.Recipient)
 	if err != nil {
@@ -128,7 +137,7 @@ func sendMail(recipient, subject, body string) error {
 		return err
 	}
 	subject = strings.ReplaceAll(strings.ReplaceAll(subject, "\r", ""), "\n", "")
-	_, err = fmt.Fprintf(writer, "From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s", from.String(), to.String(), subject, strings.ReplaceAll(body, "\n", "\r\n"))
+	_, err = fmt.Fprintf(writer, "From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s", from.String(), to.String(), mime.QEncoding.Encode("utf-8", subject), strings.ReplaceAll(body, "\n", "\r\n"))
 	if err != nil {
 		return err
 	}
@@ -141,4 +150,17 @@ func sendMail(recipient, subject, body string) error {
 // QueueShopperMail uses the existing encrypted transactional mail outbox.
 func QueueShopperMail(tx *gorm.DB, recipient, subject, body string) error {
 	return enqueueMail(tx, recipient, subject, body, time.Now().Add(time.Hour))
+}
+
+// Campaign bodies and outbox messages have separate authenticated encryption domains.
+func SealCampaign(id, body string) (string, error)   { return sealSecret(body, "campaign/"+id) }
+func OpenCampaign(id, cipher string) (string, error) { return openSecret(cipher, "campaign/"+id) }
+func QueueCommerceMail(tx *gorm.DB, recipient, subject, body, campaign, shopper, brand, event string) (string, error) {
+	cipher, e := sealSecret(body, "mail/"+recipient)
+	if e != nil {
+		return "", e
+	}
+	id := uuid.NewString()
+	e = tx.Exec(`INSERT INTO legui_private.mail_outbox(id,recipient,subject,body_cipher,expires_at,campaign_id,shopper_id,brand_id,order_event_id) VALUES(?,?,?,?,clock_timestamp()+interval '1 day',nullif(?,'')::uuid,nullif(?,'')::uuid,nullif(?,'')::uuid,nullif(?,'')::uuid)`, id, recipient, subject, cipher, campaign, shopper, brand, event).Error
+	return id, e
 }

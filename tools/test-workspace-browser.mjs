@@ -99,7 +99,7 @@ const report = {
 };
 try {
   page = await browser.newPage();
-  page.on("dialog", dialog => dialog.accept());
+  page.on("dialog", (dialog) => dialog.accept());
   page.on("pageerror", (e) => errors.push(e.message));
   await page.setRequestInterception(true);
   page.on("request", (request) => {
@@ -197,7 +197,12 @@ try {
       captured.push({ type: "order", body });
       result = { id: "order-12345678" };
     } else if (p === "/api/orders") result = { items: [] };
-    else if (p === "/api/crm/customers")
+    else if (p === "/api/orders/inbox")
+      result = { items: [], pending_count: 0 };
+    else if (p === "/api/orders/events") {
+      status = 503;
+      result = {};
+    } else if (p === "/api/crm/customers")
       result = {
         items: [
           {
@@ -281,8 +286,10 @@ try {
   });
   const goto = async (path) => {
     await page.goto(origin + path, { waitUntil: "networkidle0" });
-    await page.waitForFunction(()=>document.querySelector('#app')?.childElementCount>0);
-    await page.waitForNetworkIdle({idleTime:100,timeout:10000});
+    await page.waitForFunction(
+      () => document.querySelector("#app")?.childElementCount > 0,
+    );
+    await page.waitForNetworkIdle({ idleTime: 100, timeout: 10000 });
   };
   const click = async (text) =>
     page.evaluate((text) => {

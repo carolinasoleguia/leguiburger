@@ -129,6 +129,12 @@ const navigation = computed(() => {
       ? [
           { label: "Gastos", to: "/expenses", icon: "receipt" },
           { label: "Cupones y compradores", to: "/marketing", icon: "users" },
+          {
+            label: "Atención del local",
+            to: "/store-operations",
+            icon: "clock",
+          },
+          { label: "Campañas", to: "/campaigns", icon: "send" },
         ]
       : []),
   ];

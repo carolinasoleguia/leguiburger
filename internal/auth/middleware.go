@@ -28,6 +28,12 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func AuthMiddlewareWithDB(database *gorm.DB, next http.HandlerFunc) http.HandlerFunc {
+	return authMiddleware(database, next, 25*time.Second)
+}
+func AuthStreamMiddlewareWithDB(database *gorm.DB, next http.HandlerFunc) http.HandlerFunc {
+	return authMiddleware(database, next, 3*time.Minute)
+}
+func authMiddleware(database *gorm.DB, next http.HandlerFunc, duration time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		authHeader := r.Header.Get("Authorization")
@@ -48,7 +54,7 @@ func AuthMiddlewareWithDB(database *gorm.DB, next http.HandlerFunc) http.Handler
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), duration)
 		defer cancel()
 		principal, err := ResolveSessionPrincipal(ctx, database, claims)
 		if err != nil {

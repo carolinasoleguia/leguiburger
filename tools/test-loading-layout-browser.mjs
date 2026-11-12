@@ -333,7 +333,10 @@ async function boxes() {
 }
 try {
   for (const width of [1440, 390])
-    for (const scenario of scenarios)
+    for (const scenario of scenarios.filter(
+      (s) =>
+        !process.env.LOADING_SCENARIO || s === process.env.LOADING_SCENARIO,
+    ))
       for (const count of [0, 25]) {
         const [overrideRole, path] = scenario.includes(":")
           ? scenario.split(":")
@@ -379,7 +382,22 @@ try {
           });
         });
         await page.goto(origin + path, { waitUntil: "domcontentloaded" });
-        await page.waitForSelector("[data-dashboard-loading]");
+        await page
+          .waitForSelector("[data-dashboard-loading]")
+          .catch(async (e) => {
+            console.error("Loading fixture unavailable", {
+              path,
+              role,
+              width,
+              count,
+              errors,
+              url: page.url(),
+              body: await page.evaluate(() =>
+                document.body.innerText.slice(0, 1000),
+              ),
+            });
+            throw e;
+          });
         await page.evaluate(async () => {
           await document.fonts.ready;
           await Promise.allSettled(

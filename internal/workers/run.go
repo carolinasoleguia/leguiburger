@@ -25,7 +25,10 @@ func Run(ctx context.Context, db *gorm.DB) {
 	defer ticker.Stop()
 	for {
 		work, cancel := context.WithTimeout(ctx, 12*time.Second)
-		err := operations.GenerateNotifications(work, db)
+		err := operations.ProcessStorefrontWork(work, db)
+		if err == nil {
+			err = operations.GenerateNotifications(work, db)
+		}
 		if err != nil {
 			log.Printf("worker notifications retry pending (%T)", err)
 		}

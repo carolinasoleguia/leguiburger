@@ -29,6 +29,9 @@ export function notifyOrderChange(previous, next) {
       String(previous.total_paid) === String(next.total_paid))
   )
     return;
+  playOrderSound();
+}
+export function playOrderSound() {
   if (!soundEnabled.value || document.hidden || context?.state !== "running")
     return;
   try {

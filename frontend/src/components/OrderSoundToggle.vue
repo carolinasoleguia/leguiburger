@@ -4,6 +4,7 @@ import {
   soundError,
   toggleOrderSound,
 } from "../composables/useOrderSound.js";
+defineProps({ newOrders: Boolean });
 </script>
 <template>
   <div class="order-sound">
@@ -13,13 +14,17 @@ import {
       :aria-pressed="soundEnabled"
       @click="toggleOrderSound"
     >
-      {{ soundEnabled ? "Silenciar avisos" : "Activar sonido" }}</button
-    ><small role="status">{{
-      soundError ||
-      (soundEnabled
-        ? "Sonará cuando cambie el estado o se registre un pago."
-        : "Activá los avisos sonoros para este navegador.")
-    }}</small>
+      {{ soundEnabled ? "Silenciar avisos" : "Activar sonido" }}</button><small
+      role="status"
+      >{{
+        soundError ||
+        (soundEnabled
+          ? newOrders
+            ? "Sonará cuando llegue un nuevo pedido pendiente."
+            : "Sonará cuando cambie el estado o se registre un pago."
+          : "Activá los avisos sonoros para este navegador.")
+      }}</small
+    >
   </div>
 </template>
 <style scoped>

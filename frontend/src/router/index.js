@@ -33,6 +33,21 @@ const workspaceViews = {
 };
 const routes = [
   {
+    path: "/baja",
+    component: () => import("../views/buyers/NewsletterUnsubscribeView.vue"),
+    meta: { publicBuyer: true },
+  },
+  {
+    path: "/store-operations",
+    component: () => import("../views/shared/StoreOperationsView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin", "admin"] },
+  },
+  {
+    path: "/campaigns",
+    component: () => import("../views/shared/CampaignsView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin", "admin"] },
+  },
+  {
     path: "/mi-cuenta",
     component: () => import("../views/buyers/ShopperAccountView.vue"),
     meta: { publicBuyer: true },

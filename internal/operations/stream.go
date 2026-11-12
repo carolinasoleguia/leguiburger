@@ -3,8 +3,10 @@ package operations
 import (
 	"context"
 	"fmt"
+	"leguiburger/internal/auth"
 	"leguiburger/internal/buyeraccess"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -56,7 +58,55 @@ func (h *Handler) orderStream(w http.ResponseWriter, r *http.Request, tracking b
 			streamKey = buyeraccess.Digest(c.Value)
 		}
 	}
-	changed, release, ok := hub.Subscribe(id, streamKey)
+	h.serveOrderEvents(w, r, id, streamKey, resolve)
+}
+func (h *Handler) staffOrderStream(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+		writeError(w, forbidden())
+		return
+	}
+	raw := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	resolve := func() (string, error) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		claims, e := auth.ValidateToken(raw)
+		if e != nil {
+			return "", unauthorized()
+		}
+		session, e := auth.ResolveSessionPrincipal(ctx, h.repo.DB, claims)
+		if e != nil {
+			return "", unauthorized()
+		}
+		p := Principal{ID: session.ID, Kind: session.Kind, Role: session.Role, BrandID: session.BrandID, TenantID: session.TenantID}
+		scope, e := h.tenantScope(ctx, p, r)
+		if e != nil {
+			return "", e
+		}
+		var available bool
+		e = h.repo.DB.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM public.brands WHERE id=? AND suspended_at IS NULL AND closed_at IS NULL)`, scope.BrandID).Scan(&available).Error
+		if e != nil {
+			return "", e
+		}
+		if !available {
+			return "", forbidden()
+		}
+		return "tenant:" + scope.TenantID, nil
+	}
+	id, e := resolve()
+	if e != nil {
+		writeError(w, e)
+		return
+	}
+	h.serveOrderEvents(w, r, id, "staff:"+buyeraccess.Digest(raw), resolve)
+}
+func (h *Handler) serveOrderEvents(w http.ResponseWriter, r *http.Request, id, key string, resolve func() (string, error)) {
+	hub := h.buyer.Stream
+	if hub == nil || !hub.Ready() {
+		w.Header().Set("Retry-After", "5")
+		http.Error(w, "stream unavailable", 503)
+		return
+	}
+	changed, release, ok := hub.Subscribe(id, key)
 	if !ok {
 		http.Error(w, "stream capacity unavailable", 503)
 		return
@@ -99,7 +149,7 @@ func (h *Handler) orderStream(w http.ResponseWriter, r *http.Request, tracking b
 				return
 			}
 		case <-authCheck.C:
-			if _, e := resolve(); e != nil {
+			if current, e := resolve(); e != nil || current != id {
 				return
 			}
 		}
