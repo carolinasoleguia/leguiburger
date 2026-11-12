@@ -36,3 +36,15 @@ Hay límites persistentes por local y dirección TCP: 240 cotizaciones, 30 confi
 - `go test ./internal/operations -run TestBuyerCheckoutIntegration -count=1 -v -args -security-integration`: aislamiento, precios/extras/envío, reintentos, datos privados, aceptación y stock. Solo fixtures revertidas en el proyecto fijado.
 - `go test ./internal/mercadopago -run TestDatabaseIntegration -count=1 -v -args -mp-db-integration`: proveedor HTTP simulado; comprador, aceptación, importe del servidor, capacidad de seguimiento sin acceso a pago, retorno sin secreto y liquidación verificada. No hace cobros reales.
 - `node tools/test-buyer-browser.mjs`: escritorio/móvil, claro/oscuro, personalización, entrega, cotización obsoleta, respuesta perdida y reintento idéntico, recibo al recargar, pago y separación entre locales. Usa el mismo harness Puppeteer que las otras suites.
+
+## Recuperar fotos anteriores y publicar una carta
+
+Las referencias antiguas `/uploads/products/*.jpg` pueden recuperarse desde los archivos originales con `cmd/repair-catalog-images`. El comando exige proyecto y sucursal, limita la lectura a imágenes con nombre UUID dentro del directorio indicado, reutiliza la validación/limpieza y el diario de subidas actuales, verifica la imagen pública y reemplaza la referencia con control de concurrencia. Conserva los archivos originales y registra el vínculo anterior/nuevo en actividad. Solo procesa productos de la marca de esa sucursal; no copia productos ni cambia sus asignaciones, precios o activación.
+
+```powershell
+go run ./cmd/repair-catalog-images --expect-project ljdebnvzdrlqdxnligvh --tenant <UUID>
+```
+
+Sin `--apply` solo informa el alcance. Agregar `--apply` recupera las fotos. `--publish` publica esa sucursal después de verificar las fotos de sus productos activos asignados; `--enable-orders` habilita además los pedidos y requiere `--publish`. Se comprueban los proyectos de DB y Storage antes de cualquier escritura. El comando necesita las credenciales de Storage existentes en `.env` y nunca las imprime. Un fallo deja completadas las recuperaciones ya verificadas; el reintento solo toma las referencias antiguas pendientes.
+
+Se recuperaron las cinco imágenes locales antiguas de Poggs y se publicó su sucursal City Bell (`ddf1e412-d10a-46f1-8b00-fc15e78059f0`), con los dos productos que ya tenía asignados: Ankara Messi y La Ganadora. La marca Leguiburger es otro restaurante en la DB y no recibió esos productos. El acceso público de prueba es `/catalogo/ddf1e412-d10a-46f1-8b00-fc15e78059f0`.
