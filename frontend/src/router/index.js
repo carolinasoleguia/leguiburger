@@ -219,11 +219,16 @@ const routes = [
       tenantMatch: true,
     },
   },
-  { path: "/catalogo/:tenantId", component: CatalogLandingView },
+  {
+    path: "/catalogo/:tenantId",
+    component: CatalogLandingView,
+    meta: { publicBuyer: true },
+  },
   {
     path: "/catalogo",
     name: "CatalogLanding",
     component: CatalogLandingView,
+    meta: { publicBuyer: true },
   },
   {
     path: "/unauthorized",
@@ -248,6 +253,8 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
+  // Buying from a public menu never depends on an application session.
+  if (to.meta.publicBuyer) return next();
   await bootstrapSession();
   const auth = useAuth();
 

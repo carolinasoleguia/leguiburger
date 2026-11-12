@@ -221,6 +221,10 @@ try {
       });
       await page.waitForSelector(".menu-add:disabled");
       check(
+        !calls.some((x) => x.path.startsWith("/api/auth/")),
+        "public buying never requests an app session",
+      );
+      check(
         (await page.$$(".menu-add:disabled")).length === 1,
         "unavailable cannot be ordered",
       );
