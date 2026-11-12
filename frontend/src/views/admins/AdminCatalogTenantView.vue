@@ -9,7 +9,7 @@
     <nav class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
       <router-link
         :to="{ name: 'AdminCatalog' }"
-        class="catalog-tab"
+        class="catalog-tab" :title="brandCatalogLabel"
         exact-active-class="catalog-tab--active"
       >
         {{ brandCatalogLabel }}

@@ -146,7 +146,7 @@ onMounted(load);
               </tr>
             </thead>
             <tbody><LoadingRows v-if="loading" :columns="5" />
-              <tr v-for="item in invitations" :key="item.id">
+              <tr v-show="!(loading)" v-for="item in invitations" :key="item.id">
                 <td>{{ item.email }}</td>
                 <td>{{ item.subdomain }}</td>
                 <td>{{ roles[item.role] }}</td>
@@ -172,7 +172,7 @@ onMounted(load);
                   </button>
                 </td>
               </tr>
-              <tr v-if="!invitations.length">
+              <tr v-show="!(loading)" v-if="!invitations.length">
                 <td colspan="5">Todavía no hay invitaciones.</td>
               </tr>
             </tbody>

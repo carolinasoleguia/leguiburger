@@ -101,7 +101,7 @@ function page(n) {
           </tr>
         </thead>
         <tbody><LoadingRows v-if="w.loading.value" :columns="6" />
-          <tr v-for="item in items" :key="item.id">
+          <tr v-show="!(w.loading.value)" v-for="item in items" :key="item.id">
             <td>{{ when(item.incurred_at) }}</td>
             <td>{{ labels[item.category] }}</td>
             <td>{{ item.description }}</td>
@@ -120,7 +120,7 @@ function page(n) {
               </button>
             </td>
           </tr>
-          <tr v-if="!items.length">
+          <tr v-show="!(w.loading.value)" v-if="!items.length">
             <td colspan="6">Todavía no hay gastos registrados.</td>
           </tr>
         </tbody>

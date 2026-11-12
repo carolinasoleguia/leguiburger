@@ -302,7 +302,7 @@ async function closeAccount() {
               </tr>
             </thead>
             <tbody><LoadingRows v-if="w.loading.value" :columns="4" />
-              <tr v-for="item in backups" :key="item.id">
+              <tr v-show="!(w.loading.value)" v-for="item in backups" :key="item.id">
                 <td>{{ when(item.created_at) }}</td>
                 <td>{{ backupState[item.state] }}</td>
                 <td>
@@ -383,7 +383,7 @@ async function closeAccount() {
               </tr>
             </thead>
             <tbody><LoadingRows v-if="w.loading.value" :columns="2" />
-              <tr v-for="renewal in closure.renewals" :key="renewal.id">
+              <tr v-show="!(w.loading.value)" v-for="renewal in closure.renewals" :key="renewal.id">
                 <td>{{ renewal.provider || "Gestión manual" }}</td>
                 <td>
                   {{
@@ -423,7 +423,7 @@ async function closeAccount() {
             </tr>
           </thead>
           <tbody><LoadingRows v-if="w.loading.value" :columns="4" />
-            <tr v-for="item in issues" :key="`${item.component}:${item.code}`">
+            <tr v-show="!(w.loading.value)" v-for="item in issues" :key="`${item.component}:${item.code}`">
               <td>{{ item.component }}</td>
               <td>{{ item.code }}</td>
               <td>{{ item.occurrences }}</td>

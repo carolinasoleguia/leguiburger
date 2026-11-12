@@ -79,7 +79,7 @@ function page(n) {
           </tr>
         </thead>
         <tbody><LoadingRows v-if="w.loading.value" :columns="5" />
-          <tr v-for="item in items" :key="item.id">
+          <tr v-show="!(w.loading.value)" v-for="item in items" :key="item.id">
             <td>
               {{ item.first_name }} {{ item.last_name
               }}<small>{{ item.email }}</small>
@@ -104,7 +104,7 @@ function page(n) {
               </button>
             </td>
           </tr>
-          <tr v-if="!items.length">
+          <tr v-show="!(w.loading.value)" v-if="!items.length">
             <td colspan="5">
               Invitá a las personas que trabajan en tu restaurante.
             </td>

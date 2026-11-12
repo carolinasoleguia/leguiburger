@@ -66,10 +66,11 @@ function page(n) {
     <p v-if="!items.length" class="no-data">
       Todo al día. Las novedades del negocio van a aparecer acá.
     </p>
-    <ListPager
-      :offset="offset"
-      :count="items.length"
-      :disabled="w.busy.value"
-      @change="page"
-  /></WorkspaceFrame>
+    <template #footer
+      ><ListPager
+        :offset="offset"
+        :count="items.length"
+        :disabled="w.busy.value"
+        @change="page" /></template
+  ></WorkspaceFrame>
 </template>

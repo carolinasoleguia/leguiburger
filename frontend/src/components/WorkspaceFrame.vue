@@ -59,7 +59,7 @@ defineProps({
       <StableContent
         :loading="workspace.loading.value"
         :busy="workspace.busy.value"
-        ><slot
-      /></StableContent></section
+        ><slot /></StableContent
+      ><slot name="footer" /></section
   ></DashboardShell>
 </template>

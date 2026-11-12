@@ -89,7 +89,7 @@ function page(n) {
           </tr>
         </thead>
         <tbody><LoadingRows v-if="w.loading.value" :columns="5" />
-          <tr v-for="item in items" :key="item.id">
+          <tr v-show="!(w.loading.value)" v-for="item in items" :key="item.id">
             <td>{{ item.first_name }} {{ item.last_name }}</td>
             <td>
               {{ item.email }}<small>{{ item.phone }}</small>
@@ -100,7 +100,7 @@ function page(n) {
               <button class="btn-secondary" @click="edit(item)">Editar</button>
             </td>
           </tr>
-          <tr v-if="!items.length">
+          <tr v-show="!(w.loading.value)" v-if="!items.length">
             <td colspan="5">No encontramos clientes con ese criterio.</td>
           </tr>
         </tbody>

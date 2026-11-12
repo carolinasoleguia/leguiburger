@@ -314,7 +314,7 @@ function preset(count) {
             </tr>
           </thead>
           <tbody><LoadingRows v-if="w.loading.value" :columns="3" />
-            <tr
+            <tr v-show="!(w.loading.value)"
               v-for="item in w.platform.value
                 ? report.activity_by_feature
                 : report.recent_orders"

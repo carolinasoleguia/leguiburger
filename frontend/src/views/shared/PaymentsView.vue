@@ -502,7 +502,7 @@ onMounted(async () => {
                 </tr>
               </thead>
               <tbody><LoadingRows v-if="loading" :columns="8" />
-                <tr v-for="item in transactions" :key="item.id">
+                <tr v-show="!(loading)" v-for="item in transactions" :key="item.id">
                   <td>
                     {{ item.payment_id
                     }}<small
@@ -545,7 +545,7 @@ onMounted(async () => {
                     </button>
                   </td>
                 </tr>
-                <tr v-if="!transactions.length">
+                <tr v-show="!(loading)" v-if="!transactions.length">
                   <td colspan="8">Todavía no hay pagos verificados.</td>
                 </tr>
               </tbody>
@@ -635,7 +635,7 @@ onMounted(async () => {
                 </tr>
               </thead>
               <tbody><LoadingRows v-if="loading" :columns="5" />
-                <tr v-for="item in checkouts" :key="item.id">
+                <tr v-show="!(loading)" v-for="item in checkouts" :key="item.id">
                   <td>{{ when(item.created_at) }}</td>
                   <td>
                     {{ item.purpose === "order" ? "Pedido" : "Membresía" }}
@@ -655,7 +655,7 @@ onMounted(async () => {
                     ><span v-else>Por confirmar</span>
                   </td>
                 </tr>
-                <tr v-if="!checkouts.length">
+                <tr v-show="!(loading)" v-if="!checkouts.length">
                   <td colspan="5">Todavía no generaste links de cobro.</td>
                 </tr>
               </tbody>
@@ -807,7 +807,7 @@ onMounted(async () => {
                 </tr>
               </thead>
               <tbody><LoadingRows v-if="loading" :columns="5" />
-                <tr v-for="item in billing.invoices || []" :key="item.id">
+                <tr v-show="!(loading)" v-for="item in billing.invoices || []" :key="item.id">
                   <td>{{ item.description || item.id.slice(0, 8) }}</td>
                   <td>{{ money(item.amount_total, item.currency) }}</td>
                   <td>{{ money(item.balance_due, item.currency) }}</td>
@@ -935,7 +935,7 @@ onMounted(async () => {
                 </tr>
               </thead>
               <tbody><LoadingRows v-if="loading" :columns="5" />
-                <tr v-for="item in reviews" :key="item.id">
+                <tr v-show="!(loading)" v-for="item in reviews" :key="item.id">
                   <td>{{ item.resource_id }}</td>
                   <td>
                     {{
@@ -954,7 +954,7 @@ onMounted(async () => {
                     </button>
                   </td>
                 </tr>
-                <tr v-if="!reviews.length">
+                <tr v-show="!(loading)" v-if="!reviews.length">
                   <td colspan="5">No hay inconsistencias registradas.</td>
                 </tr>
               </tbody>

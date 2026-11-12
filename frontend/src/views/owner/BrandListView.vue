@@ -20,7 +20,7 @@
               </tr>
             </thead>
             <tbody><LoadingRows v-if="loading" :columns="4" />
-              <tr v-if="!brands.length">
+              <tr v-show="!(loading)" v-if="!brands.length">
                 <td colspan="4">
                   <span v-if="error" role="alert">{{ error }}</span
                   ><span v-else-if="!loading"
@@ -28,7 +28,7 @@
                   >
                 </td>
               </tr>
-              <tr v-for="(brand, index) in brands" :key="brand.id">
+              <tr v-show="!(loading)" v-for="(brand, index) in brands" :key="brand.id">
                 <td>{{ index + 1 }}</td>
                 <td>{{ brand.name }}</td>
                 <td>{{ brand.tax_id }}</td>

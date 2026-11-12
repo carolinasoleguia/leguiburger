@@ -265,7 +265,7 @@ function menuPage(n) {
           </tr>
         </thead>
         <tbody><LoadingRows v-if="w.loading.value" :columns="6" />
-          <tr v-for="item in orders" :key="item.id">
+          <tr v-show="!(w.loading.value)" v-for="item in orders" :key="item.id">
             <td>#{{ item.id.slice(0, 8) }}</td>
             <td>{{ when(item.created_at) }}</td>
             <td>{{ statusLabels[item.status] }}</td>
@@ -277,7 +277,7 @@ function menuPage(n) {
               </button>
             </td>
           </tr>
-          <tr v-if="!orders.length">
+          <tr v-show="!(w.loading.value)" v-if="!orders.length">
             <td colspan="6">Los pedidos de este local aparecerán acá.</td>
           </tr>
         </tbody>

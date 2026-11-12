@@ -18,7 +18,7 @@
     <nav class="catalog-tabs" aria-label="Secciones de gestión de catálogo">
       <router-link
         :to="{ name: 'AdminCatalog' }"
-        class="catalog-tab"
+        class="catalog-tab" :title="brandCatalogLabel"
         exact-active-class="catalog-tab--active"
       >
         {{ brandCatalogLabel }}
@@ -35,7 +35,7 @@
     <div class="card">
       <div class="panel-heading">
         <div>
-          <h3>{{ brandCatalogLabel }}</h3>
+          <h3 :title="brandCatalogLabel">{{ brandCatalogLabel }}</h3>
           <p>
             {{ products.length }} productos registrados como oferta general de
             la marca
@@ -55,7 +55,7 @@
               </tr>
             </thead>
             <tbody><LoadingRows v-if="initializingCatalog || loadingProducts" :columns="4" />
-              <tr v-if="!products.length">
+              <tr v-show="!(initializingCatalog || loadingProducts)" v-if="!products.length">
                 <td colspan="4">
                   <span v-if="productError" role="alert">{{
                     productError
@@ -65,7 +65,7 @@
                   >
                 </td>
               </tr>
-              <tr v-for="product in products" :key="productId(product)">
+              <tr v-show="!(initializingCatalog || loadingProducts)" v-for="product in products" :key="productId(product)">
                 <td class="product-cell">
                   <div class="product-cell__content">
                     <img

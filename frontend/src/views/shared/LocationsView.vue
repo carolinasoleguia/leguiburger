@@ -122,7 +122,7 @@ function save() {
           </tr>
         </thead>
         <tbody><LoadingRows v-if="w.loading.value" :columns="6" />
-          <tr v-for="item in shown" :key="item.id">
+          <tr v-show="!(w.loading.value)" v-for="item in shown" :key="item.id">
             <td>
               {{ item.display_name || item.subdomain
               }}<small>{{ item.business_name }}</small>

@@ -69,7 +69,7 @@ onMounted(load);
               </tr>
             </thead>
             <tbody><LoadingRows v-if="busy" :columns="4" />
-              <tr v-for="item in items" :key="item.id">
+              <tr v-show="!(busy)" v-for="item in items" :key="item.id">
                 <td>
                   {{ new Date(item.occurred_at).toLocaleString("es-AR") }}
                 </td>
@@ -77,7 +77,7 @@ onMounted(load);
                 <td>{{ labels[item.event_name] || item.event_name }}</td>
                 <td class="resource-id">{{ item.target_id || "—" }}</td>
               </tr>
-              <tr v-if="!items.length">
+              <tr v-show="!(busy)" v-if="!items.length">
                 <td colspan="4">
                   {{
                     busy

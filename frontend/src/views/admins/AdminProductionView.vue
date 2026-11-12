@@ -46,7 +46,7 @@
               </tr>
             </thead>
             <tbody><LoadingRows v-if="loading" :columns="6" />
-              <tr v-if="!reports.length">
+              <tr v-show="!(loading)" v-if="!reports.length">
                 <td colspan="6">
                   <span v-if="error" role="alert">{{ error }}</span
                   ><span v-else-if="!selectedTenant"
@@ -58,7 +58,7 @@
                   >
                 </td>
               </tr>
-              <tr v-for="(report, index) in reports" :key="report.id">
+              <tr v-show="!(loading)" v-for="(report, index) in reports" :key="report.id">
                 <td>{{ index + 1 }}</td>
                 <td>{{ report.production_date }}</td>
                 <td>{{ report.medallions_produced }}</td>

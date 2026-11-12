@@ -119,8 +119,8 @@ function page(n) {
               <th></th>
             </tr>
           </thead>
-          <tbody><LoadingRows v-if="w.loading.value" :columns="6" />
-            <tr v-for="item in visible" :key="item.kind + item.id">
+          <tbody><LoadingRows v-if="w.loading.value" :columns="w.manager.value ? 6 : 5" />
+            <tr v-show="!(w.loading.value)" v-for="item in visible" :key="item.kind + item.id">
               <td>
                 {{ item.name
                 }}<small>{{
@@ -151,7 +151,7 @@ function page(n) {
                 </button>
               </td>
             </tr>
-            <tr v-if="!visible.length">
+            <tr v-show="!(w.loading.value)" v-if="!visible.length">
               <td colspan="5">No hay resultados en esta página.</td>
             </tr>
           </tbody>
@@ -170,14 +170,14 @@ function page(n) {
           </tr>
         </thead>
         <tbody><LoadingRows v-if="w.loading.value" :columns="5" />
-          <tr v-for="item in movements" :key="item.id">
+          <tr v-show="!(w.loading.value)" v-for="item in movements" :key="item.id">
             <td>{{ when(item.occurred_at) }}</td>
             <td>{{ item.item_kind }}</td>
             <td>{{ item.reason }}</td>
             <td>{{ item.quantity_delta }}</td>
             <td>{{ item.balance_before }} → {{ item.balance_after }}</td>
           </tr>
-          <tr v-if="!movements.length">
+          <tr v-show="!(w.loading.value)" v-if="!movements.length">
             <td colspan="5">Todavía no hay movimientos.</td>
           </tr>
         </tbody>

@@ -61,6 +61,7 @@ const scenarios = [
   "/admin",
   "/owner",
   "/owner/brands",
+  "cashier:/inventory",
 ];
 function data(path, count) {
   const rows = Array.from({ length: count }, (_, i) => ({
@@ -135,6 +136,11 @@ function data(path, count) {
         brand_id: "brand-1",
         subdomain: "centro",
         name: "Centro",
+        brand: {
+          name: count
+            ? "Hamburguesería del Barrio Centro - Parrilla y Hamburguesas"
+            : "",
+        },
         active: true,
       },
     ];
@@ -271,6 +277,7 @@ const selectors = [
   "main .payment-tabs",
   "main .payment-filters",
   "main .care-grid",
+  ...Array.from({ length: 8 }, (_, i) => `main table th:nth-child(${i + 1})`),
 ];
 async function boxes() {
   return page.evaluate(
@@ -291,9 +298,13 @@ async function boxes() {
 }
 try {
   for (const width of [1440, 390])
-    for (const path of scenarios)
+    for (const scenario of scenarios)
       for (const count of [0, 25]) {
-        const role = path.startsWith("/owner") ? "owner" : "admin",
+        const [overrideRole, path] = scenario.includes(":")
+          ? scenario.split(":")
+          : [null, scenario];
+        const role =
+            overrideRole || (path.startsWith("/owner") ? "owner" : "admin"),
           queued = [],
           errors = [];
         let holding = true;
@@ -318,6 +329,7 @@ try {
                   role,
                   brand_id: "brand-1",
                   email: "fixture@example.invalid",
+                  tenant_id: role === "cashier" ? "tenant-1" : undefined,
                 },
               }),
             });
@@ -422,7 +434,7 @@ try {
                 after: b.height,
               });
         }
-        results.push({ path, width, count, ...metrics, drift });
+        results.push({ path, role, width, count, ...metrics, drift });
         if (
           errors.length ||
           drift.length ||
