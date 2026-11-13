@@ -215,6 +215,18 @@ func TestTenantIsolationIntegration(t *testing.T) {
 	request("GET", "/api/public/menu/"+t1, "", "", nil, nil, 404)
 	request("PATCH", "/api/menu/settings", "admin_a", t1, nil, map[string]any{"published": true}, 200)
 	public := request("GET", "/api/public/menu/"+t1, "", "", nil, nil, 200)
+	var slugs struct{ Brand, Local string }
+	tx.Raw(`SELECT b.slug brand,t.slug local FROM public.tenants t JOIN public.brands b ON b.id=t.brand_id WHERE t.id=?`, t1).Scan(&slugs)
+	resolved := request("GET", "/api/public/restaurants/"+slugs.Brand+"/"+slugs.Local, "", "", nil, nil, 200)
+	if !strings.Contains(resolved.Body.String(), t1) {
+		t.Fatal("slug resolved wrong location")
+	}
+	request("GET", "/api/public/restaurants/not-a-brand/"+slugs.Local, "", "", nil, nil, 404)
+	settings := request("GET", "/api/menu/settings", "admin_a", t1, nil, nil, 200)
+	if !strings.Contains(settings.Body.String(), "/"+slugs.Brand+"/"+slugs.Local+"/carta") {
+		t.Fatal("publication did not use canonical path")
+	}
+
 	for _, private := range []string{"unit_cost", "current_stock", "minimum_stock", "recipe", "brand_id", "tenant_id", "password", "actor_"} {
 		if strings.Contains(public.Body.String(), private) {
 			t.Fatalf("public menu contains private field %s", private)
@@ -227,6 +239,7 @@ func TestTenantIsolationIntegration(t *testing.T) {
 		t.Fatal("published category did not use existing catalogue")
 	}
 	request("PATCH", "/api/menu/settings", "admin_a", t1, nil, map[string]any{"published": false}, 200)
+	request("GET", "/api/public/restaurants/"+slugs.Brand+"/"+slugs.Local, "", "", nil, nil, 404)
 	request("GET", "/api/public/menu/"+t1, "", "", nil, nil, 404)
 	// Search finds a row beyond the first page and treats SQL syntax as literal input.
 	for i := 0; i < 30; i++ {

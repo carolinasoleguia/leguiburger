@@ -87,6 +87,7 @@ try {
       let order = null,
         creates = 0,
         quotes = 0,
+        blocked = true,
         stale = true,
         unknown = true,
         online = false,
@@ -112,6 +113,11 @@ try {
         if (!path.startsWith("/api/")) return r.continue();
         const body = r.postData() ? JSON.parse(r.postData()) : undefined;
         calls.push({ path, body, headers: r.headers(), method: r.method() });
+        if (path === "/api/public/restaurants/leguiburger/centro")
+          return reply(r, {
+            tenant_id: tenant,
+            path: "/leguiburger/centro/carta",
+          });
         if (path === "/api/auth/refresh") return reply(r, {}, 401);
         if (path.endsWith("/buyer-session"))
           return reply(r, {
@@ -137,6 +143,18 @@ try {
         }
         if (path.endsWith("/orders")) {
           creates++;
+          if (blocked) {
+            blocked = false;
+            return reply(
+              r,
+              {
+                code: "CHECKOUT_RATE_LIMITED",
+                message:
+                  "Detectamos demasiados intentos de compra. Esperá unos minutos y volvé a intentar.",
+              },
+              429,
+            );
+          }
           if (stale) {
             stale = false;
             return reply(
@@ -221,9 +239,15 @@ try {
           });
         return reply(r, {}, 404);
       });
-      await page.goto(origin + "/catalogo/" + tenant, {
-        waitUntil: "networkidle0",
-      });
+      await page.goto(
+        origin +
+          (theme === "dark"
+            ? "/leguiburger/centro/carta"
+            : "/catalogo/" + tenant),
+        {
+          waitUntil: "networkidle0",
+        },
+      );
       await page.waitForSelector(".menu-add:not(:disabled)");
       check(
         !calls.some((x) => x.path.startsWith("/api/auth/")),
@@ -279,6 +303,16 @@ try {
       await page.waitForFunction(() =>
         document
           .querySelector(".buyer-sheet .error-msg")
+          ?.textContent.includes("demasiados intentos"),
+      );
+      check(
+        (await page.$("input[name=buyer-name]")) !== null,
+        "temporary block preserves checkout contact",
+      );
+      await button(page, "Reintentar la misma confirmación");
+      await page.waitForFunction(() =>
+        document
+          .querySelector(".buyer-sheet .error-msg")
           ?.textContent.includes("cambiaron"),
       );
       check(
@@ -300,9 +334,14 @@ try {
       );
       await button(page, "Reintentar la misma confirmación");
       await page.waitForSelector(".buyer-receipt-status");
-      const sent = calls.filter((x) => x.path.endsWith("/orders"));
+      const attempts = calls.filter((x) => x.path.endsWith("/orders"));
       check(
-        creates === 3 && quotes === 2,
+        JSON.stringify(attempts[0].body) === JSON.stringify(attempts[1].body),
+        "429 retry preserves pending confirmation",
+      );
+      const sent = attempts.slice(1);
+      check(
+        creates === 4 && quotes === 2,
         "expected quote and create attempts",
       );
       check(
@@ -358,7 +397,7 @@ try {
       await page.reload({ waitUntil: "networkidle0" });
       await page.waitForSelector(".buyer-receipt-status");
       check(
-        calls.filter((x) => x.path.endsWith("/orders")).length === 3,
+        calls.filter((x) => x.path.endsWith("/orders")).length === 4,
         "reload recovers receipt without creating order",
       );
       status = "accepted";

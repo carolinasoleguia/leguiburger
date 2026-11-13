@@ -304,18 +304,18 @@ func TestBuyerCheckoutIntegration(t *testing.T) {
 	request("GET", "/api/public/order", "", "", tracking, nil, 200)
 	request("GET", "/api/public/buyer-order", "", "", tracking, nil, 404)
 	request("POST", "/api/public/buyer-order/mercadopago", "", "", tracking, map[string]any{}, 409) // provider disabled
-	private := parse(request("GET", "/api/orders/"+oid, "admin_a", t1, nil, nil, 200))
+	private := parse(request("GET", "/api/orders/"+oid, "cashier", t1, nil, nil, 200))
 	if private["buyer_name"] != "Buyer Fixture" || private["buyer_phone"] != "11 5555 0123" {
 		t.Fatal("restaurant did not receive buyer contact")
 	}
-	request("GET", "/api/orders/"+oid, "admin_b", t2, nil, nil, 404)
+	request("GET", "/api/orders/"+oid, "admin_b", t2, nil, nil, 403)
 	var stock, sales int64
 	tx.Raw(`SELECT current_stock FROM public.tenant_products WHERE tenant_id=? AND product_id=?`, t1, p1).Scan(&stock)
 	tx.Raw(`SELECT count(*) FROM public.sales WHERE order_id=?`, oid).Scan(&sales)
 	if stock != 10 || sales != 0 {
 		t.Fatal("unaccepted guest order consumed stock or posted revenue")
 	}
-	request("PATCH", "/api/orders/"+oid+"/status", "admin_a", t1, nil, map[string]any{"status": "accepted", "expected_version": private["version"]}, 200)
+	request("PATCH", "/api/orders/"+oid+"/status", "cashier", t1, nil, map[string]any{"status": "accepted", "expected_version": private["version"]}, 200)
 	tx.Raw(`SELECT current_stock FROM public.tenant_products WHERE tenant_id=? AND product_id=?`, t1, p1).Scan(&stock)
 	if stock != 8 {
 		t.Fatal("accepted guest order did not consume stock")
@@ -324,10 +324,10 @@ func TestBuyerCheckoutIntegration(t *testing.T) {
 	if !strings.Contains(kitchenData, "Sin cebolla") || strings.Contains(kitchenData, "buyer@example.invalid") || strings.Contains(kitchenData, "11 5555 0123") {
 		t.Fatal("kitchen buyer projection invalid")
 	}
-	request("POST", "/api/orders/"+oid+"/payments", "admin_a", t1, nil, map[string]any{"kind": "charge", "method": "transfer", "amount": "220.50"}, 201)
+	request("POST", "/api/orders/"+oid+"/payments", "cashier", t1, nil, map[string]any{"kind": "charge", "method": "transfer", "amount": "220.50"}, 201)
 	for _, next := range []string{"preparing", "ready", "delivered"} {
-		current := parse(request("GET", "/api/orders/"+oid, "admin_a", t1, nil, nil, 200))
-		request("PATCH", "/api/orders/"+oid+"/status", "admin_a", t1, nil, map[string]any{"status": next, "expected_version": current["version"]}, 200)
+		current := parse(request("GET", "/api/orders/"+oid, "cashier", t1, nil, nil, 200))
+		request("PATCH", "/api/orders/"+oid+"/status", "cashier", t1, nil, map[string]any{"status": next, "expected_version": current["version"]}, 200)
 	}
 	rotated := request("POST", path+"/buyer-session", "", "", cookieHeaders, map[string]any{"new": true}, 200)
 	if len(rotated.Result().Cookies()) != 1 || rotated.Result().Cookies()[0].Value == cookies[0].Value {

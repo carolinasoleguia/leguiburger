@@ -280,6 +280,11 @@ const routes = [
     },
   },
   {
+    path: "/:brand/:local/carta",
+    component: () => import("../views/buyers/SlugCatalogView.vue"),
+    meta: { publicBuyer: true },
+  },
+  {
     path: "/catalogo/:tenantId",
     component: CatalogLandingView,
     meta: { publicBuyer: true },

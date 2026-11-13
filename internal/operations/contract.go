@@ -9,13 +9,13 @@ import (
 	"time"
 )
 
-const requiredMigration = "202611120009_kitchen_queue_index"
+const requiredMigration = "202611130001_public_menu_slugs"
 
 // VerifyDatabase refuses to start the new API against an old or different project.
 func VerifyDatabase(database *gorm.DB, dsn string) error {
 	cfg, err := pgx.ParseConfig(dsn)
 	if err != nil {
-		return fmt.Errorf("configuración de base inválida")
+		return fmt.Errorf("configuraciÃ³n de base invÃ¡lida")
 	}
 	expected := ""
 	if strings.HasSuffix(cfg.Host, ".pooler.supabase.com") && strings.HasPrefix(cfg.User, "postgres.") {
@@ -33,7 +33,7 @@ func VerifyDatabase(database *gorm.DB, dsn string) error {
 	}
 	result := NewRepository(database).DB.WithContext(ctx).Raw(`SELECT c.project_ref,c.application,EXISTS(SELECT 1 FROM legui_private.schema_migrations WHERE version=?) ready FROM legui_private.database_contract c WHERE c.singleton`, requiredMigration).Scan(&contract)
 	if result.Error != nil || result.RowsAffected != 1 || !contract.Ready || contract.Application != "leguiburger" {
-		return fmt.Errorf("la base no tiene el contrato y las migraciones requeridos de LeguiBurger; revisá database/README.md")
+		return fmt.Errorf("la base no tiene el contrato y las migraciones requeridos de LeguiBurger; revisÃ¡ database/README.md")
 	}
 	if expected != "" && contract.ProjectRef != expected {
 		return fmt.Errorf("la identidad de la base no coincide con el proyecto configurado")

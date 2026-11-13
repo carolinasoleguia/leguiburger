@@ -24,10 +24,10 @@ type apiError struct {
 func (e *apiError) Error() string   { return e.Message }
 func badInput(message string) error { return &apiError{400, "INVALID_INPUT", message} }
 func forbidden() error {
-	return &apiError{403, "FORBIDDEN", "No tenés permiso para realizar esta operación"}
+	return &apiError{403, "FORBIDDEN", "No tenÃ©s permiso para realizar esta operaciÃ³n"}
 }
 func unauthorized() error {
-	return &apiError{401, "UNAUTHORIZED", "La cuenta o sesión no está habilitada"}
+	return &apiError{401, "UNAUTHORIZED", "La cuenta o sesiÃ³n no estÃ¡ habilitada"}
 }
 func notFound() error               { return &apiError{404, "NOT_FOUND", "Recurso no encontrado"} }
 func conflict(message string) error { return &apiError{409, "CONFLICT", message} }
@@ -62,6 +62,7 @@ func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 	mux.HandleFunc("GET /api/public/order", h.publicOrder)
 	mux.HandleFunc("GET /api/public/restaurants", h.buyerWrap(h.publicRestaurants))
 	mux.HandleFunc("GET /api/public/menu/{id}", h.publicMenu)
+	mux.HandleFunc("GET /api/public/restaurants/{brand}/{local}", h.buyerWrap(h.resolvePublicMenu))
 	mux.HandleFunc("POST /api/public/menu/{id}/quote", h.buyerWrap(h.buyerQuote))
 	mux.HandleFunc("POST /api/public/menu/{id}/orders", h.buyerWrap(h.buyerCreate))
 	mux.HandleFunc("GET /api/public/buyer-order", h.buyerWrap(h.buyerReceipt))
@@ -148,39 +149,42 @@ func (h *Handler) wrap(fn endpoint) http.HandlerFunc {
 func writeError(w http.ResponseWriter, err error) {
 	var api *apiError
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-		api = &apiError{504, "OPERATION_TIMEOUT", "La operación excedió el tiempo disponible; reintentá con la misma clave"}
+		api = &apiError{504, "OPERATION_TIMEOUT", "La operaciÃ³n excediÃ³ el tiempo disponible; reintentÃ¡ con la misma clave"}
 	}
 	if api == nil && !errors.As(err, &api) {
 		var pg *pgconn.PgError
 		if errors.As(err, &pg) {
 			switch pg.Code {
 			case "23505":
-				api = &apiError{409, "DUPLICATE", "La operación o el recurso ya existen"}
+				api = &apiError{409, "DUPLICATE", "La operaciÃ³n o el recurso ya existen"}
 			case "23503":
-				api = &apiError{409, "INVALID_REFERENCE", "Una relación del recurso no es válida para este negocio"}
+				api = &apiError{409, "INVALID_REFERENCE", "Una relaciÃ³n del recurso no es vÃ¡lida para este negocio"}
 			case "23514":
 				if pg.ConstraintName == "kitchen_capacity" {
-					api = &apiError{409, "KITCHEN_FULL", "La cocina está al máximo de su capacidad. Esperá unos minutos para hacer un nuevo pedido"}
+					api = &apiError{409, "KITCHEN_FULL", "La cocina estÃ¡ al mÃ¡ximo de su capacidad. EsperÃ¡ unos minutos para hacer un nuevo pedido"}
 				} else {
-					api = &apiError{422, "INVALID_OPERATION", "La operación no cumple las reglas de importes, estado o integridad"}
+					api = &apiError{422, "INVALID_OPERATION", "La operaciÃ³n no cumple las reglas de importes, estado o integridad"}
 				}
 			case "23502", "22P02", "22003", "22007":
-				api = &apiError{422, "INVALID_OPERATION", "La operación no cumple las reglas de importes, estado o integridad"}
+				api = &apiError{422, "INVALID_OPERATION", "La operaciÃ³n no cumple las reglas de importes, estado o integridad"}
 			case "40001", "40P01", "55P03":
-				api = &apiError{409, "RETRY_OPERATION", "Hubo un cambio concurrente; reintentá con la misma clave de operación"}
+				api = &apiError{409, "RETRY_OPERATION", "Hubo un cambio concurrente; reintentÃ¡ con la misma clave de operaciÃ³n"}
 			case "42501":
-				api = &apiError{403, "FORBIDDEN", "Operación no permitida"}
+				api = &apiError{403, "FORBIDDEN", "OperaciÃ³n no permitida"}
 			}
 			if api == nil {
 				log.Printf("operations database failure: code=%s message=%s", pg.Code, pg.Message)
 			}
 		}
 		if api == nil {
-			api = &apiError{500, "INTERNAL_ERROR", "No se pudo completar la operación"}
+			api = &apiError{500, "INTERNAL_ERROR", "No se pudo completar la operaciÃ³n"}
 			if pg == nil {
 				log.Printf("operations internal failure: %T", err)
 			}
 		}
+	}
+	if api.Status == 429 && w.Header().Get("Retry-After") == "" {
+		w.Header().Set("Retry-After", "900")
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(api.Status)
@@ -191,18 +195,18 @@ func decode[T any](r *http.Request) (T, error) {
 	decoder := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&input); err != nil {
-		return input, badInput("JSON inválido o campos no reconocidos")
+		return input, badInput("JSON invÃ¡lido o campos no reconocidos")
 	}
 	var extra any
 	if decoder.Decode(&extra) != io.EOF {
-		return input, badInput("Se requiere un único objeto JSON")
+		return input, badInput("Se requiere un Ãºnico objeto JSON")
 	}
 	return input, nil
 }
 func resourceID(r *http.Request) (string, error) {
 	id := r.PathValue("id")
 	if !validID(id) {
-		return "", badInput("Identificador inválido")
+		return "", badInput("Identificador invÃ¡lido")
 	}
 	return id, nil
 }
@@ -212,17 +216,17 @@ func pagination(r *http.Request) (int, int, error) {
 	if raw := r.URL.Query().Get("limit"); raw != "" {
 		limit, err = strconv.Atoi(raw)
 		if err != nil {
-			return 0, 0, badInput("limit inválido")
+			return 0, 0, badInput("limit invÃ¡lido")
 		}
 	}
 	if raw := r.URL.Query().Get("offset"); raw != "" {
 		offset, err = strconv.Atoi(raw)
 		if err != nil {
-			return 0, 0, badInput("offset inválido")
+			return 0, 0, badInput("offset invÃ¡lido")
 		}
 	}
 	if limit < 1 || limit > 100 || offset < 0 || offset > 10000 {
-		return 0, 0, badInput("limit debe ser 1–100 y offset 0–10000")
+		return 0, 0, badInput("limit debe ser 1â€“100 y offset 0â€“10000")
 	}
 	return limit, offset, nil
 }

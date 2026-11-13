@@ -7,6 +7,7 @@ import AppIcon from "./AppIcon.vue";
 import ListPager from "./ListPager.vue";
 import { money } from "../composables/useWorkspace.js";
 const props = defineProps({
+  tenantId: String,
   checkoutReady: Boolean,
   orderingNotice: { type: String, default: "Elegí tus favoritas." },
 });
@@ -20,7 +21,7 @@ const route = useRoute(),
   category = ref(""),
   offset = ref(0);
 const tenant = computed(
-  () => route.params.tenantId || route.query.tenant_id || "",
+  () => props.tenantId || route.params.tenantId || route.query.tenant_id || "",
 );
 let controller,
   revision = 0,

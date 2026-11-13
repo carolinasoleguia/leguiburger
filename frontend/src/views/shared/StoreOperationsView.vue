@@ -96,7 +96,9 @@ function add() {
           La carta permanece visible cuando el local está cerrado. Para recibir
           pedidos también debe estar publicada y habilitada.
         </p>
-        <router-link class="text-button" :to="'/catalogo/' + w.tenant.value"
+        <router-link
+          class="text-button"
+          :to="form.menu_path || '/catalogo/' + w.tenant.value"
           >Ver mi carta</router-link
         >
       </div>

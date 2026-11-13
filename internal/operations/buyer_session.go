@@ -19,6 +19,9 @@ func (h *Handler) buyerSession(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	r = r.WithContext(ctx)
+	if !guardBuyerRequest(w, r) {
+		return
+	}
 	tenant := r.PathValue("id")
 	if !validID(tenant) {
 		writeError(w, notFound())

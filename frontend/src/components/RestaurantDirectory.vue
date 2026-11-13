@@ -69,7 +69,9 @@ onMounted(() => {
               local.address || "Consultá los datos de la sucursal en su carta."
             }}
           </p>
-          <router-link class="btn-primary" :to="`/catalogo/${local.id}`"
+          <router-link
+            class="btn-primary"
+            :to="local.path || `/catalogo/${local.id}`"
             >Ver carta</router-link
           >
         </article>

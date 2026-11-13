@@ -65,6 +65,8 @@ const server = createServer(async (req, res) => {
     if (p === "/api/tenants")
       return reply([{ id: tenant, subdomain: "Centro", active: true }]);
     if (p === "/api/notifications") return reply({ items: [] });
+    if (p === "/api/public/restaurants/burger/centro")
+      return reply({ tenant_id: tenant, path: "/burger/centro/carta" });
     if (p === "/api/shopper/me") return reply(profile);
     if (p === "/api/shopper/orders")
       return reply({
@@ -439,7 +441,16 @@ try {
       );
       assert.ok(favoriteLink.includes(product));
       checks++;
-      await page.goto(origin + favoriteLink, { waitUntil: "domcontentloaded" });
+      await page.goto(
+        origin +
+          (theme === "dark"
+            ? favoriteLink.replace(
+                "/catalogo/" + tenant,
+                "/burger/centro/carta",
+              )
+            : favoriteLink),
+        { waitUntil: "domcontentloaded" },
+      );
       await page.waitForSelector(
         '.buyer-dialog textarea[placeholder="Por ejemplo, sin cebolla"]',
       );
@@ -484,7 +495,10 @@ try {
         "postal field has usable touch width",
       );
       checks++;
-      await page.type(".buyer-coupon input", "VOLVE10");
+      await page.$eval(".buyer-coupon input", (e) => {
+        e.value = "VOLVE10";
+        e.dispatchEvent(new Event("input", { bubbles: true }));
+      });
       await page.type('input[name="delivery-postal-code"]', "9999");
       await button(page, "Revisar pedido");
       await text(page, "No tenemos cobertura");

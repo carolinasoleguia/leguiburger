@@ -2,12 +2,16 @@
 import { ref } from "vue";
 import RestaurantMenu from "../../components/RestaurantMenu.vue";
 import GuestCheckout from "../../components/GuestCheckout.vue";
-defineProps({ sessionReady: { type: Boolean, default: true } });
+defineProps({
+  tenantId: String,
+  sessionReady: { type: Boolean, default: true },
+});
 const checkout = ref(null);
 </script>
 <template>
   <RestaurantMenu
     data-experience="guest"
+    :tenant-id="tenantId"
     :checkout-ready="!!checkout?.ready"
     ordering-notice="Elegí tus favoritas. Pedí acá, sin crear una cuenta."
     @choose="checkout?.open($event)"

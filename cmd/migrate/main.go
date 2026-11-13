@@ -58,7 +58,7 @@ func run() error {
 	db := stdlib.OpenDB(*cfg)
 	defer db.Close()
 	db.SetMaxOpenConns(1)
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})
 	if err != nil {
 		return fmt.Errorf("cannot start migration transaction")
 	}

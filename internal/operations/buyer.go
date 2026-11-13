@@ -80,7 +80,7 @@ func buyerProblem(e error) error {
 		return notFound()
 	}
 	if errors.Is(e, buyeraccess.ErrRateLimited) {
-		return &apiError{429, "RATE_LIMITED", "Recibimos demasiadas solicitudes. Esperá unos minutos antes de reintentar"}
+		return &apiError{429, "RATE_LIMITED", "Detectamos demasiados intentos. Esperá 15 minutos antes de volver a intentar; tu pedido no se duplica."}
 	}
 	return e
 }
@@ -96,8 +96,14 @@ func (h *Handler) buyerWrap(fn func(*http.Request) (Result, error)) http.Handler
 			writeError(w, forbidden())
 			return
 		}
+		if !guardBuyerRequest(w, r) {
+			return
+		}
 		result, e := fn(r)
 		if e != nil {
+			if errors.Is(e, buyeraccess.ErrRateLimited) {
+				w.Header().Set("Retry-After", "900")
+			}
 			writeError(w, buyerProblem(e))
 			return
 		}
@@ -425,7 +431,7 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 			return Result{}, badInput("Ingresá un correo válido")
 		}
 	}
-	if e = buyeraccess.Rate(r.Context(), h.repo.DB, r, "order:"+id, 30); e != nil {
+	if e = buyeraccess.Rate(r.Context(), h.repo.DB, r, "order:"+id, 120); e != nil {
 		return Result{}, e
 	}
 	if profile, err := shopperidentity.Current(r.Context(), h.repo.DB, r); err == nil {
@@ -435,6 +441,9 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 		return Result{}, unauthorized()
 	}
 	input.CouponLock = true
+	if e = buyeraccess.RateIdentity(r.Context(), h.repo.DB, "order-session:"+id, secret, 10); e != nil {
+		return Result{}, e
+	}
 	encoded, _ := canonicalJSON(input)
 	digest := buyeraccess.Digest(id + "\n" + string(encoded))
 	var result Result

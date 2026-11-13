@@ -79,7 +79,7 @@ func (h *Handler) menuSettings(r *http.Request, p Principal) (Result, error) {
 		return Result{}, e
 	}
 	if r.Method == http.MethodGet {
-		return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('published',menu_published,'ordering_enabled',ordering_enabled,'path','/catalogo/'||id::text)::text payload FROM public.tenants WHERE id=?`, scope.TenantID))
+		return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('published',menu_published,'ordering_enabled',ordering_enabled,'path','/'||(SELECT slug FROM public.brands WHERE id=public.tenants.brand_id)||'/'||slug||'/carta')::text payload FROM public.tenants WHERE id=?`, scope.TenantID))
 	}
 	input, e := decode[struct {
 		Published       *bool `json:"published"`
@@ -92,11 +92,35 @@ func (h *Handler) menuSettings(r *http.Request, p Principal) (Result, error) {
 		return Result{}, badInput("Indicá si querés publicar la carta")
 	}
 	return h.mutate(r, p, scope, "menu.publication", input, func(tx *gorm.DB, key, digest string) (json.RawMessage, int, error) {
-		data, e := jsonQuery(tx, `UPDATE public.tenants SET menu_published=coalesce(?,menu_published),ordering_enabled=coalesce(?,ordering_enabled) WHERE id=? AND brand_id=? RETURNING jsonb_build_object('published',menu_published,'ordering_enabled',ordering_enabled,'path','/catalogo/'||id::text)::text payload`, input.Published, input.OrderingEnabled, scope.TenantID, scope.BrandID)
+		data, e := jsonQuery(tx, `UPDATE public.tenants SET menu_published=coalesce(?,menu_published),ordering_enabled=coalesce(?,ordering_enabled) WHERE id=? AND brand_id=? RETURNING jsonb_build_object('published',menu_published,'ordering_enabled',ordering_enabled,'path','/'||(SELECT slug FROM public.brands WHERE id=public.tenants.brand_id)||'/'||slug||'/carta')::text payload`, input.Published, input.OrderingEnabled, scope.TenantID, scope.BrandID)
 		return data, 200, e
 	})
 }
 
 func (h *Handler) publicRestaurants(r *http.Request) (Result, error) {
-	return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(SELECT t.id,b.name business,coalesce(nullif(t.display_name,''),t.subdomain) location,t.address FROM public.tenants t JOIN public.brands b ON b.id=t.brand_id WHERE t.active AND t.menu_published AND b.suspended_at IS NULL AND b.closed_at IS NULL ORDER BY b.name,t.id LIMIT 100)v`))
+	return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v)),'[]'::jsonb))::text payload FROM(SELECT t.id,b.name business,coalesce(nullif(t.display_name,''),t.subdomain) location,t.address,'/'||b.slug||'/'||t.slug||'/carta' path FROM public.tenants t JOIN public.brands b ON b.id=t.brand_id WHERE t.active AND t.menu_published AND b.suspended_at IS NULL AND b.closed_at IS NULL ORDER BY b.name,t.id LIMIT 100)v`))
+}
+
+// Resolve only published, active locations; a forged brand/local pair cannot
+// select a different restaurant or disclose unpublished business information.
+func (h *Handler) resolvePublicMenu(r *http.Request) (Result, error) {
+	brand, local := r.PathValue("brand"), r.PathValue("local")
+	if !publicSlug(brand) || !publicSlug(local) {
+		return Result{}, notFound()
+	}
+	return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('tenant_id',t.id,'path','/'||b.slug||'/'||t.slug||'/carta')::text payload FROM public.tenants t JOIN public.brands b ON b.id=t.brand_id WHERE b.slug=? AND t.slug=? AND t.active AND t.menu_published AND b.suspended_at IS NULL AND b.closed_at IS NULL`, brand, local))
+}
+func publicSlug(value string) bool {
+	if len(value) == 0 || len(value) > 80 || value[0] == '-' || value[len(value)-1] == '-' {
+		return false
+	}
+	previous := byte(0)
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-' && previous != '-') {
+			return false
+		}
+		previous = c
+	}
+	return true
 }

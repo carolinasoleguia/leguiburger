@@ -1,14 +1,15 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import RestaurantMenu from "../../components/RestaurantMenu.vue";
 import ShopperCheckout from "../../components/ShopperCheckout.vue";
 import { shopper, shopperRequest } from "../../composables/useShopper.js";
+const props = defineProps({ tenantId: String });
 const route = useRoute(),
   browser = ref(null),
   checkout = ref(null);
 const tenant = computed(
-  () => route.params.tenantId || route.query.tenant_id || "",
+  () => props.tenantId || route.params.tenantId || route.query.tenant_id || "",
 );
 const favorites = ref([]),
   favoritesReady = ref(false),
@@ -74,7 +75,9 @@ watch(
     () => browser.value?.data,
     () => browser.value?.loading,
   ],
-  () => {
+  async () => {
+    // Wait for the resolved menu to reach the checkout before opening a deep link.
+    await nextTick();
     const desired = String(route.query.producto || "");
     if (
       !desired ||
@@ -93,11 +96,13 @@ watch(
       checkout.value.open({ ...product, id: product.product_id || product.id });
     }
   },
+  { flush: "post" },
 );
 </script>
 <template>
   <RestaurantMenu
     data-experience="shopper"
+    :tenant-id="tenantId"
     ref="browser"
     :checkout-ready="!!checkout?.ready"
     ordering-notice="Elegí tus favoritas. Tu pedido se guarda en tu cuenta."

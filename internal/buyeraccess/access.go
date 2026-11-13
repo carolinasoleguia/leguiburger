@@ -9,8 +9,8 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"leguiburger/internal/requestguard"
 	"leguiburger/internal/shopperidentity"
-	"net"
 	"net/http"
 	"strings"
 )
@@ -61,17 +61,13 @@ func Resolve(ctx context.Context, db *gorm.DB, raw string, lock bool) (Grant, er
 	return grant, nil
 }
 
-// Use the TCP peer; client-supplied forwarded IP headers cannot reset the bucket.
+// Distributed counters survive restarts and coordinate all API replicas.
 func Rate(ctx context.Context, db *gorm.DB, r *http.Request, scope string, max int) error {
-	ip, _, e := net.SplitHostPort(r.RemoteAddr)
-	if e != nil {
-		ip = r.RemoteAddr
-	}
-	if ip == "" {
-		ip = "unknown"
-	}
+	return RateIdentity(ctx, db, scope, requestguard.ClientIP(r), max)
+}
+func RateIdentity(ctx context.Context, db *gorm.DB, scope, identity string, max int) error {
 	var count int
-	q := db.WithContext(ctx).Raw(`INSERT INTO legui_private.auth_rate_limits(bucket,attempts) VALUES(?,1) ON CONFLICT(bucket) DO UPDATE SET attempts=CASE WHEN auth_rate_limits.window_start<clock_timestamp()-interval '15 minutes' THEN 1 ELSE auth_rate_limits.attempts+1 END,window_start=CASE WHEN auth_rate_limits.window_start<clock_timestamp()-interval '15 minutes' THEN clock_timestamp() ELSE auth_rate_limits.window_start END RETURNING attempts`, "buyer:"+scope+":"+Digest(ip)).Scan(&count)
+	q := db.WithContext(ctx).Raw(`INSERT INTO legui_private.auth_rate_limits(bucket,attempts) VALUES(?,1) ON CONFLICT(bucket) DO UPDATE SET attempts=CASE WHEN auth_rate_limits.window_start<clock_timestamp()-interval '15 minutes' THEN 1 ELSE auth_rate_limits.attempts+1 END,window_start=CASE WHEN auth_rate_limits.window_start<clock_timestamp()-interval '15 minutes' THEN clock_timestamp() ELSE auth_rate_limits.window_start END RETURNING attempts`, "buyer:"+scope+":"+Digest(identity)).Scan(&count)
 	if q.Error != nil {
 		return q.Error
 	}

@@ -30,6 +30,7 @@ async function read() {
     if (!response.ok)
       throw new Error(data.message || "No pudimos consultar la publicación");
     if (current !== revision) return;
+    if (data.path) link.value = new URL(data.path, window.location.origin).href;
     published.value = !!data.published;
     ordering.value = !!data.ordering_enabled;
     if (published.value) await makeQR(current);
