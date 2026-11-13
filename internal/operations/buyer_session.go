@@ -19,8 +19,14 @@ func (h *Handler) buyerSession(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	r = r.WithContext(ctx)
-	if !guardBuyerRequest(w, r) {
+	if !h.buyerGate(w, r) {
 		return
+	}
+	if h.security != nil {
+		if e := h.security.blockCheck(ctx, r); e != nil {
+			writeError(w, e)
+			return
+		}
 	}
 	tenant := r.PathValue("id")
 	if !validID(tenant) {
@@ -92,6 +98,12 @@ func (h *Handler) buyerSession(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if set {
+		if h.security != nil {
+			if e := h.security.observe(ctx, r, tenant, "session", ""); e != nil {
+				writeError(w, e)
+				return
+			}
+		}
 		buyeraccess.SetCookie(w, tenant, session)
 	}
 	json.NewEncoder(w).Encode(map[string]string{"creation_key": session.Key, "payment_key": buyeraccess.PaymentKey(session)})

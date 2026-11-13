@@ -88,6 +88,7 @@ try {
         creates = 0,
         quotes = 0,
         blocked = true,
+        humanVerified = false,
         stale = true,
         unknown = true,
         online = false,
@@ -99,6 +100,20 @@ try {
         (t) => localStorage.setItem("legui-theme", t),
         theme,
       );
+      await page.evaluateOnNewDocument(() => {
+        window.turnstile = {
+          render(target, options) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = "Completar verificación de prueba";
+            button.onclick = () => options.callback("fixture-human-proof");
+            target.appendChild(button);
+            return 1;
+          },
+          remove() {},
+          reset() {},
+        };
+      });
       page.on("pageerror", (e) => errors.push(e.message));
       await page.setRequestInterception(true);
       const reply = (r, data, status = 200) =>
@@ -119,6 +134,18 @@ try {
             path: "/leguiburger/centro/carta",
           });
         if (path === "/api/auth/refresh") return reply(r, {}, 401);
+        if (path.endsWith("/human-check")) {
+          if (r.method() === "GET")
+            return reply(r, {
+              configured: theme === "dark",
+              site_key: "fixture-site",
+              action: "checkout",
+              cdata: "fixture-context",
+            });
+          assert.equal(body.token, "fixture-human-proof");
+          humanVerified = true;
+          return reply(r, { verified: true });
+        }
         if (path.endsWith("/buyer-session"))
           return reply(r, {
             creation_key: "60000000-0000-4000-8000-000000000001",
@@ -155,6 +182,16 @@ try {
               429,
             );
           }
+          if (!humanVerified)
+            return reply(
+              r,
+              {
+                code: "HUMAN_VERIFICATION_REQUIRED",
+                message:
+                  "Necesitamos una verificación adicional antes de confirmar tu compra.",
+              },
+              403,
+            );
           if (stale) {
             stale = false;
             return reply(
@@ -310,6 +347,25 @@ try {
         "temporary block preserves checkout contact",
       );
       await button(page, "Reintentar la misma confirmación");
+      await page.waitForSelector(".buyer-human-check");
+      check(
+        (await page.$eval('input[name="buyer-name"]', (e) => e.value)) ===
+          "Cliente de prueba",
+        "human check preserves contact and cart",
+      );
+      if (theme === "dark") {
+        await button(page, "Completar verificación de prueba");
+        await button(page, "Verificar y continuar");
+      } else {
+        await page.waitForFunction(() =>
+          document
+            .querySelector(".buyer-human-check")
+            ?.textContent.includes("no está disponible"),
+        );
+        humanVerified = true; // Simulate expiry of risk window / an owner releasing a false positive.
+        await button(page, "Volver a intentar la compra");
+      }
+
       await page.waitForFunction(() =>
         document
           .querySelector(".buyer-sheet .error-msg")
@@ -339,9 +395,13 @@ try {
         JSON.stringify(attempts[0].body) === JSON.stringify(attempts[1].body),
         "429 retry preserves pending confirmation",
       );
-      const sent = attempts.slice(1);
       check(
-        creates === 4 && quotes === 2,
+        JSON.stringify(attempts[1].body) === JSON.stringify(attempts[2].body),
+        "human verification preserves the pending confirmation",
+      );
+      const sent = attempts.slice(2);
+      check(
+        creates === 5 && quotes === 2,
         "expected quote and create attempts",
       );
       check(
@@ -397,7 +457,7 @@ try {
       await page.reload({ waitUntil: "networkidle0" });
       await page.waitForSelector(".buyer-receipt-status");
       check(
-        calls.filter((x) => x.path.endsWith("/orders")).length === 4,
+        calls.filter((x) => x.path.endsWith("/orders")).length === 5,
         "reload recovers receipt without creating order",
       );
       status = "accepted";

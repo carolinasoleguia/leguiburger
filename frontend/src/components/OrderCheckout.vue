@@ -1,5 +1,6 @@
 <script setup>
 import { confirmAction } from "../services/confirmation.js";
+import BuyerHumanCheck from "./BuyerHumanCheck.vue";
 import ProductOptionsPicker from "./ProductOptionsPicker.vue";
 import {
   optionsComplete,
@@ -25,6 +26,7 @@ function closePanel() {
   panel.value = false;
   if (props.orderId) emit("closed");
 }
+const humanRequired = ref(false);
 const editingLine = ref(null);
 const cart = ref([]),
   selected = ref(null),
@@ -229,6 +231,7 @@ async function request(path, body, authenticated = false, key = "") {
           "No pudimos completar la solicitud. Volvé a intentar.",
       );
       e.status = response.status;
+      e.code = result.code;
       throw e;
     }
     return result;
@@ -409,6 +412,7 @@ async function refreshReceipt(silent = false) {
   }
 }
 async function confirm() {
+  if (humanRequired.value) return;
   if (busy.value || !quote.value || receipt.value) return;
   busy.value = true;
   error.value = "";
@@ -446,7 +450,14 @@ async function confirm() {
     error.value = e.status
       ? e.message
       : "No recibimos la confirmación. Consultá el estado o reintentá: no se duplicará tu pedido.";
-    if (e.status && e.status >= 400 && e.status < 500 && e.status !== 429) {
+    if (e.code === "HUMAN_VERIFICATION_REQUIRED") humanRequired.value = true;
+    if (
+      e.status &&
+      e.status >= 400 &&
+      e.status < 500 &&
+      e.status !== 429 &&
+      e.code !== "HUMAN_VERIFICATION_REQUIRED"
+    ) {
       pendingBody = null;
       recoveryMissing.value = true;
       if (e.status === 409) {
@@ -502,6 +513,7 @@ async function pay() {
   }
 }
 async function newOrder() {
+  humanRequired.value = false;
   if (!canStartNew.value || busy.value) return;
   if (props.orderId) {
     window.location.assign("/catalogo/" + props.tenant);
@@ -649,6 +661,7 @@ defineExpose({
               />
             </label>
             <p v-if="error" role="alert" class="error-msg">{{ error }}</p>
+
             <button class="btn-primary" :disabled="!validOptions">
               {{ editingLine === null ? "Sumar al pedido" : "Guardar cambios" }}
             </button>
@@ -692,6 +705,18 @@ defineExpose({
             ×
           </button>
           <p v-if="error" role="alert" class="error-msg">{{ error }}</p>
+          <BuyerHumanCheck
+            v-if="humanRequired"
+            :tenant="tenant"
+            @verified="
+              humanRequired = false;
+              confirm();
+            "
+            @retry="
+              humanRequired = false;
+              confirm();
+            "
+          />
           <p v-if="checkingSession" role="status">
             Recuperando tu pedido anterior…
           </p>

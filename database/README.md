@@ -89,3 +89,5 @@ Comandas, zonas de delivery, favoritos, recompra y disponibilidad por recetas: [
 Opciones por producto y capacidad de cocina: [guía de uso](../docs/opciones-y-capacidad-cocina.md), migraciones hasta `202611120009_kitchen_queue_index`. Se reutilizan los extras y snapshots existentes.
 
 La migración `202611130001_public_menu_slugs` agrega direcciones públicas estables por marca y sucursal. Ver [cartas públicas y protección de pedidos](../docs/cartas-publicas-y-abuso.md).
+
+La migración `202611130002_checkout_security` agrega contadores de riesgo, incidentes y permisos de verificación de compra privados. Ver [seguridad de compras y activación de Turnstile](../docs/seguridad-de-compras.md).

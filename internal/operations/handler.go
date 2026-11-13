@@ -33,13 +33,17 @@ func notFound() error               { return &apiError{404, "NOT_FOUND", "Recurs
 func conflict(message string) error { return &apiError{409, "CONFLICT", message} }
 
 type Handler struct {
-	repo  *Repository
-	buyer BuyerOptions
+	security *checkoutSecurity
+	repo     *Repository
+	buyer    BuyerOptions
 }
 type endpoint func(*http.Request, Principal) (Result, error)
 
 func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
-	h := &Handler{repo: NewRepository(db)}
+	registerRoutes(mux, db, options...)
+}
+func registerRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) *Handler {
+	h := &Handler{repo: NewRepository(db), security: newCheckoutSecurity(db)}
 	if len(options) > 0 {
 		h.buyer = options[0]
 	}
@@ -65,9 +69,13 @@ func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 	mux.HandleFunc("GET /api/public/restaurants/{brand}/{local}", h.buyerWrap(h.resolvePublicMenu))
 	mux.HandleFunc("POST /api/public/menu/{id}/quote", h.buyerWrap(h.buyerQuote))
 	mux.HandleFunc("POST /api/public/menu/{id}/orders", h.buyerWrap(h.buyerCreate))
+	mux.HandleFunc("GET /api/public/menu/{id}/human-check", h.buyerWrap(h.humanCheck))
+	mux.HandleFunc("POST /api/public/menu/{id}/human-check", h.buyerWrap(h.humanCheck))
 	mux.HandleFunc("GET /api/public/buyer-order", h.buyerWrap(h.buyerReceipt))
 	routes := map[string]endpoint{
-		"GET /api/menu/products/{id}/options": h.productOptions, "PUT /api/menu/products/{id}/options": h.productOptions,
+		"GET /api/platform/security/incidents":               h.abuseIncidents,
+		"POST /api/platform/security/incidents/{id}/actions": h.abuseAction,
+		"GET /api/menu/products/{id}/options":                h.productOptions, "PUT /api/menu/products/{id}/options": h.productOptions,
 		"GET /api/kitchen/load":       h.kitchenLoad,
 		"GET /api/orders/{id}/ticket": h.orderTicket,
 		"GET /api/delivery/settings":  h.deliverySettings, "PATCH /api/delivery/settings": h.deliverySettings,
@@ -104,6 +112,7 @@ func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 	for pattern, fn := range routes {
 		mux.HandleFunc(pattern, auth.AuthMiddlewareWithDB(h.repo.DB, h.wrap(fn)))
 	}
+	return h
 }
 func (h *Handler) wrap(fn endpoint) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

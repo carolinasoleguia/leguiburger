@@ -55,7 +55,8 @@ export function platformWorkspace() {
         label: "Cuenta y actividad",
         icon: "shield",
         items: [
-          item("Seguridad", "/account/security", "shield"),
+          item("Seguridad de compras", "/platform/security", "shield"),
+          item("Mi acceso", "/account/security", "shield"),
           item("Actividad", "/audit", "activity"),
           item("Novedades", "/notifications", "clock"),
           item("Soporte y continuidad", "/care", "support"),

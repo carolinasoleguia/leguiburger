@@ -33,6 +33,11 @@ const workspaceViews = {
 };
 const routes = [
   {
+    path: "/platform/security",
+    component: () => import("../views/owner/AbuseIncidentsView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin"] },
+  },
+  {
     path: "/product-options",
     component: () => import("../views/shared/ProductOptionsView.vue"),
     meta: { requiresAuth: true, roles: ["owner", "super_admin", "admin"] },

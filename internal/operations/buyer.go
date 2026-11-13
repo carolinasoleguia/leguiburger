@@ -11,6 +11,7 @@ import (
 	"leguiburger/internal/buyeraccess"
 	"leguiburger/internal/orderstream"
 	"leguiburger/internal/shopperidentity"
+	"log"
 	"math/big"
 	"net/http"
 	"net/mail"
@@ -96,13 +97,29 @@ func (h *Handler) buyerWrap(fn func(*http.Request) (Result, error)) http.Handler
 			writeError(w, forbidden())
 			return
 		}
-		if !guardBuyerRequest(w, r) {
+		if !h.buyerGate(w, r) {
 			return
+		}
+		if h.security != nil && r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/api/public/menu/") && !strings.HasSuffix(r.URL.Path, "/orders") {
+			if e := h.security.blockCheck(r.Context(), r); e != nil {
+				writeError(w, e)
+				return
+			}
 		}
 		result, e := fn(r)
 		if e != nil {
+			h.observeBuyerFailure(r, e)
 			if errors.Is(e, buyeraccess.ErrRateLimited) {
 				w.Header().Set("Retry-After", "900")
+				if h.security != nil {
+					tenant := r.PathValue("id")
+					if !validID(tenant) {
+						tenant = ""
+					}
+					if err := h.security.observe(r.Context(), r, tenant, "burst", "rate_limit"); err != nil {
+						log.Printf("abuse rate incident unavailable (%T)", err)
+					}
+				}
 			}
 			writeError(w, buyerProblem(e))
 			return
@@ -431,9 +448,6 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 			return Result{}, badInput("Ingresá un correo válido")
 		}
 	}
-	if e = buyeraccess.Rate(r.Context(), h.repo.DB, r, "order:"+id, 120); e != nil {
-		return Result{}, e
-	}
 	if profile, err := shopperidentity.Current(r.Context(), h.repo.DB, r); err == nil {
 		input.ShopperID = profile.ID
 	}
@@ -441,11 +455,31 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 		return Result{}, unauthorized()
 	}
 	input.CouponLock = true
-	if e = buyeraccess.RateIdentity(r.Context(), h.repo.DB, "order-session:"+id, secret, 10); e != nil {
-		return Result{}, e
-	}
 	encoded, _ := canonicalJSON(input)
 	digest := buyeraccess.Digest(id + "\n" + string(encoded))
+	requireClearance := false
+	var priorCheck struct{ AccessDigest, RequestDigest string }
+	priorQuery := h.repo.DB.WithContext(r.Context()).Raw(`SELECT access_digest,request_digest FROM legui_private.buyer_orders WHERE tenant_id=? AND creation_key=?`, id, key).Scan(&priorCheck)
+	if priorQuery.Error != nil {
+		return Result{}, priorQuery.Error
+	}
+	replay := priorQuery.RowsAffected == 1 && priorCheck.AccessDigest == buyeraccess.Digest(secret) && priorCheck.RequestDigest == digest
+	if !replay {
+		if h.security != nil {
+			requireClearance, e = h.security.requireOrderCheck(r, id, secret, key)
+			if e != nil {
+				return Result{}, e
+			}
+		}
+		if e = buyeraccess.Rate(r.Context(), h.repo.DB, r, "order:"+id, 120); e != nil {
+			return Result{}, e
+		}
+		if e = buyeraccess.RateIdentity(r.Context(), h.repo.DB, "order-session:"+id, secret, 10); e != nil {
+			return Result{}, e
+		}
+
+	}
+
 	var result Result
 	e = h.repo.DB.WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
 		if e := tx.Exec(`SET LOCAL lock_timeout='5s'`).Error; e != nil {
@@ -507,6 +541,11 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 				return conflict("El pago online no está disponible. Elegí pagar al recibir")
 			}
 		}
+		if requireClearance {
+			if e := h.security.consume(tx, r, id, secret, key); e != nil {
+				return e
+			}
+		}
 		order, e := writeOrder(tx, scope, CreateOrderRequest{ShippingMethodID: quote.ShippingMethodID, ShippingAddress: input.Address, Channel: "web", Environment: "production", Items: input.Items}, "buyer:"+key)
 		if e != nil {
 			return e
@@ -547,6 +586,13 @@ func (h *Handler) buyerCreate(r *http.Request) (Result, error) {
 		}
 		if e = tx.Exec(`INSERT INTO public.activity_events(brand_id,tenant_id,event_name,source,environment,facts) VALUES(?,?,'orders.buyer_create','server','production','{}')`, scope.BrandID, id).Error; e != nil {
 			return e
+		}
+		if h.security != nil {
+			localSecurity := *h.security
+			localSecurity.db = tx
+			if e := localSecurity.observe(r.Context(), r, id, "order", ""); e != nil {
+				return e
+			}
 		}
 		data, e := h.buyerReceiptData(r, tx, buyeraccess.Grant{OrderID: orderID, TenantID: id, BrandID: scope.BrandID})
 		result = Result{Data: data, Status: 201}
