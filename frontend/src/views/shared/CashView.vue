@@ -5,6 +5,8 @@ import LoadingRows from "../../components/LoadingRows.vue";
 import ListPager from "../../components/ListPager.vue";
 import { useWorkspace, money, when } from "../../composables/useWorkspace.js";
 import { confirmAction } from "../../services/confirmation.js";
+const cashAction = ref("movement"),
+  recordTab = ref("shifts");
 const shifts = ref([]),
   active = ref(null),
   detail = ref(null),
@@ -98,6 +100,7 @@ async function close() {
   }, "Caja cerrada. El arqueo quedó guardado con su historial.");
 }
 function select(item) {
+  recordTab.value = "entries";
   detail.value = { id: item.id };
   entryOffset.value = 0;
   w.refresh();
@@ -150,12 +153,15 @@ watch(currency, () => {
             : "Sin turno abierto"
       }}</span>
     </div>
-    <p class="inline-notice">
-      El arqueo incluye solo efectivo. Tarjetas, transferencias y Mercado Pago
-      se consultan en Cobros. Desde la primera apertura, necesitás un turno
-      abierto para registrar efectivo en esa moneda; los cobros anteriores
-      conservan su historial.
-    </p>
+    <details class="cash-help">
+      <summary>Cómo se calcula el arqueo</summary>
+      <p class="inline-notice">
+        El arqueo incluye solo efectivo. Tarjetas, transferencias y Mercado Pago
+        se consultan en Cobros. Desde la primera apertura, necesitás un turno
+        abierto para registrar efectivo en esa moneda; los cobros anteriores
+        conservan su historial.
+      </p>
+    </details>
     <div class="cash-summary" aria-label="Arqueo seleccionado">
       <article class="card">
         <h3>Efectivo inicial</h3>
@@ -191,217 +197,278 @@ watch(currency, () => {
         >
       </article>
     </div>
-    <div class="cash-operation-region">
-      <div class="cash-context">
-        <template v-if="active && detail?.id !== active.id"
-          ><span>Estás consultando otro arqueo.</span
-          ><button class="text-button" @click="select(active)">
+    <div class="workspace-split cash-workspace">
+      <div class="cash-operation-region">
+        <div
+          v-if="active && detail && detail.id !== active.id"
+          class="cash-context"
+        >
+          <span>Estás consultando otro arqueo.</span>
+          <button class="text-button" @click="select(active)">
             Volver al turno abierto
-          </button></template
-        ><span v-else>{{
-          active
-            ? "Los movimientos se registran en el turno abierto."
-            : "Abrí un turno para comenzar a controlar el efectivo."
-        }}</span>
-      </div>
-      <div class="cash-forms">
-        <form
-          v-if="!active"
-          v-form-care
-          class="card operation-form"
-          @submit.prevent="open"
-        >
-          <h2>Abrir turno</h2>
-          <p>Contá el efectivo disponible en la caja antes de comenzar.</p>
-          <label
-            >Efectivo inicial<input
-              v-model="opening"
-              inputmode="decimal"
-              type="text"
-              pattern="[0-9]{1,14}([.,][0-9]{1,2})?"
-              maxlength="17"
-              required /></label
-          ><button
-            class="btn-primary"
-            :disabled="w.busy.value || w.loading.value || !w.tenant.value"
-          >
-            Abrir caja en {{ currency }}
           </button>
-        </form>
-        <form
-          v-else
-          v-form-care
-          class="card operation-form"
-          @submit.prevent="move"
+        </div>
+        <div
+          class="operation-actions cash-action-tabs"
+          role="group"
+          aria-label="Operación de caja"
         >
-          <h2>Ingreso o retiro</h2>
-          <label
-            >Movimiento<select
-              v-model="movementKind"
-              :disabled="detail?.id !== active.id"
-            >
-              <option value="cash_out">Retiro de efectivo</option>
-              <option value="cash_in">Ingreso de efectivo</option>
-            </select></label
-          ><label
-            >Importe<input
-              v-model="amount"
-              type="text"
-              inputmode="decimal"
-              pattern="[0-9]{1,14}([.,][0-9]{1,2})?"
-              maxlength="17"
-              :disabled="detail?.id !== active.id"
-              required /></label
-          ><label
-            >Motivo<input
-              v-model="note"
-              required
-              minlength="4"
-              maxlength="1000"
-              :disabled="detail?.id !== active.id"
-              placeholder="Cambio para el turno, retiro a caja fuerte…" /></label
-          ><button
+          <button
             class="btn-secondary"
-            :disabled="w.busy.value || detail?.id !== active.id"
+            :aria-pressed="cashAction === 'movement'"
+            @click="cashAction = 'movement'"
           >
-            Registrar movimiento
+            {{ active ? "Ingreso o retiro" : "Abrir turno" }}
           </button>
-        </form>
-        <form v-form-care class="card operation-form" @submit.prevent="close">
-          <h2>Cerrar turno</h2>
-          <p>
+          <button
+            class="btn-secondary"
+            :aria-pressed="cashAction === 'close'"
+            @click="cashAction = 'close'"
+          >
+            Arqueo y cierre
+          </button>
+        </div>
+        <div class="cash-forms">
+          <form
+            v-if="!active"
+            v-show="cashAction === 'movement'"
+            v-form-care
+            class="card operation-form"
+            @submit.prevent="open"
+          >
+            <h2>Abrir turno</h2>
+            <p>Contá el efectivo disponible en la caja antes de comenzar.</p>
+            <label
+              >Efectivo inicial<input
+                v-model="opening"
+                inputmode="decimal"
+                type="text"
+                pattern="[0-9]{1,14}([.,][0-9]{1,2})?"
+                maxlength="17"
+                required /></label
+            ><button
+              class="btn-primary"
+              :disabled="w.busy.value || w.loading.value || !w.tenant.value"
+            >
+              Abrir caja en {{ currency }}
+            </button>
+          </form>
+          <form
+            v-else
+            v-show="cashAction === 'movement'"
+            v-form-care
+            class="card operation-form"
+            @submit.prevent="move"
+          >
+            <h2>Ingreso o retiro</h2>
+            <div class="form-row">
+              <label
+                >Movimiento<select
+                  v-model="movementKind"
+                  :disabled="detail?.id !== active.id"
+                >
+                  <option value="cash_out">Retiro de efectivo</option>
+                  <option value="cash_in">Ingreso de efectivo</option>
+                </select></label
+              ><label
+                >Importe<input
+                  v-model="amount"
+                  type="text"
+                  inputmode="decimal"
+                  pattern="[0-9]{1,14}([.,][0-9]{1,2})?"
+                  maxlength="17"
+                  :disabled="detail?.id !== active.id"
+                  required
+              /></label>
+            </div>
+            <label
+              >Motivo<input
+                v-model="note"
+                required
+                minlength="4"
+                maxlength="1000"
+                :disabled="detail?.id !== active.id"
+                placeholder="Cambio para el turno, retiro a caja fuerte…" /></label
+            ><button
+              class="btn-secondary"
+              :disabled="w.busy.value || detail?.id !== active.id"
+            >
+              Registrar movimiento
+            </button>
+          </form>
+          <form
+            v-show="cashAction === 'close'"
+            v-form-care
+            class="card operation-form"
+            @submit.prevent="close"
+          >
+            <h2>Cerrar turno</h2>
+            <p>
+              {{
+                active
+                  ? `Abierto el ${when(active.opened_at)}. Contá el efectivo para guardar el arqueo.`
+                  : "El cierre se habilita después de abrir la caja. Se conservará el arqueo de cada turno."
+              }}
+            </p>
+            <label
+              >Efectivo contado<input
+                v-model="counted"
+                type="text"
+                inputmode="decimal"
+                pattern="[0-9]{1,14}([.,][0-9]{1,2})?"
+                maxlength="17"
+                :disabled="!active || detail?.id !== active.id"
+                required /></label
+            ><label
+              >Nota de cierre<textarea
+                v-model="closeNote"
+                maxlength="1000"
+                :disabled="!active || detail?.id !== active.id"
+                placeholder="Explicá el motivo si hay una diferencia"
+              /></label
+            ><button
+              class="btn-primary"
+              :disabled="w.busy.value || !active || detail?.id !== active.id"
+            >
+              Revisar y cerrar caja
+            </button>
+          </form>
+        </div>
+      </div>
+      <div class="cash-records">
+        <div
+          class="operation-actions"
+          role="group"
+          aria-label="Historial de caja"
+        >
+          <button
+            class="btn-secondary"
+            :aria-pressed="recordTab === 'shifts'"
+            @click="recordTab = 'shifts'"
+          >
+            Turnos
+          </button>
+          <button
+            class="btn-secondary"
+            :aria-pressed="recordTab === 'entries'"
+            @click="recordTab = 'entries'"
+          >
+            Movimientos
+          </button>
+        </div>
+        <section v-show="recordTab === 'shifts'" class="cash-history">
+          <h2>Historial de turnos</h2>
+          <div class="card table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Apertura</th>
+                  <th>Cierre</th>
+                  <th>Moneda</th>
+                  <th>Contado</th>
+                  <th>Diferencia</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                <LoadingRows v-if="w.loading.value" :columns="6" />
+                <tr
+                  v-for="shift in shifts"
+                  v-show="!w.loading.value"
+                  :key="shift.id"
+                >
+                  <td>{{ when(shift.opened_at) }}</td>
+                  <td>
+                    {{ shift.closed_at ? when(shift.closed_at) : "Abierto" }}
+                  </td>
+                  <td>{{ shift.currency }}</td>
+                  <td>
+                    {{
+                      shift.counted_balance == null
+                        ? "Pendiente"
+                        : money(shift.counted_balance, shift.currency)
+                    }}
+                  </td>
+                  <td>
+                    {{
+                      shift.difference == null
+                        ? "Pendiente"
+                        : money(shift.difference, shift.currency)
+                    }}
+                  </td>
+                  <td>
+                    <button
+                      class="text-button"
+                      :disabled="w.busy.value || w.loading.value"
+                      @click="select(shift)"
+                    >
+                      Ver arqueo
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="!shifts.length" v-show="!w.loading.value">
+                  <td colspan="6">Todavía no hay turnos registrados.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ListPager
+            :offset="offset"
+            :count="shifts.length"
+            :disabled="w.busy.value || w.loading.value"
+            @change="page"
+          />
+        </section>
+        <section v-show="recordTab === 'entries'" class="cash-ledger">
+          <h2>Movimientos del turno del {{ when(detail?.opened_at) }}</h2>
+          <p class="cash-closing-note">
             {{
-              active
-                ? `Abierto el ${when(active.opened_at)}. Contá el efectivo para guardar el arqueo.`
-                : "El cierre se habilita después de abrir la caja. Se conservará el arqueo de cada turno."
+              detail?.closing_note
+                ? `Nota de cierre: ${detail.closing_note}`
+                : detail?.closed_at
+                  ? "Sin nota de cierre"
+                  : "Los movimientos quedarán registrados al operar el turno."
             }}
           </p>
-          <label
-            >Efectivo contado<input
-              v-model="counted"
-              type="text"
-              inputmode="decimal"
-              pattern="[0-9]{1,14}([.,][0-9]{1,2})?"
-              maxlength="17"
-              :disabled="!active || detail?.id !== active.id"
-              required /></label
-          ><label
-            >Nota de cierre<textarea
-              v-model="closeNote"
-              maxlength="1000"
-              :disabled="!active || detail?.id !== active.id"
-              placeholder="Explicá el motivo si hay una diferencia"
-            /></label
-          ><button
-            class="btn-primary"
-            :disabled="w.busy.value || !active || detail?.id !== active.id"
-          >
-            Revisar y cerrar caja
-          </button>
-        </form>
+          <div class="card table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Movimiento</th>
+                  <th>Importe</th>
+                  <th>Motivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <LoadingRows v-if="w.loading.value" :columns="4" />
+                <tr
+                  v-for="entry in entries"
+                  v-show="!w.loading.value"
+                  :key="entry.id"
+                >
+                  <td>{{ when(entry.created_at) }}</td>
+                  <td>{{ labels[entry.kind] }}</td>
+                  <td>
+                    {{ money(entry.amount, detail?.currency || currency) }}
+                  </td>
+                  <td>{{ entry.note || "Desde el registro de cobros" }}</td>
+                </tr>
+                <tr v-if="!entries.length" v-show="!w.loading.value">
+                  <td colspan="4">Sin movimientos en este turno.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ListPager
+            :offset="entryOffset"
+            :count="entries.length"
+            :disabled="w.busy.value || w.loading.value"
+            @change="entriesPage"
+          />
+        </section>
       </div>
     </div>
-    <h2>Historial de turnos</h2>
-    <div class="card table-scroll">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Apertura</th>
-            <th>Cierre</th>
-            <th>Moneda</th>
-            <th>Contado</th>
-            <th>Diferencia</th>
-            <th>Detalle</th>
-          </tr>
-        </thead>
-        <tbody>
-          <LoadingRows v-if="w.loading.value" :columns="6" />
-          <tr v-for="shift in shifts" v-show="!w.loading.value" :key="shift.id">
-            <td>{{ when(shift.opened_at) }}</td>
-            <td>{{ shift.closed_at ? when(shift.closed_at) : "Abierto" }}</td>
-            <td>{{ shift.currency }}</td>
-            <td>
-              {{
-                shift.counted_balance == null
-                  ? "Pendiente"
-                  : money(shift.counted_balance, shift.currency)
-              }}
-            </td>
-            <td>
-              {{
-                shift.difference == null
-                  ? "Pendiente"
-                  : money(shift.difference, shift.currency)
-              }}
-            </td>
-            <td>
-              <button
-                class="text-button"
-                :disabled="w.busy.value || w.loading.value"
-                @click="select(shift)"
-              >
-                Ver arqueo
-              </button>
-            </td>
-          </tr>
-          <tr v-if="!shifts.length" v-show="!w.loading.value">
-            <td colspan="6">Todavía no hay turnos registrados.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <ListPager
-      :offset="offset"
-      :count="shifts.length"
-      :disabled="w.busy.value || w.loading.value"
-      @change="page"
-    />
-    <section class="cash-ledger">
-      <h2>Movimientos del turno del {{ when(detail?.opened_at) }}</h2>
-      <p class="cash-closing-note">
-        {{
-          detail?.closing_note
-            ? `Nota de cierre: ${detail.closing_note}`
-            : detail?.closed_at
-              ? "Sin nota de cierre"
-              : "Los movimientos quedarán registrados al operar el turno."
-        }}
-      </p>
-      <div class="card table-scroll">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Movimiento</th>
-              <th>Importe</th>
-              <th>Motivo</th>
-            </tr>
-          </thead>
-          <tbody>
-            <LoadingRows v-if="w.loading.value" :columns="4" />
-            <tr
-              v-for="entry in entries"
-              v-show="!w.loading.value"
-              :key="entry.id"
-            >
-              <td>{{ when(entry.created_at) }}</td>
-              <td>{{ labels[entry.kind] }}</td>
-              <td>{{ money(entry.amount, detail?.currency || currency) }}</td>
-              <td>{{ entry.note || "Desde el registro de cobros" }}</td>
-            </tr>
-            <tr v-if="!entries.length" v-show="!w.loading.value">
-              <td colspan="4">Sin movimientos en este turno.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <ListPager
-        :offset="entryOffset"
-        :count="entries.length"
-        :disabled="w.busy.value || w.loading.value"
-        @change="entriesPage"
-      />
-    </section>
   </WorkspaceFrame>
 </template>
 <style scoped>
@@ -410,10 +477,11 @@ watch(currency, () => {
   align-items: end;
   flex-wrap: wrap;
   gap: 16px;
-  margin-block: 24px;
+  margin-block: 0 8px;
 }
 .cash-intro label {
-  display: grid;
+  display: flex;
+  align-items: center;
   gap: 8px;
   font-size: 12px;
 }
@@ -434,20 +502,21 @@ watch(currency, () => {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  margin-block: 24px;
+  margin-block: 12px;
 }
 .cash-summary .card {
-  min-height: 160px;
-  padding: 24px;
+  min-height: 120px;
+  padding: 16px;
 }
 .cash-summary h3 {
   font-size: 13px;
   color: var(--text-muted);
-  margin: 0 0 20px;
-  min-height: 32px;
+  margin: 0 0 6px;
+  min-height: 18px;
 }
 .cash-summary strong {
-  font-size: clamp(20px, 2vw, 28px);
+  font-size: clamp(20px, 1.8vw, 26px);
+  line-height: 1.3;
   font-variant-numeric: tabular-nums;
   display: block;
 }
@@ -459,25 +528,25 @@ watch(currency, () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 56px;
+  min-height: 36px;
   color: var(--text-muted);
   font-size: 13px;
   flex-wrap: wrap;
 }
 .cash-forms {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  grid-template-columns: 1fr;
+  gap: 12px;
   margin-bottom: 24px;
 }
 .cash-forms .operation-form {
-  min-height: 452px;
+  min-height: 300px;
   margin: 0;
   align-content: start;
 }
 .cash-forms .operation-form p {
   font-size: 13px;
-  min-height: 44px;
+  min-height: 0;
   color: var(--text-muted);
 }
 .cash-forms button {
@@ -488,7 +557,7 @@ watch(currency, () => {
   line-height: 24px;
 }
 .cash-closing-note {
-  height: 64px;
+  height: 40px;
   overflow: auto;
   line-height: 20px;
   color: var(--text-muted);
@@ -500,7 +569,7 @@ watch(currency, () => {
   scrollbar-gutter: stable;
 }
 .cash-ledger {
-  margin-block: 32px;
+  margin-block: 4px;
 }
 @media (max-width: 1100px) {
   .cash-summary {
@@ -508,6 +577,9 @@ watch(currency, () => {
   }
 }
 @media (max-width: 720px) {
+  .cash-forms .operation-form {
+    min-height: 364px;
+  }
   .cash-ledger > .table-scroll {
     height: 320px;
   }

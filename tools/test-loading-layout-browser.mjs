@@ -340,12 +340,14 @@ async function boxes() {
   );
 }
 try {
-  for (const width of [1440, 390])
+  for (const width of process.env.LAYOUT_WIDTH
+    ? [Number(process.env.LAYOUT_WIDTH)]
+    : [1440, 390])
     for (const scenario of scenarios.filter(
       (s) =>
         !process.env.LOADING_SCENARIO || s === process.env.LOADING_SCENARIO,
     ))
-      for (const count of [0, 25]) {
+      for (const count of process.env.LAYOUT_POPULATED ? [25] : [0, 25]) {
         const [overrideRole, path] = scenario.includes(":")
           ? scenario.split(":")
           : [null, scenario];
@@ -356,7 +358,14 @@ try {
         let holding = true;
         page = await browser.newPage();
         page.on("pageerror", (e) => errors.push(e.message));
-        await page.setViewport({ width, height: 1000 });
+        await page.evaluateOnNewDocument(
+          (theme) => localStorage.setItem("legui-theme", theme),
+          process.env.LAYOUT_THEME || "dark",
+        );
+        await page.setViewport({
+          width,
+          height: Number(process.env.LAYOUT_HEIGHT || 1000),
+        });
         await page.emulateMediaFeatures([
           { name: "prefers-reduced-motion", value: "no-preference" },
         ]);
@@ -495,7 +504,69 @@ try {
                 after: b.height,
               });
         }
-        results.push({ path, role, width, count, ...metrics, drift });
+        const density = await page.evaluate(() => {
+          const box = (s) => {
+            const r = document.querySelector(s)?.getBoundingClientRect();
+            return r
+              ? { top: r.top, bottom: r.bottom, height: r.height }
+              : null;
+          };
+          return {
+            heading: box("main .section-header"),
+            table: box("main table"),
+            metrics: box("main .metric-grid"),
+            reports: box("main .report-grid"),
+            kitchen: box("main .kitchen-board"),
+            form: box("main form.card"),
+            documentHeight: document.documentElement.scrollHeight,
+          };
+        });
+        if (width >= 1280) {
+          // Keep the operational entry points in the first notebook viewport.
+          const topLimits = {
+            "/orders": 360,
+            "/cash": 510,
+            "/inventory": 340,
+            "/expenses": 250,
+            "/customers": 290,
+            "/admin/catalog": 370,
+            "/payments": 440,
+          };
+          if (
+            topLimits[path] &&
+            (!density.table || density.table.top > topLimits[path])
+          )
+            errors.push(
+              `Main table starts below the compact layout budget for ${path}`,
+            );
+          if (
+            path === "/kitchen" &&
+            (!density.kitchen || density.kitchen.top > 360)
+          )
+            errors.push("Kitchen board is pushed below its summary");
+          if (
+            ["/admin", "/owner"].includes(path) &&
+            (!density.reports ||
+              density.reports.bottom >
+                Number(process.env.LAYOUT_HEIGHT || 1000) - 40)
+          )
+            errors.push(
+              "Overview metrics and reports should fit in the first viewport",
+            );
+          if (
+            path === "/orders" &&
+            (!density.form ||
+              density.form.bottom > Number(process.env.LAYOUT_HEIGHT || 1000))
+          )
+            errors.push(
+              "Default counter action should be visible without scrolling",
+            );
+        }
+        results.push({ path, role, width, count, ...metrics, drift, density });
+        if (process.env.LAYOUT_SCREENSHOTS)
+          await page.screenshot({
+            path: `.cache/loading-layout/${process.env.LAYOUT_SCREENSHOTS}-${path.split("/").filter(Boolean).join("-")}-${width}.png`,
+          });
         if (
           errors.length ||
           drift.length ||

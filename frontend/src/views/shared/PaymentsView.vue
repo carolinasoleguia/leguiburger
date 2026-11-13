@@ -395,28 +395,31 @@ onMounted(async () => {
         :busy="busy"
         label="Cargando cobros y membresías…"
       >
-        <div class="card setup-notice">
-          <strong v-if="loading">Consultando la configuración de cobros…</strong
-          ><strong v-else-if="!config.enabled"
-            >Mercado Pago todavía no está habilitado.</strong
-          ><strong v-else>Gestioná tus cobros en un mismo lugar.</strong>
-          <p v-if="!config.enabled">
-            La administración de LeguiBurger debe completar la configuración de
-            cobros. Tus registros existentes siguen disponibles.
-          </p>
-          <p v-else>
-            Seguí los movimientos, links de pago y membresías de tu negocio.
+        <div class="payment-intro">
+          <div class="card setup-notice">
+            <strong v-if="loading"
+              >Consultando la configuración de cobros…</strong
+            ><strong v-else-if="!config.enabled"
+              >Mercado Pago todavía no está habilitado.</strong
+            ><strong v-else>Gestioná tus cobros en un mismo lugar.</strong>
+            <p v-if="!config.enabled">
+              La administración de LeguiBurger debe completar la configuración
+              de cobros. Tus registros existentes siguen disponibles.
+            </p>
+            <p v-else>
+              Seguí los movimientos, links de pago y membresías de tu negocio.
+            </p>
+          </div>
+          <p class="test-mode">
+            {{
+              loading
+                ? "Consultando el entorno de cobros…"
+                : config.environment === "sandbox"
+                  ? "Modo de prueba · Estos movimientos no acreditan dinero real."
+                  : "Movimientos del entorno configurado para tu negocio."
+            }}
           </p>
         </div>
-        <p class="test-mode">
-          {{
-            loading
-              ? "Consultando el entorno de cobros…"
-              : config.environment === "sandbox"
-                ? "Modo de prueba · Estos movimientos no acreditan dinero real."
-                : "Movimientos del entorno configurado para tu negocio."
-          }}
-        </p>
         <p v-if="error" class="error-msg" role="alert">{{ error }}</p>
         <p v-if="notice" class="status-notice" role="status">{{ notice }}</p>
         <p v-if="suspended" class="error-msg">
@@ -501,8 +504,13 @@ onMounted(async () => {
                   <th></th>
                 </tr>
               </thead>
-              <tbody><LoadingRows v-if="loading" :columns="8" />
-                <tr v-show="!(loading)" v-for="item in transactions" :key="item.id">
+              <tbody>
+                <LoadingRows v-if="loading" :columns="8" />
+                <tr
+                  v-show="!loading"
+                  v-for="item in transactions"
+                  :key="item.id"
+                >
                   <td>
                     {{ item.payment_id
                     }}<small
@@ -545,7 +553,7 @@ onMounted(async () => {
                     </button>
                   </td>
                 </tr>
-                <tr v-show="!(loading)" v-if="!transactions.length">
+                <tr v-show="!loading" v-if="!transactions.length">
                   <td colspan="8">Todavía no hay pagos verificados.</td>
                 </tr>
               </tbody>
@@ -634,8 +642,9 @@ onMounted(async () => {
                   <th>Link</th>
                 </tr>
               </thead>
-              <tbody><LoadingRows v-if="loading" :columns="5" />
-                <tr v-show="!(loading)" v-for="item in checkouts" :key="item.id">
+              <tbody>
+                <LoadingRows v-if="loading" :columns="5" />
+                <tr v-show="!loading" v-for="item in checkouts" :key="item.id">
                   <td>{{ when(item.created_at) }}</td>
                   <td>
                     {{ item.purpose === "order" ? "Pedido" : "Membresía" }}
@@ -655,7 +664,7 @@ onMounted(async () => {
                     ><span v-else>Por confirmar</span>
                   </td>
                 </tr>
-                <tr v-show="!(loading)" v-if="!checkouts.length">
+                <tr v-show="!loading" v-if="!checkouts.length">
                   <td colspan="5">Todavía no generaste links de cobro.</td>
                 </tr>
               </tbody>
@@ -806,8 +815,13 @@ onMounted(async () => {
                   <th></th>
                 </tr>
               </thead>
-              <tbody><LoadingRows v-if="loading" :columns="5" />
-                <tr v-show="!(loading)" v-for="item in billing.invoices || []" :key="item.id">
+              <tbody>
+                <LoadingRows v-if="loading" :columns="5" />
+                <tr
+                  v-show="!loading"
+                  v-for="item in billing.invoices || []"
+                  :key="item.id"
+                >
                   <td>{{ item.description || item.id.slice(0, 8) }}</td>
                   <td>{{ money(item.amount_total, item.currency) }}</td>
                   <td>{{ money(item.balance_due, item.currency) }}</td>
@@ -934,8 +948,9 @@ onMounted(async () => {
                   <th></th>
                 </tr>
               </thead>
-              <tbody><LoadingRows v-if="loading" :columns="5" />
-                <tr v-show="!(loading)" v-for="item in reviews" :key="item.id">
+              <tbody>
+                <LoadingRows v-if="loading" :columns="5" />
+                <tr v-show="!loading" v-for="item in reviews" :key="item.id">
                   <td>{{ item.resource_id }}</td>
                   <td>
                     {{
@@ -954,7 +969,7 @@ onMounted(async () => {
                     </button>
                   </td>
                 </tr>
-                <tr v-show="!(loading)" v-if="!reviews.length">
+                <tr v-show="!loading" v-if="!reviews.length">
                   <td colspan="5">No hay inconsistencias registradas.</td>
                 </tr>
               </tbody>
@@ -1003,7 +1018,7 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 24px 0;
+  margin: 12px 0;
 }
 .payment-tabs [aria-pressed="true"] {
   border-color: var(--accent);
@@ -1012,7 +1027,7 @@ onMounted(async () => {
 .payment-filters {
   display: flex;
   gap: 20px;
-  margin-top: 24px;
+  margin-top: 8px;
 }
 .payment-filters .input-group {
   min-width: 200px;

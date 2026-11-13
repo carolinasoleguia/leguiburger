@@ -72,189 +72,198 @@ function add() {
     title="Atención del local"
     description="Definí cuándo recibís pedidos y cuánto tarda tu cocina."
   >
-    <div class="operation-actions">
+    <template #actions>
       <router-link class="btn-secondary" to="/delivery-zones"
         >Zonas de delivery</router-link
       ><router-link class="btn-secondary" to="/menu-availability"
         >Disponibilidad de la carta</router-link
       >
-    </div>
-    <form v-form-care class="card operation-form" @submit.prevent="save">
-      <h2>
-        {{
-          form.receiving
-            ? "Tu local está recibiendo pedidos"
-            : "Tu local no está recibiendo pedidos"
-        }}
-      </h2>
-      <p>
-        La carta permanece visible cuando el local está cerrado. Para recibir
-        pedidos también debe estar publicada y habilitada.
-      </p>
-      <router-link class="text-button" :to="'/catalogo/' + w.tenant.value"
-        >Ver mi carta</router-link
-      >
-      <fieldset :disabled="w.busy.value || !loaded">
-        <legend>Recepción</legend>
-        <label class="ordering-check"
-          ><input v-model="form.paused" type="checkbox" /> Pausar nuevos
-          pedidos</label
-        >
-        <label v-if="form.paused"
-          >Duración de la pausa<select v-model.number="pauseMinutes">
-            <option :value="15">15 minutos</option>
-            <option :value="30">30 minutos</option>
-            <option :value="60">1 hora</option>
-            <option :value="120">2 horas</option>
-            <option :value="0">Hasta que la reactive</option>
-          </select></label
-        >
-        <p v-if="form.paused && form.pause_until">
-          Pausa actual hasta {{ when(form.pause_until) }}. Guardar renueva su
-          duración.
-        </p>
-        <div class="form-row">
-          <label
-            >Confirmar pedidos antes de (min)<input
-              v-model.number="form.pending_minutes"
-              type="number"
-              min="5"
-              max="60"
-              required
-          /></label>
-          <label
-            >Preparación mínima (min)<input
-              v-model.number="form.prep_min"
-              type="number"
-              min="1"
-              max="180"
-              required
-          /></label>
-          <label
-            >Preparación máxima (min)<input
-              v-model.number="form.prep_max"
-              type="number"
-              :min="form.prep_min"
-              max="240"
-              required
-          /></label>
-        </div>
-        <p>
-          Los pedidos web nuevos que no confirmes a tiempo se cancelan, siempre
-          que no tengan un cobro en curso. Estos plazos no modifican pedidos
-          anteriores.
-        </p>
-      </fieldset>
-      <fieldset :disabled="w.busy.value || !loaded">
-        <legend>Capacidad de cocina</legend>
-        <p>
-          Hay {{ form.active_count || 0 }} pedidos pendientes, aceptados o en
-          preparación. Los pedidos listos y despachados dejan lugar para nuevas
-          compras.
-        </p>
-        <div class="form-row">
-          <label
-            >Pedidos simultáneos admitidos<input
-              v-model.number="form.max_active_orders"
-              type="number"
-              min="0"
-              max="1000"
-              required /></label
-          ><label
-            >Minutos extra por pedido en cola<input
-              v-model.number="form.queue_step_minutes"
-              type="number"
-              min="0"
-              max="30"
-              required /></label
-          ><label
-            >Tope de demora adicional (min)<input
-              v-model.number="form.max_queue_minutes"
-              type="number"
-              min="0"
-              max="180"
-              required
-          /></label>
-        </div>
-        <p>
-          Cero pedidos admitidos significa sin límite. Al alcanzar el límite, se
-          pausan nuevas compras y pedidos de mostrador; se reactivan al liberar
-          lugar. Cero minutos por pedido desactiva la demora adicional.
-        </p>
-        <p v-if="form.capacity_full" role="status">
-          La cocina está al máximo de su capacidad.
-        </p>
-        <p>
-          Estimación actual: {{ form.estimated_prep_min ?? form.prep_min }}–{{
-            form.estimated_prep_max ?? form.prep_max
+    </template>
+    <form
+      v-form-care
+      class="card operation-form ordering-settings"
+      @submit.prevent="save"
+    >
+      <div class="ordering-status">
+        <h2>
+          {{
+            form.receiving
+              ? "Tu local está recibiendo pedidos"
+              : "Tu local no está recibiendo pedidos"
           }}
-          min. Los pedidos existentes mantienen el tiempo que se les informó.
+        </h2>
+        <p>
+          La carta permanece visible cuando el local está cerrado. Para recibir
+          pedidos también debe estar publicada y habilitada.
         </p>
-      </fieldset>
-      <fieldset :disabled="w.busy.value || !loaded">
-        <legend>Horarios semanales</legend>
-        <label class="ordering-check"
-          ><input v-model="form.schedule_enabled" type="checkbox" /> Recibir
-          pedidos solo dentro de estos horarios</label
+        <router-link class="text-button" :to="'/catalogo/' + w.tenant.value"
+          >Ver mi carta</router-link
         >
-        <label
-          >Zona horaria<input
-            v-model="form.timezone"
-            required
-            maxlength="80"
-            placeholder="America/Argentina/Buenos_Aires"
-        /></label>
-        <div
-          v-for="(period, i) in form.periods"
-          :key="i"
-          class="form-row ordering-period"
-        >
-          <label
-            >Día<select v-model.number="period.day">
-              <option v-for="(day, index) in days" :key="day" :value="index">
-                {{ day }}
-              </option>
+      </div>
+      <div class="ordering-sections">
+        <fieldset :disabled="w.busy.value || !loaded">
+          <legend>Recepción</legend>
+          <label class="ordering-check"
+            ><input v-model="form.paused" type="checkbox" /> Pausar nuevos
+            pedidos</label
+          >
+          <label v-if="form.paused"
+            >Duración de la pausa<select v-model.number="pauseMinutes">
+              <option :value="15">15 minutos</option>
+              <option :value="30">30 minutos</option>
+              <option :value="60">1 hora</option>
+              <option :value="120">2 horas</option>
+              <option :value="0">Hasta que la reactive</option>
             </select></label
           >
+          <p v-if="form.paused && form.pause_until">
+            Pausa actual hasta {{ when(form.pause_until) }}. Guardar renueva su
+            duración.
+          </p>
+          <div class="form-row">
+            <label
+              >Confirmar pedidos antes de (min)<input
+                v-model.number="form.pending_minutes"
+                type="number"
+                min="5"
+                max="60"
+                required
+            /></label>
+            <label
+              >Preparación mínima (min)<input
+                v-model.number="form.prep_min"
+                type="number"
+                min="1"
+                max="180"
+                required
+            /></label>
+            <label
+              >Preparación máxima (min)<input
+                v-model.number="form.prep_max"
+                type="number"
+                :min="form.prep_min"
+                max="240"
+                required
+            /></label>
+          </div>
+          <p>
+            Los pedidos web nuevos que no confirmes a tiempo se cancelan,
+            siempre que no tengan un cobro en curso. Estos plazos no modifican
+            pedidos anteriores.
+          </p>
+        </fieldset>
+        <fieldset :disabled="w.busy.value || !loaded">
+          <legend>Capacidad de cocina</legend>
+          <p>
+            Hay {{ form.active_count || 0 }} pedidos pendientes, aceptados o en
+            preparación. Los pedidos listos y despachados dejan lugar para
+            nuevas compras.
+          </p>
+          <div class="form-row">
+            <label
+              >Pedidos simultáneos admitidos<input
+                v-model.number="form.max_active_orders"
+                type="number"
+                min="0"
+                max="1000"
+                required /></label
+            ><label
+              >Minutos extra por pedido en cola<input
+                v-model.number="form.queue_step_minutes"
+                type="number"
+                min="0"
+                max="30"
+                required /></label
+            ><label
+              >Tope de demora adicional (min)<input
+                v-model.number="form.max_queue_minutes"
+                type="number"
+                min="0"
+                max="180"
+                required
+            /></label>
+          </div>
+          <p>
+            Cero pedidos admitidos significa sin límite. Al alcanzar el límite,
+            se pausan nuevas compras y pedidos de mostrador; se reactivan al
+            liberar lugar. Cero minutos por pedido desactiva la demora
+            adicional.
+          </p>
+          <p v-if="form.capacity_full" role="status">
+            La cocina está al máximo de su capacidad.
+          </p>
+          <p>
+            Estimación actual: {{ form.estimated_prep_min ?? form.prep_min }}–{{
+              form.estimated_prep_max ?? form.prep_max
+            }}
+            min. Los pedidos existentes mantienen el tiempo que se les informó.
+          </p>
+        </fieldset>
+        <fieldset :disabled="w.busy.value || !loaded">
+          <legend>Horarios semanales</legend>
+          <label class="ordering-check"
+            ><input v-model="form.schedule_enabled" type="checkbox" /> Recibir
+            pedidos solo dentro de estos horarios</label
+          >
           <label
-            >Apertura<input
-              v-model="period.opens"
+            >Zona horaria<input
+              v-model="form.timezone"
               required
-              pattern="[0-2][0-9]:[0-5][0-9]"
-              placeholder="19:00"
-              maxlength="5"
+              maxlength="80"
+              placeholder="America/Argentina/Buenos_Aires"
           /></label>
-          <label
-            >Cierre<input
-              v-model="period.closes"
-              required
-              pattern="([0-2][0-9]:[0-5][0-9])"
-              placeholder="01:00"
-              maxlength="5"
-          /></label>
+          <div
+            v-for="(period, i) in form.periods"
+            :key="i"
+            class="form-row ordering-period"
+          >
+            <label
+              >Día<select v-model.number="period.day">
+                <option v-for="(day, index) in days" :key="day" :value="index">
+                  {{ day }}
+                </option>
+              </select></label
+            >
+            <label
+              >Apertura<input
+                v-model="period.opens"
+                required
+                pattern="[0-2][0-9]:[0-5][0-9]"
+                placeholder="19:00"
+                maxlength="5"
+            /></label>
+            <label
+              >Cierre<input
+                v-model="period.closes"
+                required
+                pattern="([0-2][0-9]:[0-5][0-9])"
+                placeholder="01:00"
+                maxlength="5"
+            /></label>
+            <button
+              type="button"
+              class="btn-secondary"
+              :aria-label="'Quitar horario ' + days[period.day]"
+              @click="form.periods.splice(i, 1)"
+            >
+              Quitar
+            </button>
+          </div>
+          <p v-if="!form.periods.length">Todavía no agregaste horarios.</p>
           <button
             type="button"
             class="btn-secondary"
-            :aria-label="'Quitar horario ' + days[period.day]"
-            @click="form.periods.splice(i, 1)"
+            :disabled="form.periods.length >= 28"
+            @click="add"
           >
-            Quitar
+            Agregar horario
           </button>
-        </div>
-        <p v-if="!form.periods.length">Todavía no agregaste horarios.</p>
-        <button
-          type="button"
-          class="btn-secondary"
-          :disabled="form.periods.length >= 28"
-          @click="add"
-        >
-          Agregar horario
-        </button>
-        <p>
-          Podés agregar varios turnos por día. Un cierre anterior a la apertura
-          termina al día siguiente. Usá 24:00 para medianoche.
-        </p>
-      </fieldset>
+          <p>
+            Podés agregar varios turnos por día. Un cierre anterior a la
+            apertura termina al día siguiente. Usá 24:00 para medianoche.
+          </p>
+        </fieldset>
+      </div>
       <button
         class="btn-primary"
         :disabled="w.busy.value || !w.tenant.value || !loaded"

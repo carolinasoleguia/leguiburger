@@ -348,15 +348,18 @@ try {
         false,
       );
       checks++;
-      await page.evaluate(async () => {
-        await document.fonts.ready;
-        await Promise.all(
-          document
-            .getAnimations()
-            .filter((a) => a.effect?.getTiming().iterations !== Infinity)
-            .map((a) => a.finished.catch(() => {})),
-        );
-      });
+      await page.evaluate(() => document.fonts.ready);
+      // Poll active animations: a CSS transition can be replaced while a saved
+      // finished promise stays pending in Chromium. Keep this wait bounded.
+      await page.waitForFunction(() =>
+        document
+          .getAnimations()
+          .every(
+            (a) =>
+              a.effect?.getComputedTiming().iterations === Infinity ||
+              ["finished", "idle"].includes(a.playState),
+          ),
+      );
       await page.screenshot({
         path: `.cache/storefront-browser/inbox-${width}-${theme}.png`,
         fullPage: true,
@@ -387,15 +390,18 @@ try {
         false,
       );
       checks++;
-      await page.evaluate(async () => {
-        await document.fonts.ready;
-        await Promise.all(
-          document
-            .getAnimations()
-            .filter((a) => a.effect?.getTiming().iterations !== Infinity)
-            .map((a) => a.finished.catch(() => {})),
-        );
-      });
+      await page.evaluate(() => document.fonts.ready);
+      // Poll active animations: a CSS transition can be replaced while a saved
+      // finished promise stays pending in Chromium. Keep this wait bounded.
+      await page.waitForFunction(() =>
+        document
+          .getAnimations()
+          .every(
+            (a) =>
+              a.effect?.getComputedTiming().iterations === Infinity ||
+              ["finished", "idle"].includes(a.playState),
+          ),
+      );
       await page.screenshot({
         path: `.cache/storefront-browser/hours-${width}-${theme}.png`,
         fullPage: true,
@@ -419,15 +425,18 @@ try {
       checks++;
       await button(page, "Revisar");
       await text(page, "2 suscriptores elegibles");
-      await page.evaluate(async () => {
-        await document.fonts.ready;
-        await Promise.all(
-          document
-            .getAnimations()
-            .filter((a) => a.effect?.getTiming().iterations !== Infinity)
-            .map((a) => a.finished.catch(() => {})),
-        );
-      });
+      await page.evaluate(() => document.fonts.ready);
+      // Poll active animations: a CSS transition can be replaced while a saved
+      // finished promise stays pending in Chromium. Keep this wait bounded.
+      await page.waitForFunction(() =>
+        document
+          .getAnimations()
+          .every(
+            (a) =>
+              a.effect?.getComputedTiming().iterations === Infinity ||
+              ["finished", "idle"].includes(a.playState),
+          ),
+      );
       await page.screenshot({
         path: `.cache/storefront-browser/campaign-${width}-${theme}.png`,
         fullPage: true,
@@ -495,5 +504,6 @@ try {
 } finally {
   for (const c of clients) c.end();
   await browser.close();
+  server.closeAllConnections();
   await new Promise((r) => server.close(r));
 }

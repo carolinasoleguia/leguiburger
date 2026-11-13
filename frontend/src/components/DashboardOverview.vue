@@ -308,42 +308,51 @@ function preset(count) {
             </p></template
           >
         </section>
-      </div>
-      <section class="card table-scroll">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>
-                {{ w.platform.value ? "Función utilizada" : "Pedido reciente" }}
-              </th>
-              <th>{{ w.platform.value ? "Eventos" : "Estado" }}</th>
-              <th>{{ w.platform.value ? "Negocios" : "Total" }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <LoadingRows v-if="w.loading.value" :columns="3" />
-            <tr
-              v-show="!w.loading.value"
-              v-for="item in w.platform.value
-                ? report.activity_by_feature
-                : report.recent_orders"
-              :key="item.id || item.event_name"
-            >
-              <td>{{ item.event_name || item.id.slice(0, 8) }}</td>
-              <td>
-                {{ w.platform.value ? item.events : statusLabels[item.status] }}
-              </td>
-              <td>
-                {{
-                  w.platform.value
-                    ? item.businesses
-                    : money(item.total_due, item.currency)
-                }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </section></StableContent
+        <section class="card overview-recent">
+          <h2>
+            {{ w.platform.value ? "Actividad reciente" : "Últimos pedidos" }}
+          </h2>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>
+                    {{
+                      w.platform.value ? "Función utilizada" : "Pedido reciente"
+                    }}
+                  </th>
+                  <th>{{ w.platform.value ? "Eventos" : "Estado" }}</th>
+                  <th>{{ w.platform.value ? "Negocios" : "Total" }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <LoadingRows v-if="w.loading.value" :columns="3" />
+                <tr
+                  v-show="!w.loading.value"
+                  v-for="item in w.platform.value
+                    ? report.activity_by_feature
+                    : report.recent_orders"
+                  :key="item.id || item.event_name"
+                >
+                  <td>{{ item.event_name || item.id.slice(0, 8) }}</td>
+                  <td>
+                    {{
+                      w.platform.value ? item.events : statusLabels[item.status]
+                    }}
+                  </td>
+                  <td>
+                    {{
+                      w.platform.value
+                        ? item.businesses
+                        : money(item.total_due, item.currency)
+                    }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div></StableContent
     >
     <p v-else-if="!w.error.value" class="no-data">
       Creá un local activo para empezar a ver tus números.

@@ -119,201 +119,217 @@ function createExtra() {
     title="Combos y opciones"
     description="Usá los extras del local para definir variantes, acompañamientos y bebidas por producto."
   >
-    <section class="card operation-form">
-      <h2>Elegí el producto</h2>
-      <form class="form-row" @submit.prevent="page(0)">
-        <label
-          >Buscar en toda la carta<input
-            v-model="search"
-            type="search"
-            maxlength="100" /></label
-        ><button class="btn-secondary" :disabled="w.busy.value">
-          Buscar producto
-        </button>
-      </form>
-      <label
-        >Producto de este local<select
-          v-model="product"
-          :disabled="w.busy.value"
-        >
-          <option value="">Elegí de la carta</option>
-          <option v-for="p in products" :key="p.id" :value="p.id">
-            {{ p.name }}
-          </option>
-        </select></label
-      >
-      <ListPager
-        :offset="offset"
-        :count="products.length"
-        :disabled="w.busy.value"
-        @change="page"
-      />
-      <p>
-        Para un combo, creá el producto base en tu catálogo y agregá grupos de
-        bebida o acompañamiento. Cada elección reutiliza el precio, costo y
-        stock de un extra.
-      </p>
-    </section>
-    <p v-if="configLoading" role="status">
-      Cargando las opciones del producto…
-    </p>
-    <form
-      v-if="product"
-      v-form-care
-      class="card operation-form"
-      @submit.prevent="save"
-    >
-      <fieldset :disabled="!loaded || w.busy.value">
-        <legend>
-          Opciones para {{ products.find((p) => p.id === product)?.name }}
-        </legend>
-        <label class="options-check"
-          ><input v-model="config.use_product_options" type="checkbox" />Usar
-          opciones específicas de este producto</label
-        >
-        <p v-if="!config.use_product_options">
-          Se mantienen los extras generales del local. Activá esta opción para
-          restringir elecciones y definir grupos obligatorios.
-        </p>
-        <template v-if="config.use_product_options"
-          ><p>
-            Un precio vacío usa el precio habitual del extra. Cero significa
-            incluido en el precio base. Los cupones siguen aplicándose al precio
-            base del producto.
-          </p>
-          <section
-            v-for="(g, index) in config.groups"
-            :key="index"
-            class="option-editor"
+    <div class="workspace-split options-layout">
+      <aside>
+        <section class="card operation-form">
+          <h2>Elegí el producto</h2>
+          <form class="form-row" @submit.prevent="page(0)">
+            <label
+              >Buscar en toda la carta<input
+                v-model="search"
+                type="search"
+                maxlength="100" /></label
+            ><button class="btn-secondary" :disabled="w.busy.value">
+              Buscar producto
+            </button>
+          </form>
+          <label
+            >Producto de este local<select
+              v-model="product"
+              :disabled="w.busy.value"
+            >
+              <option value="">Elegí de la carta</option>
+              <option v-for="p in products" :key="p.id" :value="p.id">
+                {{ p.name }}
+              </option>
+            </select></label
           >
+          <ListPager
+            :offset="offset"
+            :count="products.length"
+            :disabled="w.busy.value"
+            @change="page"
+          />
+          <p>
+            Para un combo, creá el producto base en tu catálogo y agregá grupos
+            de bebida o acompañamiento. Cada elección reutiliza el precio, costo
+            y stock de un extra.
+          </p>
+        </section>
+        <details class="card operation-form">
+          <summary>Crear un extra en este local</summary>
+          <form
+            v-form-care
+            class="operation-form"
+            @submit.prevent="createExtra"
+          >
+            <p>
+              Después podés administrar su stock y costo desde Stock e insumos.
+            </p>
             <div class="form-row">
               <label
-                >Nombre del grupo<input
-                  v-model="g.name"
+                >Nombre del extra<input
+                  v-model="extraName"
                   required
-                  minlength="2"
-                  maxlength="80"
-                  placeholder="Bebida" /></label
+                  maxlength="100"
+                  placeholder="Bebida a elección" /></label
               ><label
-                >Mínimo de elecciones<input
-                  v-model.number="g.min"
-                  type="number"
-                  min="0"
-                  :max="g.max"
-                  required /></label
-              ><label
-                >Máximo de elecciones<input
-                  v-model.number="g.max"
-                  type="number"
-                  :min="Math.max(1, g.min)"
-                  max="5"
+                >Precio habitual<input
+                  v-model="extraPrice"
                   required
-              /></label>
-            </div>
-            <div
-              v-for="(o, i) in g.options"
-              :key="i"
-              class="form-row option-editor-row"
-            >
-              <label
-                >Extra<select v-model="o.extra_id" required>
-                  <option value="">Elegí un extra</option>
-                  <option
-                    v-for="x in extras"
-                    :key="x.id"
-                    :value="x.id"
-                    :disabled="used(x.id, o.extra_id) || !x.active"
-                  >
-                    {{ x.name }} · {{ money(x.price)
-                    }}{{ x.active ? "" : " · Inactivo" }}
-                  </option>
-                </select></label
-              ><label
-                >Precio en este producto<input
-                  v-model="o.price_override"
                   inputmode="decimal"
                   pattern="[0-9]+([.][0-9]{1,2})?"
-                  placeholder="Usar precio del extra" /></label
-              ><button
-                type="button"
-                class="btn-secondary"
-                @click="g.options.splice(i, 1)"
-              >
-                Quitar opción
-              </button>
+              /></label>
             </div>
-            <div class="operation-actions">
+            <label class="options-check"
+              ><input v-model="extraTracked" type="checkbox" />Controlar stock
+              de este extra</label
+            ><label v-if="extraTracked"
+              >Unidades disponibles<input
+                v-model.number="extraStock"
+                type="number"
+                min="0"
+                step="1"
+                required /></label
+            ><button
+              class="btn-secondary"
+              :disabled="w.busy.value || !w.tenant.value"
+            >
+              Crear extra
+            </button>
+          </form>
+        </details>
+      </aside>
+      <div>
+        <p v-if="configLoading" role="status">
+          Cargando las opciones del producto…
+        </p>
+        <form
+          v-if="product"
+          v-form-care
+          class="card operation-form"
+          @submit.prevent="save"
+        >
+          <fieldset :disabled="!loaded || w.busy.value">
+            <legend>
+              Opciones para {{ products.find((p) => p.id === product)?.name }}
+            </legend>
+            <label class="options-check"
+              ><input
+                v-model="config.use_product_options"
+                type="checkbox"
+              />Usar opciones específicas de este producto</label
+            >
+            <p v-if="!config.use_product_options">
+              Se mantienen los extras generales del local. Activá esta opción
+              para restringir elecciones y definir grupos obligatorios.
+            </p>
+            <template v-if="config.use_product_options"
+              ><p>
+                Un precio vacío usa el precio habitual del extra. Cero significa
+                incluido en el precio base. Los cupones siguen aplicándose al
+                precio base del producto.
+              </p>
+              <section
+                v-for="(g, index) in config.groups"
+                :key="index"
+                class="option-editor"
+              >
+                <div class="form-row">
+                  <label
+                    >Nombre del grupo<input
+                      v-model="g.name"
+                      required
+                      minlength="2"
+                      maxlength="80"
+                      placeholder="Bebida" /></label
+                  ><label
+                    >Mínimo de elecciones<input
+                      v-model.number="g.min"
+                      type="number"
+                      min="0"
+                      :max="g.max"
+                      required /></label
+                  ><label
+                    >Máximo de elecciones<input
+                      v-model.number="g.max"
+                      type="number"
+                      :min="Math.max(1, g.min)"
+                      max="5"
+                      required
+                  /></label>
+                </div>
+                <div
+                  v-for="(o, i) in g.options"
+                  :key="i"
+                  class="form-row option-editor-row"
+                >
+                  <label
+                    >Extra<select v-model="o.extra_id" required>
+                      <option value="">Elegí un extra</option>
+                      <option
+                        v-for="x in extras"
+                        :key="x.id"
+                        :value="x.id"
+                        :disabled="used(x.id, o.extra_id) || !x.active"
+                      >
+                        {{ x.name }} · {{ money(x.price)
+                        }}{{ x.active ? "" : " · Inactivo" }}
+                      </option>
+                    </select></label
+                  ><label
+                    >Precio en este producto<input
+                      v-model="o.price_override"
+                      inputmode="decimal"
+                      pattern="[0-9]+([.][0-9]{1,2})?"
+                      placeholder="Usar precio del extra" /></label
+                  ><button
+                    type="button"
+                    class="btn-secondary"
+                    @click="g.options.splice(i, 1)"
+                  >
+                    Quitar opción
+                  </button>
+                </div>
+                <div class="operation-actions">
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    :disabled="g.options.length >= 30"
+                    @click="
+                      g.options.push({ extra_id: '', price_override: '' })
+                    "
+                  >
+                    Agregar opción</button
+                  ><button
+                    type="button"
+                    class="text-button"
+                    @click="config.groups.splice(index, 1)"
+                  >
+                    Quitar grupo
+                  </button>
+                </div>
+              </section>
+              <p v-if="!config.groups.length">
+                Con esta configuración activa y sin grupos, el producto se vende
+                sin extras.
+              </p>
               <button
                 type="button"
                 class="btn-secondary"
-                :disabled="g.options.length >= 30"
-                @click="g.options.push({ extra_id: '', price_override: '' })"
+                :disabled="config.groups.length >= 6"
+                @click="addGroup"
               >
-                Agregar opción</button
-              ><button
-                type="button"
-                class="text-button"
-                @click="config.groups.splice(index, 1)"
-              >
-                Quitar grupo
-              </button>
-            </div>
-          </section>
-          <p v-if="!config.groups.length">
-            Con esta configuración activa y sin grupos, el producto se vende sin
-            extras.
-          </p>
-          <button
-            type="button"
-            class="btn-secondary"
-            :disabled="config.groups.length >= 6"
-            @click="addGroup"
-          >
-            Agregar grupo
-          </button></template
-        >
-      </fieldset>
-      <button class="btn-primary" :disabled="w.busy.value || !loaded">
-        Guardar opciones del producto
-      </button>
-    </form>
-    <details class="card operation-form">
-      <summary>Crear un extra en este local</summary>
-      <form v-form-care class="operation-form" @submit.prevent="createExtra">
-        <p>Después podés administrar su stock y costo desde Stock e insumos.</p>
-        <div class="form-row">
-          <label
-            >Nombre del extra<input
-              v-model="extraName"
-              required
-              maxlength="100"
-              placeholder="Bebida a elección" /></label
-          ><label
-            >Precio habitual<input
-              v-model="extraPrice"
-              required
-              inputmode="decimal"
-              pattern="[0-9]+([.][0-9]{1,2})?"
-          /></label>
-        </div>
-        <label class="options-check"
-          ><input v-model="extraTracked" type="checkbox" />Controlar stock de
-          este extra</label
-        ><label v-if="extraTracked"
-          >Unidades disponibles<input
-            v-model.number="extraStock"
-            type="number"
-            min="0"
-            step="1"
-            required /></label
-        ><button
-          class="btn-secondary"
-          :disabled="w.busy.value || !w.tenant.value"
-        >
-          Crear extra
-        </button>
-      </form>
-    </details>
+                Agregar grupo
+              </button></template
+            >
+          </fieldset>
+          <button class="btn-primary" :disabled="w.busy.value || !loaded">
+            Guardar opciones del producto
+          </button>
+        </form>
+      </div>
+    </div>
   </WorkspaceFrame>
 </template>
 <style scoped>

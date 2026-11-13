@@ -51,95 +51,100 @@ function toggle(c) {
     :workspace="w"
     title="Beneficios para tus compradores"
     description="Creá cupones para tu marca y consultá quiénes eligieron recibir sus novedades."
-    ><form v-form-care class="card operation-form" @submit.prevent="create">
-      <h2>Nuevo cupón</h2>
-      <p>
-        Porcentaje sobre el precio base de los productos. Sin descuento sobre
-        extras o envío. Un uso por cuenta; una compra cancelada conserva el uso.
-      </p>
-      <div class="form-row">
-        <label
-          >Código<input
-            v-model="code"
-            required
-            pattern="[A-Za-z0-9_-]{3,32}"
-            minlength="3"
-            maxlength="32"
-            placeholder="VOLVE10" /></label
-        ><label
-          >Descuento (%)<input
-            v-model.number="percent"
-            type="number"
-            required
-            min="1"
-            max="50" /></label
-        ><label
-          >Compra mínima<input
-            v-model="minimum"
-            inputmode="decimal"
-            pattern="[0-9]+([.][0-9]{1,2})?"
-            required
-        /></label>
-      </div>
-      <div class="form-row">
-        <label
-          >Vigencia en días<input
-            v-model.number="days"
-            type="number"
-            min="1"
-            max="90"
-            required /></label
-        ><label
-          >Usos totales<input
-            v-model.number="maxUses"
-            type="number"
-            min="1"
-            max="100000"
-            required /></label
-        ><label
-          >Destinatario<select v-model="recipient">
-            <option value="">Todas las cuentas de compradores</option>
-            <option v-for="p in customers" :key="p.id" :value="p.id">
-              {{ p.name }} · {{ p.orders }} pedidos en tu marca
-            </option>
-          </select></label
-        >
-      </div>
-      <label class="marketing-check"
-        ><input v-model="allLocations" type="checkbox" /> Disponible en todas
-        las sucursales de esta marca</label
-      >
-      <p v-if="!allLocations">
-        Se aplicará únicamente en el local seleccionado.
-      </p>
-      <button class="btn-primary" :disabled="w.busy.value || !w.tenant.value">
-        Crear cupón
-      </button>
-    </form>
-    <section class="card operation-form">
-      <h2>Cupones de tu marca</h2>
-      <p v-if="!coupons.length">Todavía no hay cupones.</p>
-      <article v-for="c in coupons" :key="c.id" class="marketing-coupon">
-        <div>
-          <strong>{{ c.code }} · {{ c.percent }}%</strong>
-          <p>
-            {{ c.recipient || "Todas las cuentas" }} ·
-            {{ c.tenant_id ? "Una sucursal" : "Toda la marca" }}
-          </p>
-          <small
-            >Mínimo {{ money(c.minimum) }} · {{ c.uses }}/{{ c.max_uses }} usos
-            · Hasta {{ when(c.expires_at) }}</small
+    ><div class="workspace-split marketing-layout">
+      <form v-form-care class="card operation-form" @submit.prevent="create">
+        <h2>Nuevo cupón</h2>
+        <p>
+          Porcentaje sobre el precio base de los productos. Sin descuento sobre
+          extras o envío. Un uso por cuenta; una compra cancelada conserva el
+          uso.
+        </p>
+        <div class="form-row">
+          <label
+            >Código<input
+              v-model="code"
+              required
+              pattern="[A-Za-z0-9_-]{3,32}"
+              minlength="3"
+              maxlength="32"
+              placeholder="VOLVE10" /></label
+          ><label
+            >Descuento (%)<input
+              v-model.number="percent"
+              type="number"
+              required
+              min="1"
+              max="50" /></label
+          ><label
+            >Compra mínima<input
+              v-model="minimum"
+              inputmode="decimal"
+              pattern="[0-9]+([.][0-9]{1,2})?"
+              required
+          /></label>
+        </div>
+        <div class="form-row">
+          <label
+            >Vigencia en días<input
+              v-model.number="days"
+              type="number"
+              min="1"
+              max="90"
+              required /></label
+          ><label
+            >Usos totales<input
+              v-model.number="maxUses"
+              type="number"
+              min="1"
+              max="100000"
+              required /></label
+          ><label
+            >Destinatario<select v-model="recipient">
+              <option value="">Todas las cuentas de compradores</option>
+              <option v-for="p in customers" :key="p.id" :value="p.id">
+                {{ p.name }} · {{ p.orders }} pedidos en tu marca
+              </option>
+            </select></label
           >
         </div>
-        <button
-          class="btn-secondary"
-          :disabled="w.busy.value"
-          @click="toggle(c)"
+        <label class="marketing-check"
+          ><input v-model="allLocations" type="checkbox" /> Disponible en todas
+          las sucursales de esta marca</label
         >
-          {{ c.active ? "Pausar" : "Activar" }}
+        <p v-if="!allLocations">
+          Se aplicará únicamente en el local seleccionado.
+        </p>
+        <button class="btn-primary" :disabled="w.busy.value || !w.tenant.value">
+          Crear cupón
         </button>
-      </article>
-    </section>
+      </form>
+      <section class="card operation-form">
+        <h2>Cupones de tu marca</h2>
+        <p v-if="!coupons.length">Todavía no hay cupones.</p>
+        <article v-for="c in coupons" :key="c.id" class="marketing-coupon">
+          <div>
+            <strong>{{ c.code }} · {{ c.percent }}%</strong>
+            <p>
+              {{ c.recipient || "Todas las cuentas" }} ·
+              {{ c.tenant_id ? "Una sucursal" : "Toda la marca" }}
+            </p>
+            <small
+              >Mínimo {{ money(c.minimum) }} · {{ c.uses }}/{{
+                c.max_uses
+              }}
+              usos · Hasta {{ when(c.expires_at) }}</small
+            >
+          </div>
+          <button
+            class="btn-secondary"
+            :disabled="w.busy.value"
+            @click="toggle(c)"
+          >
+            {{ c.active ? "Pausar" : "Activar" }}
+          </button>
+        </article>
+      </section>
+    </div>
     <section class="card operation-form">
       <h2>Compradores con cuenta</h2>
       <p>

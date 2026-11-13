@@ -13,6 +13,36 @@ defineProps({
   <DashboardShell :role="workspace.shellRole.value"
     ><section class="operations-page">
       <PageHeading :title="title" :description="description">
+        <slot name="actions" />
+        <div v-if="local && workspace.manager.value" class="workspace-context">
+          <label
+            >Local<select
+              v-model="workspace.tenant.value"
+              :disabled="workspace.busy.value"
+            >
+              <option
+                v-for="item in workspace.tenants.value"
+                :key="item.id"
+                :value="item.id"
+              >
+                {{ item.name || item.subdomain }}
+              </option>
+            </select></label
+          ><span
+            class="workspace-local-hint"
+            :class="{
+              'visually-hidden':
+                workspace.loading.value || workspace.tenants.value.length > 0,
+            }"
+            >{{
+              workspace.loading.value
+                ? "Consultando tus locales…"
+                : !workspace.tenants.value.length
+                  ? "Todavía no hay locales activos."
+                  : "Datos del local seleccionado."
+            }}</span
+          >
+        </div>
         <button
           class="btn-secondary"
           :disabled="workspace.loading.value || workspace.busy.value"
@@ -21,28 +51,6 @@ defineProps({
           Actualizar
         </button>
       </PageHeading>
-      <div v-if="local && workspace.manager.value" class="workspace-filters">
-        <label
-          >Local<select
-            v-model="workspace.tenant.value"
-            :disabled="workspace.busy.value"
-          >
-            <option
-              v-for="item in workspace.tenants.value"
-              :key="item.id"
-              :value="item.id"
-            >
-              {{ item.name || item.subdomain }}
-            </option>
-          </select></label
-        ><span class="workspace-local-hint">{{
-          workspace.loading.value
-            ? "Consultando tus locales…"
-            : !workspace.tenants.value.length
-              ? "Todavía no hay locales activos."
-              : "Datos del local seleccionado."
-        }}</span>
-      </div>
       <slot name="filters" />
       <div v-if="workspace.error.value" class="error-msg" role="alert">
         {{ workspace.error.value }}

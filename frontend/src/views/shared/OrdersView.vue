@@ -294,11 +294,7 @@ function menuPage(n) {
     :workspace="w"
     title="Caja y pedidos"
     description="Tomá pedidos, registrá cobros y acompañá cada entrega."
-    ><div class="operation-actions">
-      <router-link class="btn-secondary" to="/cash"
-        >Turnos y arqueo de caja</router-link
-      >
-    </div>
+  >
     <section
       class="card operation-form live-inbox"
       aria-labelledby="inbox-title"
@@ -308,6 +304,9 @@ function menuPage(n) {
           Por confirmar <span class="badge">{{ pendingCount }}</span>
         </h2>
         <OrderSoundToggle new-orders />
+        <router-link class="text-button" to="/cash"
+          >Turnos y arqueo de caja</router-link
+        >
       </div>
       <p role="status">
         {{
@@ -341,152 +340,176 @@ function menuPage(n) {
       </article>
       <small v-if="pendingCount > 100">Mostrando los 100 más antiguos.</small>
     </section>
-    <form v-form-care class="card operation-form" @submit.prevent="create">
-      <h2>Nuevo pedido de mostrador</h2>
-      <div class="form-row">
-        <label
-          >Buscar en toda la carta<input
-            v-model="catalogSearch"
-            type="search"
-            maxlength="100" /></label
-        ><button
-          type="button"
-          class="btn-secondary"
-          :disabled="w.busy.value"
-          @click="
-            catalogOffset = 0;
-            w.refresh();
-          "
-        >
-          Buscar producto
-        </button>
-      </div>
-      <div class="form-row">
-        <label
-          >Hamburguesa / producto<select v-model="product">
-            <option value="">Elegí de la carta</option>
-            <option v-for="item in catalog" :key="item.id" :value="item.id">
-              {{ item.name }} · {{ money(item.price) }}
-            </option>
-          </select></label
-        ><label
-          >Cantidad<input
-            v-model.number="quantity"
-            type="number"
-            min="1"
-            max="500" /></label
-        ><button
-          class="btn-secondary"
-          type="button"
-          :disabled="!product || !counterOptionsReady || w.busy.value"
-          @click="add"
-        >
-          Sumar al pedido
-        </button>
-      </div>
-      <ProductOptionsPicker
-        v-if="chosenProduct"
-        v-model="chosenExtras"
-        :product="chosenProduct"
-        :extras="chosenProduct.extras || []"
-      />
-      <label v-if="chosenProduct"
-        >Preferencias para cocina<input
-          v-model="counterNote"
-          maxlength="300"
-          placeholder="Por ejemplo, sin cebolla"
-      /></label>
-      <ListPager
-        :offset="catalogOffset"
-        :count="catalog.length"
-        :disabled="w.busy.value"
-        @change="menuPage"
-      />
-      <div v-for="(line, i) in cart" :key="i" class="report-row">
-        <span
-          >{{ line.quantity }} × {{ line.name
-          }}<small v-for="(choice, j) in line.choice_labels || []" :key="j">{{
-            choice
-          }}</small
-          ><small v-if="line.note">{{ line.note }}</small></span
-        ><span
-          >{{ money(Number(line.price) * line.quantity) }}
-          <button
-            type="button"
-            class="text-button"
-            :aria-label="`Quitar ${line.name}`"
-            @click="cart.splice(i, 1)"
-          >
-            Quitar
-          </button></span
-        >
-      </div>
-      <p>
-        Total estimado: <strong>{{ money(total) }}</strong>. El servidor
-        confirma los precios al crear.
-      </p>
-      <div class="form-row">
-        <label
-          >Buscar cliente<input v-model="customerSearch" type="search" /></label
-        ><button class="btn-secondary" type="button" @click="w.refresh">
-          Buscar</button
-        ><label
-          >Cliente (opcional)<select v-model="customer">
-            <option value="">Consumidor final</option>
-            <option v-for="item in customers" :key="item.id" :value="item.id">
-              {{ item.first_name }} {{ item.last_name }} · {{ item.email }}
-            </option>
-          </select></label
-        >
-      </div>
-      <button
-        class="btn-primary"
-        :disabled="w.busy.value || !cart.length || !w.tenant.value"
+    <div class="workspace-split orders-layout">
+      <form
+        v-form-care
+        class="card operation-form counter-form"
+        @submit.prevent="create"
       >
-        Crear pedido
-      </button>
-    </form>
-    <div class="card table-scroll">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Pedido</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-            <th>Total</th>
-            <th>Cobrado</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <LoadingRows v-if="w.loading.value" :columns="6" />
-          <tr v-show="!w.loading.value" v-for="item in orders" :key="item.id">
-            <td>
-              #{{ item.id.slice(0, 8)
-              }}<small v-if="item.channel === 'web'"> · Online</small>
-            </td>
-            <td>{{ when(item.created_at) }}</td>
-            <td>{{ statusLabels[item.status] }}</td>
-            <td>{{ money(item.total_due, item.currency) }}</td>
-            <td>{{ money(item.total_paid, item.currency) }}</td>
-            <td>
-              <button class="btn-secondary" @click="open(item)">
-                Ver pedido
-              </button>
-            </td>
-          </tr>
-          <tr v-show="!w.loading.value" v-if="!orders.length">
-            <td colspan="6">Los pedidos de este local aparecerán acá.</td>
-          </tr>
-        </tbody>
-      </table>
+        <h2>Nuevo pedido de mostrador</h2>
+        <div class="form-row">
+          <label
+            >Buscar en toda la carta<input
+              v-model="catalogSearch"
+              type="search"
+              maxlength="100" /></label
+          ><button
+            type="button"
+            class="btn-secondary"
+            :disabled="w.busy.value"
+            @click="
+              catalogOffset = 0;
+              w.refresh();
+            "
+          >
+            Buscar producto
+          </button>
+        </div>
+        <div class="form-row counter-product-row">
+          <label
+            >Hamburguesa / producto<select v-model="product">
+              <option value="">Elegí de la carta</option>
+              <option v-for="item in catalog" :key="item.id" :value="item.id">
+                {{ item.name }} · {{ money(item.price) }}
+              </option>
+            </select></label
+          ><label
+            >Cantidad<input
+              v-model.number="quantity"
+              type="number"
+              min="1"
+              max="500" /></label
+          ><button
+            class="btn-secondary"
+            type="button"
+            :disabled="!product || !counterOptionsReady || w.busy.value"
+            @click="add"
+          >
+            Sumar al pedido
+          </button>
+        </div>
+        <ProductOptionsPicker
+          v-if="chosenProduct"
+          v-model="chosenExtras"
+          :product="chosenProduct"
+          :extras="chosenProduct.extras || []"
+        />
+        <label v-if="chosenProduct"
+          >Preferencias para cocina<input
+            v-model="counterNote"
+            maxlength="300"
+            placeholder="Por ejemplo, sin cebolla"
+        /></label>
+        <ListPager
+          :offset="catalogOffset"
+          :count="catalog.length"
+          :disabled="w.busy.value"
+          @change="menuPage"
+        />
+        <div v-for="(line, i) in cart" :key="i" class="report-row">
+          <span
+            >{{ line.quantity }} × {{ line.name
+            }}<small v-for="(choice, j) in line.choice_labels || []" :key="j">{{
+              choice
+            }}</small
+            ><small v-if="line.note">{{ line.note }}</small></span
+          ><span
+            >{{ money(Number(line.price) * line.quantity) }}
+            <button
+              type="button"
+              class="text-button"
+              :aria-label="`Quitar ${line.name}`"
+              @click="cart.splice(i, 1)"
+            >
+              Quitar
+            </button></span
+          >
+        </div>
+        <p>
+          Total estimado: <strong>{{ money(total) }}</strong>. El servidor
+          confirma los precios al crear.
+        </p>
+        <details class="counter-customer">
+          <summary>
+            {{ customer ? "Cliente asignado" : "Asignar cliente (opcional)" }}
+          </summary>
+          <div class="form-row">
+            <label
+              >Buscar cliente<input
+                v-model="customerSearch"
+                type="search" /></label
+            ><button class="btn-secondary" type="button" @click="w.refresh">
+              Buscar</button
+            ><label
+              >Cliente (opcional)<select v-model="customer">
+                <option value="">Consumidor final</option>
+                <option
+                  v-for="item in customers"
+                  :key="item.id"
+                  :value="item.id"
+                >
+                  {{ item.first_name }} {{ item.last_name }} · {{ item.email }}
+                </option>
+              </select></label
+            >
+          </div>
+        </details>
+        <button
+          class="btn-primary"
+          :disabled="w.busy.value || !cart.length || !w.tenant.value"
+        >
+          Crear pedido
+        </button>
+      </form>
+      <section class="order-history">
+        <h2>Pedidos del local</h2>
+        <div class="card table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Total</th>
+                <th>Cobrado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <LoadingRows v-if="w.loading.value" :columns="6" />
+              <tr
+                v-show="!w.loading.value"
+                v-for="item in orders"
+                :key="item.id"
+              >
+                <td>
+                  #{{ item.id.slice(0, 8)
+                  }}<small v-if="item.channel === 'web'"> · Online</small>
+                </td>
+                <td>{{ when(item.created_at) }}</td>
+                <td>{{ statusLabels[item.status] }}</td>
+                <td>{{ money(item.total_due, item.currency) }}</td>
+                <td>{{ money(item.total_paid, item.currency) }}</td>
+                <td>
+                  <button class="btn-secondary" @click="open(item)">
+                    Ver pedido
+                  </button>
+                </td>
+              </tr>
+              <tr v-show="!w.loading.value" v-if="!orders.length">
+                <td colspan="6">Los pedidos de este local aparecerán acá.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ListPager
+          :offset="offset"
+          :count="orders.length"
+          :disabled="w.busy.value"
+          @change="page"
+        />
+      </section>
     </div>
-    <ListPager
-      :offset="offset"
-      :count="orders.length"
-      :disabled="w.busy.value"
-      @change="page"
-    />
     <section v-if="detail" class="card operation-form">
       <h2>
         Pedido #{{ detail.id.slice(0, 8) }} · {{ statusLabels[detail.status] }}

@@ -376,6 +376,7 @@ try {
     await state.page.goto(origin + "/admin/catalog/tenants", {
       waitUntil: "networkidle0",
     });
+    await state.page.waitForSelector("#catalog-location");
     await state.page.select("#catalog-location", tenant);
     await state.page.waitForSelector(".menu-publication");
     await clickText(state.page, "Publicar carta");
@@ -418,6 +419,7 @@ try {
       document.body.textContent.includes("Movimiento de efectivo registrado"),
     );
     await loaded(state.page);
+    await clickText(state.page, "Arqueo y cierre");
     await fill(state.page, "Efectivo contado", "115.00");
     await fill(state.page, "Nota de cierre", "Faltante detectado al contar");
     await clickText(state.page, "Revisar y cerrar caja");

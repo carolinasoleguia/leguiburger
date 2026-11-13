@@ -354,7 +354,7 @@ try {
         errors = [];
       page.on("pageerror", (e) => errors.push(e.message));
       page.on("dialog", (dialog) => dialog.accept());
-      await page.setViewport({ width, height: 980 });
+      await page.setViewport({ width, height: width > 800 ? 768 : 900 });
       await page.evaluateOnNewDocument(
         (t) => localStorage.setItem("legui-theme", t),
         theme,
@@ -372,7 +372,9 @@ try {
       }, product);
       await readyButton(page, "Guardar opciones del producto");
       await page.evaluate(() => {
-        const c = document.querySelector('input[type="checkbox"]');
+        const c = document.querySelector(
+          '.options-layout > div input[type="checkbox"]',
+        );
         c.checked = true;
         c.dispatchEvent(new Event("change", { bubbles: true }));
       });
@@ -388,6 +390,20 @@ try {
       await page.type('input[placeholder="Usar precio del extra"]', "0");
       await button(page, "Guardar opciones del producto");
       await text(page, "Opciones del producto guardadas");
+      await page.screenshot({
+        path: `.cache/options-browser/manager-${width}-${theme}.png`,
+        fullPage: true,
+      });
+      if (width > 800) {
+        assert.ok(
+          await page.$eval(
+            ".options-layout > div > form",
+            (e) => e.getBoundingClientRect().top < 280,
+          ),
+          "current product editor is visible beside the selector",
+        );
+        checks++;
+      }
       assert.equal(config.groups[0].min, 1);
       assert.equal(config.groups[0].options[0].extra_id, drink);
       const saved = calls
@@ -412,6 +428,20 @@ try {
       await fillLabel(page, "Tope de demora adicional", "6");
       await button(page, "Guardar atención del local");
       await text(page, "Horarios y recepción de pedidos actualizados");
+      await page.screenshot({
+        path: `.cache/options-browser/capacity-${width}-${theme}.png`,
+        fullPage: true,
+      });
+      if (width > 800) {
+        assert.ok(
+          await page.$eval(
+            ".ordering-sections",
+            (e) => e.getBoundingClientRect().top < 360,
+          ),
+          "reception, capacity and hours appear together",
+        );
+        checks++;
+      }
       assert.equal(settings.max_active_orders, 2);
       assert.equal(settings.queue_step_minutes, 3);
       checks += 2;
