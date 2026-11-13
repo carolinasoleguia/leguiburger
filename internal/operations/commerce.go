@@ -96,6 +96,9 @@ func (h *Handler) createOrder(r *http.Request, p Principal) (Result, error) {
 }
 
 func writeOrder(tx *gorm.DB, scope Scope, input CreateOrderRequest, key string) (json.RawMessage, error) {
+	if e := reserveKitchenSlot(tx, scope.TenantID, input.Environment); e != nil {
+		return nil, e
+	}
 	id := uuid.NewString()
 	shipping := "0"
 	if input.ShippingMethodID != nil {
@@ -124,6 +127,10 @@ func writeOrder(tx *gorm.DB, scope Scope, input CreateOrderRequest, key string) 
 		if q.RowsAffected == 0 {
 			return nil, conflict("El producto no está disponible en este local")
 		}
+		optionPrices, e := resolveProductOptions(tx, scope.TenantID, item.ProductID, item.Extras)
+		if e != nil {
+			return nil, e
+		}
 		detailID := uuid.NewString()
 		if err := tx.Exec(`INSERT INTO public.order_details(id,tenant_id,order_id,product_id,product_name,quantity,list_price_unit,discount_unit,final_price_unit,preparation_note) VALUES(?,?,?,?,?,?,?::numeric,0,?::numeric,?)`, detailID, scope.TenantID, id, item.ProductID, product.Name, item.Quantity, product.Price, product.Price, item.Note).Error; err != nil {
 			return nil, err
@@ -140,7 +147,12 @@ func writeOrder(tx *gorm.DB, scope Scope, input CreateOrderRequest, key string) 
 			if q.RowsAffected == 0 {
 				return nil, conflict("El extra no está disponible en este local")
 			}
-			if err := tx.Exec(`INSERT INTO public.order_detail_extras(order_detail_id,extra_id,extra_name,extra_price_charged,quantity) VALUES(?,?,?,?::numeric,?)`, detailID, extra.ExtraID, row.Name, row.Price, extra.Quantity).Error; err != nil {
+			groupName := ""
+			if option, ok := optionPrices[extra.ExtraID]; ok {
+				row.Price = option.Price
+				groupName = option.GroupName
+			}
+			if err := tx.Exec(`INSERT INTO public.order_detail_extras(order_detail_id,extra_id,extra_name,extra_price_charged,quantity,option_group_name) VALUES(?,?,?,?::numeric,?,?)`, detailID, extra.ExtraID, row.Name, row.Price, extra.Quantity, groupName).Error; err != nil {
 				return nil, err
 			}
 		}

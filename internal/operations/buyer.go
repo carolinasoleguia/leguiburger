@@ -43,10 +43,11 @@ type BuyerOrderRequest struct {
 	PaymentMethod string `json:"payment_method"`
 }
 type BuyerExtra struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Quantity int    `json:"quantity"`
-	Price    string `json:"price"`
+	GroupName string `json:"group_name,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Quantity  int    `json:"quantity"`
+	Price     string `json:"price"`
 }
 type BuyerLine struct {
 	ProductID string       `json:"product_id"`
@@ -164,6 +165,13 @@ func buyerLocation(tx *gorm.DB, id string) (Scope, error) {
 		return scope, e
 	}
 	if !receiving {
+		var full bool
+		if e := tx.Raw(`SELECT legui_private.kitchen_full(?)`, id).Scan(&full).Error; e != nil {
+			return scope, e
+		}
+		if full {
+			return scope, conflict("La cocina está al máximo de su capacidad. Esperá unos minutos para hacer un nuevo pedido")
+		}
 		return scope, conflict("El local no está recibiendo pedidos online en este momento")
 	}
 	return scope, nil
@@ -224,6 +232,10 @@ func quoteBuyer(tx *gorm.DB, scope Scope, input BuyerBasket) (BuyerQuote, error)
 		if q.RowsAffected != 1 || p.TrackStock && usedProducts[item.ProductID] > p.CurrentStock {
 			return quote, conflict("Un producto ya no está disponible en esa cantidad. Revisá la carta")
 		}
+		optionPrices, e := resolveProductOptions(tx, scope.TenantID, item.ProductID, item.Extras)
+		if e != nil {
+			return quote, e
+		}
 		unit, e := priceRat(p.Price)
 		if e != nil {
 			return quote, e
@@ -248,12 +260,17 @@ func quoteBuyer(tx *gorm.DB, scope Scope, input BuyerBasket) (BuyerQuote, error)
 			if q.RowsAffected != 1 || x.TrackStock && usedExtras[extra.ExtraID] > x.CurrentStock {
 				return quote, conflict("Un extra ya no está disponible en esa cantidad")
 			}
+			groupName := ""
+			if option, ok := optionPrices[extra.ExtraID]; ok {
+				x.Price = option.Price
+				groupName = option.GroupName
+			}
 			price, e := priceRat(x.Price)
 			if e != nil {
 				return quote, e
 			}
 			unit.Add(unit, new(big.Rat).Mul(price, big.NewRat(int64(extra.Quantity), 1)))
-			line.Extras = append(line.Extras, BuyerExtra{ID: extra.ExtraID, Name: x.Name, Price: price.FloatString(2), Quantity: extra.Quantity})
+			line.Extras = append(line.Extras, BuyerExtra{ID: extra.ExtraID, Name: x.Name, Price: price.FloatString(2), Quantity: extra.Quantity, GroupName: groupName})
 		}
 		line.UnitPrice = unit.FloatString(2)
 		amount := new(big.Rat).Mul(unit, big.NewRat(int64(item.Quantity), 1))
@@ -333,7 +350,7 @@ func (h *Handler) buyerQuote(r *http.Request) (Result, error) {
 	return Result{Data: data}, nil
 }
 func (h *Handler) buyerReceiptData(r *http.Request, db *gorm.DB, grant buyeraccess.Grant) (json.RawMessage, error) {
-	data, e := jsonQuery(db, `SELECT jsonb_build_object('id',o.id,'status',s.code,'created_at',o.created_at,'pending_deadline',o.pending_deadline,'ended_reason',o.ended_reason,'prep_min',o.prep_min,'prep_max',o.prep_max,'estimated_ready_at',o.estimated_ready_at,'currency',o.currency,'subtotal',o.subtotal::text,'discount',o.total_discounts::text,'total_due',o.total_due::text,'total_paid',o.total_paid::text,'shipping',o.shipping_cost::text,'fulfillment',o.fulfillment,'delivery_zone_name',o.delivery_zone_name,'delivery_postal_code',o.delivery_postal_code,'payment_method',o.buyer_payment_method,'payment',(SELECT jsonb_build_object('state',x.state,'amount',x.amount::text,'checkout_url',CASE WHEN x.state='created' AND x.expires_at>clock_timestamp() AND o.total_due>o.total_paid AND s.code NOT IN ('pending','canceled','rejected') THEN x.checkout_url ELSE NULL END) FROM legui_private.mp_checkouts x WHERE x.order_id=o.id AND x.tenant_id=o.tenant_id AND x.purpose='order' AND x.state IN ('prepared','submitting','created','review') AND (x.expires_at>clock_timestamp() OR x.state IN ('submitting','review')) ORDER BY x.created_at DESC LIMIT 1),'business',b.name,'location',coalesce(nullif(t.display_name,''),t.subdomain),'tenant_id',t.id,'items',coalesce((SELECT jsonb_agg(jsonb_build_object('name',d.product_name,'quantity',d.quantity,'unit_price',d.final_price_unit::text,'note',d.preparation_note,'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('name',x.extra_name,'quantity',x.quantity,'price',x.extra_price_charged::text)) FROM public.order_detail_extras x WHERE x.order_detail_id=d.id),'[]'::jsonb))) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb))::text payload FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id JOIN public.tenants t ON t.id=o.tenant_id JOIN public.brands b ON b.id=t.brand_id WHERE o.id=? AND o.tenant_id=?`, grant.OrderID, grant.TenantID)
+	data, e := jsonQuery(db, `SELECT jsonb_build_object('id',o.id,'status',s.code,'created_at',o.created_at,'pending_deadline',o.pending_deadline,'ended_reason',o.ended_reason,'prep_min',o.prep_min,'prep_max',o.prep_max,'estimated_ready_at',o.estimated_ready_at,'currency',o.currency,'subtotal',o.subtotal::text,'discount',o.total_discounts::text,'total_due',o.total_due::text,'total_paid',o.total_paid::text,'shipping',o.shipping_cost::text,'fulfillment',o.fulfillment,'delivery_zone_name',o.delivery_zone_name,'delivery_postal_code',o.delivery_postal_code,'payment_method',o.buyer_payment_method,'payment',(SELECT jsonb_build_object('state',x.state,'amount',x.amount::text,'checkout_url',CASE WHEN x.state='created' AND x.expires_at>clock_timestamp() AND o.total_due>o.total_paid AND s.code NOT IN ('pending','canceled','rejected') THEN x.checkout_url ELSE NULL END) FROM legui_private.mp_checkouts x WHERE x.order_id=o.id AND x.tenant_id=o.tenant_id AND x.purpose='order' AND x.state IN ('prepared','submitting','created','review') AND (x.expires_at>clock_timestamp() OR x.state IN ('submitting','review')) ORDER BY x.created_at DESC LIMIT 1),'business',b.name,'location',coalesce(nullif(t.display_name,''),t.subdomain),'tenant_id',t.id,'items',coalesce((SELECT jsonb_agg(jsonb_build_object('name',d.product_name,'quantity',d.quantity,'unit_price',d.final_price_unit::text,'note',d.preparation_note,'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('name',x.extra_name,'quantity',x.quantity,'price',x.extra_price_charged::text,'group_name',x.option_group_name)) FROM public.order_detail_extras x WHERE x.order_detail_id=d.id),'[]'::jsonb))) FROM public.order_details d WHERE d.order_id=o.id),'[]'::jsonb))::text payload FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id JOIN public.tenants t ON t.id=o.tenant_id JOIN public.brands b ON b.id=t.brand_id WHERE o.id=? AND o.tenant_id=?`, grant.OrderID, grant.TenantID)
 	if e != nil {
 		return nil, e
 	}

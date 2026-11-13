@@ -23,7 +23,7 @@ func (h *Handler) shopperFavorites(r *http.Request) (Result, error) {
 		if tenant != "" && !validID(tenant) {
 			return Result{}, badInput("Local inválido")
 		}
-		return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v) ORDER BY v.created_at DESC,v.product_id),'[]'::jsonb))::text payload FROM(SELECT f.tenant_id,f.product_id,f.created_at,p.name,p.image_url,b.name business,coalesce(nullif(t.display_name,''),t.subdomain) location,coalesce(tp.price_override,p.base_price)::text price,(tp.is_available AND coalesce(legui_private.product_capacity(t.id,p.id)>0,true)) available FROM legui_private.shopper_favorites f JOIN public.tenants t ON t.id=f.tenant_id AND t.active AND t.menu_published JOIN public.brands b ON b.id=t.brand_id AND b.suspended_at IS NULL AND b.closed_at IS NULL JOIN public.products p ON p.id=f.product_id AND p.brand_id=b.id AND p.is_active JOIN public.tenant_products tp ON tp.product_id=p.id AND tp.tenant_id=t.id AND tp.is_active WHERE f.shopper_id=? AND (?='' OR f.tenant_id=nullif(?,'')::uuid) ORDER BY f.created_at DESC,f.product_id LIMIT ? OFFSET ?)v`, p.ID, tenant, tenant, limit, offset))
+		return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v) ORDER BY v.created_at DESC,v.product_id),'[]'::jsonb))::text payload FROM(SELECT f.tenant_id,f.product_id,f.created_at,p.name,p.image_url,b.name business,coalesce(nullif(t.display_name,''),t.subdomain) location,coalesce(tp.price_override,p.base_price)::text price,(tp.is_available AND coalesce(legui_private.product_capacity(t.id,p.id)>0,true) AND legui_private.product_groups_ready(t.id,p.id)) available,tp.options_configured,legui_private.product_options(t.id,p.id) option_groups FROM legui_private.shopper_favorites f JOIN public.tenants t ON t.id=f.tenant_id AND t.active AND t.menu_published JOIN public.brands b ON b.id=t.brand_id AND b.suspended_at IS NULL AND b.closed_at IS NULL JOIN public.products p ON p.id=f.product_id AND p.brand_id=b.id AND p.is_active JOIN public.tenant_products tp ON tp.product_id=p.id AND tp.tenant_id=t.id AND tp.is_active WHERE f.shopper_id=? AND (?='' OR f.tenant_id=nullif(?,'')::uuid) ORDER BY f.created_at DESC,f.product_id LIMIT ? OFFSET ?)v`, p.ID, tenant, tenant, limit, offset))
 	}
 	if e := buyeraccess.Rate(r.Context(), h.repo.DB, r, "favorites:"+p.ID, 240); e != nil {
 		return Result{}, buyerProblem(e)
@@ -65,12 +65,14 @@ func (h *Handler) shopperFavorites(r *http.Request) (Result, error) {
 }
 
 type repeatItem struct {
-	ProductID string       `json:"product_id"`
-	Name      string       `json:"name"`
-	Price     string       `json:"price"`
-	Quantity  int          `json:"quantity"`
-	Note      string       `json:"note"`
-	Extras    []BuyerExtra `json:"extras"`
+	OptionsConfigured bool            `json:"options_configured"`
+	OptionGroups      json.RawMessage `json:"option_groups"`
+	ProductID         string          `json:"product_id"`
+	Name              string          `json:"name"`
+	Price             string          `json:"price"`
+	Quantity          int             `json:"quantity"`
+	Note              string          `json:"note"`
+	Extras            []BuyerExtra    `json:"extras"`
 }
 
 func (h *Handler) repeatOrder(r *http.Request) (Result, error) {
@@ -121,10 +123,12 @@ func (h *Handler) repeatOrder(r *http.Request) (Result, error) {
 		total := 0
 		for _, old := range details {
 			var current struct {
-				ID, Name, Price string
-				Available       bool
+				ID, Name, Price   string
+				Groups            string
+				OptionsConfigured bool
+				Available         bool
 			}
-			q := tx.Raw(`SELECT p.id::text,p.name,coalesce(tp.price_override,p.base_price)::text price,(tp.is_available AND coalesce(legui_private.product_capacity(tp.tenant_id,p.id)>=?,true)) available FROM public.products p JOIN public.tenant_products tp ON tp.product_id=p.id AND tp.tenant_id=? AND tp.is_active WHERE p.id=? AND p.brand_id=? AND p.is_active FOR SHARE OF p,tp`, old.Quantity, scope.TenantID, old.ProductID, scope.BrandID).Scan(&current)
+			q := tx.Raw(`SELECT p.id::text,p.name,coalesce(tp.price_override,p.base_price)::text price,tp.options_configured,legui_private.product_options(tp.tenant_id,p.id)::text groups,(tp.is_available AND coalesce(legui_private.product_capacity(tp.tenant_id,p.id)>=?,true) AND legui_private.product_groups_ready(tp.tenant_id,p.id)) available FROM public.products p JOIN public.tenant_products tp ON tp.product_id=p.id AND tp.tenant_id=? AND tp.is_active WHERE p.id=? AND p.brand_id=? AND p.is_active FOR SHARE OF p,tp`, old.Quantity, scope.TenantID, old.ProductID, scope.BrandID).Scan(&current)
 			if q.Error != nil {
 				return q.Error
 			}
@@ -136,7 +140,16 @@ func (h *Handler) repeatOrder(r *http.Request) (Result, error) {
 			if err != nil {
 				return err
 			}
-			item := repeatItem{ProductID: current.ID, Name: current.Name, Price: currentPrice.FloatString(2), Quantity: old.Quantity, Note: old.Note, Extras: []BuyerExtra{}}
+			configured, rules, optionValues, e := loadProductOptions(tx, scope.TenantID, current.ID)
+			if e != nil {
+				return e
+			}
+			groupCounts := map[string]int{}
+			groupLimits := map[string]int{}
+			for _, rule := range rules {
+				groupLimits[rule.ID] = rule.Max
+			}
+			item := repeatItem{OptionsConfigured: current.OptionsConfigured, OptionGroups: json.RawMessage(current.Groups), ProductID: current.ID, Name: current.Name, Price: currentPrice.FloatString(2), Quantity: old.Quantity, Note: old.Note, Extras: []BuyerExtra{}}
 			requested := OrderItemRequest{ProductID: item.ProductID, Quantity: item.Quantity, Note: item.Note}
 			unit, _ := priceRat(item.Price)
 			var extras []struct {
@@ -147,6 +160,12 @@ func (h *Handler) repeatOrder(r *http.Request) (Result, error) {
 				return e
 			}
 			for _, x := range extras {
+				choice, allowed := optionValues[x.ID]
+				if configured && (!allowed || groupCounts[choice.GroupID]+x.Quantity > groupLimits[choice.GroupID]) {
+					changes = append(changes, old.Name+": "+x.Name+" ya no corresponde a las opciones actuales. Volvé a elegirlo.")
+					continue
+				}
+
 				var extra struct {
 					Name, Price string
 					Available   bool
@@ -159,7 +178,13 @@ func (h *Handler) repeatOrder(r *http.Request) (Result, error) {
 					changes = append(changes, old.Name+": el extra "+x.Name+" ya no está disponible y se quitó.")
 					continue
 				}
-				item.Extras = append(item.Extras, BuyerExtra{ID: x.ID, Name: extra.Name, Price: extra.Price, Quantity: x.Quantity})
+				groupName := ""
+				if configured {
+					extra.Price = choice.Price
+					groupName = choice.GroupName
+					groupCounts[choice.GroupID] += x.Quantity
+				}
+				item.Extras = append(item.Extras, BuyerExtra{ID: x.ID, Name: extra.Name, Price: extra.Price, Quantity: x.Quantity, GroupName: groupName})
 				requested.Extras = append(requested.Extras, OrderExtraRequest{ExtraID: x.ID, Quantity: x.Quantity})
 				price, _ := priceRat(extra.Price)
 				unit.Add(unit, new(big.Rat).Mul(price, big.NewRat(int64(x.Quantity), 1)))

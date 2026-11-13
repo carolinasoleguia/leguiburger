@@ -85,3 +85,5 @@ La migración `202611120003_shopper_accounts` agrega cuentas privadas de comprad
 La operación en vivo, horarios y campañas está documentada en [operacion-en-vivo.md](../docs/operacion-en-vivo.md); requiere la migración `202611120005_live_storefront_operations`.
 
 Comandas, zonas de delivery, favoritos, recompra y disponibilidad por recetas: [guía de uso](../docs/comandas-delivery-y-recompra.md). Este flujo requiere hasta `202611120007_untracked_menu_availability`.
+
+Opciones por producto y capacidad de cocina: [guía de uso](../docs/opciones-y-capacidad-cocina.md), migraciones hasta `202611120009_kitchen_queue_index`. Se reutilizan los extras y snapshots existentes.

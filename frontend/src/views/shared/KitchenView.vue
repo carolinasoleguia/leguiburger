@@ -7,14 +7,25 @@ import {
   statusLabels,
   when,
 } from "../../composables/useWorkspace.js";
+const load = ref({
+  active_count: 0,
+  max_active_orders: 0,
+  full: false,
+  prep_min: 20,
+  prep_max: 35,
+});
 const items = ref([]),
   updated = ref("");
 const w = useWorkspace(async ({ request, tenant, current }) => {
   items.value = [];
   if (!tenant) return;
-  const data = await request("/kitchen");
+  const [data, queue] = await Promise.all([
+    request("/kitchen"),
+    request("/kitchen/load"),
+  ]);
   if (current()) {
     items.value = data.items || [];
+    load.value = queue;
     updated.value = when(new Date());
   }
 });
@@ -26,9 +37,13 @@ async function refreshKitchen() {
   }
   const tenant = w.tenant.value;
   try {
-    const data = await w.request("/kitchen");
+    const [data, queue] = await Promise.all([
+      w.request("/kitchen"),
+      w.request("/kitchen/load"),
+    ]);
     if (tenant === w.tenant.value) {
       items.value = data.items || [];
+      load.value = queue;
       updated.value = when(new Date());
     }
   } catch (e) {
@@ -74,6 +89,28 @@ function advance(item, status) {
           : "Consultando los pedidos activos…"
       }}
     </p>
+    <section class="card operation-form kitchen-load">
+      <h2>{{ load.full ? "Cocina al máximo" : "Carga de cocina" }}</h2>
+      <p>
+        {{ load.active_count || 0 }} pedidos pendientes o en
+        preparación<template v-if="load.max_active_orders">
+          de {{ load.max_active_orders }} admitidos</template
+        ><template v-else> · sin límite configurado</template>.
+      </p>
+      <p>
+        Demora estimada para nuevos pedidos: {{ load.prep_min }}–{{
+          load.prep_max
+        }}
+        min.
+      </p>
+      <p class="kitchen-load-status" role="status">
+        {{
+          load.full
+            ? "Las nuevas compras están pausadas hasta que un pedido quede listo, se entregue o se cancele."
+            : "Los pedidos listos o cancelados liberan lugar para nuevas compras."
+        }}
+      </p>
+    </section>
     <div class="kitchen-board">
       <section
         v-for="status in ['accepted', 'preparing', 'ready']"
@@ -102,7 +139,9 @@ function advance(item, status) {
               <strong>{{ line.quantity }} × {{ line.product_name }}</strong>
               <p v-if="line.note">Preferencias: {{ line.note }}</p>
               <div v-for="(extra, j) in line.extras" :key="j">
-                + {{ extra.quantity }} {{ extra.name }}
+                + {{ extra.quantity }}
+                {{ extra.group_name ? extra.group_name + ": " : ""
+                }}{{ extra.name }} por unidad
               </div>
             </li>
           </ul>
@@ -125,3 +164,18 @@ function advance(item, status) {
     </div></WorkspaceFrame
   >
 </template>
+
+<style scoped>
+.kitchen-load p {
+  min-height: 3.2em;
+}
+.kitchen-load .kitchen-load-status {
+  min-height: 4.8em;
+}
+@media (min-width: 800px) {
+  .kitchen-load p,
+  .kitchen-load .kitchen-load-status {
+    min-height: 1.6em;
+  }
+}
+</style>

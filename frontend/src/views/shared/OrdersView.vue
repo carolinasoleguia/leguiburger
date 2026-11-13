@@ -1,4 +1,10 @@
 <script setup>
+import ProductOptionsPicker from "../../components/ProductOptionsPicker.vue";
+import {
+  optionsComplete,
+  selectedOptions,
+  optionsPrice,
+} from "../../composables/productOptions.js";
 import OrderSoundToggle from "../../components/OrderSoundToggle.vue";
 import { useOrderStream } from "../../composables/useOrderStream.js";
 import { playOrderSound } from "../../composables/useOrderSound.js";
@@ -14,6 +20,8 @@ import {
 } from "../../composables/useWorkspace.js";
 const inbox = ref([]),
   pendingCount = ref(0);
+const chosenExtras = ref([]),
+  counterNote = ref("");
 const orders = ref([]),
   catalog = ref([]),
   customers = ref([]),
@@ -127,18 +135,45 @@ const transitions = {
 const total = computed(() =>
   cart.value.reduce((sum, x) => sum + Number(x.price) * x.quantity, 0),
 );
+const chosenProduct = computed(() =>
+  catalog.value.find((x) => x.id === product.value),
+);
+const counterOptionsReady = computed(() =>
+  optionsComplete(
+    chosenProduct.value,
+    chosenExtras.value,
+    chosenProduct.value?.extras || [],
+  ),
+);
+watch(product, () => {
+  chosenExtras.value = [];
+  counterNote.value = "";
+});
 function add() {
-  const item = catalog.value.find((x) => x.id === product.value);
-  if (!item || quantity.value < 1) return;
-  const existing = cart.value.find((x) => x.product_id === item.id);
-  if (existing) existing.quantity += quantity.value;
-  else
-    cart.value.push({
-      product_id: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: quantity.value,
-    });
+  const item = chosenProduct.value;
+  if (
+    !item ||
+    !Number.isInteger(quantity.value) ||
+    quantity.value < 1 ||
+    quantity.value > 500 ||
+    !counterOptionsReady.value
+  )
+    return;
+  const choices = selectedOptions(item, chosenExtras.value, item.extras || []);
+  cart.value.push({
+    product_id: item.id,
+    name: item.name,
+    price: optionsPrice(item.price, choices),
+    quantity: quantity.value,
+    choice_labels: choices.map(
+      (x) =>
+        (x.group_name ? x.group_name + ": " : "") + x.quantity + " × " + x.name,
+    ),
+    extras: choices.map((x) => ({ extra_id: x.id, quantity: x.quantity })),
+    note: counterNote.value,
+  });
+  chosenExtras.value = [];
+  counterNote.value = "";
 }
 function create() {
   return w.act(async () => {
@@ -149,6 +184,8 @@ function create() {
       items: cart.value.map((x) => ({
         product_id: x.product_id,
         quantity: x.quantity,
+        extras: x.extras || [],
+        note: x.note || "",
       })),
     });
     cart.value = [];
@@ -341,20 +378,37 @@ function menuPage(n) {
         ><button
           class="btn-secondary"
           type="button"
-          :disabled="!product || w.busy.value"
+          :disabled="!product || !counterOptionsReady || w.busy.value"
           @click="add"
         >
           Sumar al pedido
         </button>
       </div>
+      <ProductOptionsPicker
+        v-if="chosenProduct"
+        v-model="chosenExtras"
+        :product="chosenProduct"
+        :extras="chosenProduct.extras || []"
+      />
+      <label v-if="chosenProduct"
+        >Preferencias para cocina<input
+          v-model="counterNote"
+          maxlength="300"
+          placeholder="Por ejemplo, sin cebolla"
+      /></label>
       <ListPager
         :offset="catalogOffset"
         :count="catalog.length"
         :disabled="w.busy.value"
         @change="menuPage"
       />
-      <div v-for="(line, i) in cart" :key="line.product_id" class="report-row">
-        <span>{{ line.quantity }} × {{ line.name }}</span
+      <div v-for="(line, i) in cart" :key="i" class="report-row">
+        <span
+          >{{ line.quantity }} × {{ line.name
+          }}<small v-for="(choice, j) in line.choice_labels || []" :key="j">{{
+            choice
+          }}</small
+          ><small v-if="line.note">{{ line.note }}</small></span
         ><span
           >{{ money(Number(line.price) * line.quantity) }}
           <button
@@ -480,7 +534,9 @@ function menuPage(n) {
         <span
           >{{ line.quantity }} × {{ line.product_name
           }}<small v-for="extra in line.extras" :key="extra.id">
-            + {{ extra.quantity }} {{ extra.extra_name }}</small
+            + {{ extra.quantity }}
+            {{ extra.option_group_name ? extra.option_group_name + ": " : ""
+            }}{{ extra.extra_name }}</small
           ><small v-if="line.preparation_note"
             >Preferencias: {{ line.preparation_note }}</small
           ></span

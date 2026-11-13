@@ -270,6 +270,16 @@ function image(url) {
         <p v-if="favoriteError" class="error-msg" role="alert">
           {{ favoriteError }}
         </p>
+        <p v-if="data?.capacity_full" class="inline-notice" role="status">
+          La cocina está al máximo. Podés mirar la carta y volver a intentar en
+          unos minutos.<button
+            class="text-button"
+            :disabled="loading"
+            @click="load"
+          >
+            Volver a consultar
+          </button>
+        </p>
         <div v-if="error" role="alert" class="card menu-message">
           <h2>No pudimos mostrar esta carta</h2>
           <p>{{ error }}</p>

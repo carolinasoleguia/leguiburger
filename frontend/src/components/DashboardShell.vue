@@ -135,6 +135,11 @@ const navigation = computed(() => {
           { label: "Gastos", to: "/expenses", icon: "receipt" },
           { label: "Cupones y compradores", to: "/marketing", icon: "users" },
           {
+            label: "Combos y opciones",
+            to: "/product-options",
+            icon: "burger",
+          },
+          {
             label: "Atención del local",
             to: "/store-operations",
             icon: "clock",

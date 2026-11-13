@@ -65,6 +65,14 @@ const scenarios = [
   "cashier:/inventory",
 ];
 function data(path, count) {
+  if (path === "/api/kitchen/load")
+    return {
+      active_count: count,
+      max_active_orders: 0,
+      full: false,
+      prep_min: 20,
+      prep_max: 35,
+    };
   const rows = Array.from({ length: count }, (_, i) => ({
     id: `fixture-${i}`,
     brand_id: "brand-1",

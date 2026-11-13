@@ -12,6 +12,10 @@ const emptySettings = () => ({
   prep_max: 35,
   periods: [],
   receiving: false,
+  max_active_orders: 0,
+  queue_step_minutes: 0,
+  max_queue_minutes: 60,
+  active_count: 0,
 });
 const loaded = ref(false);
 const form = ref(emptySettings()),
@@ -30,7 +34,7 @@ const w = useWorkspace(async ({ request, tenant, current }) => {
   if (!tenant) return;
   const data = await request("/ordering/settings");
   if (current()) {
-    form.value = data;
+    form.value = { ...emptySettings(), ...data };
     loaded.value = true;
   }
 });
@@ -48,6 +52,9 @@ function save() {
           pending_minutes: Number(form.value.pending_minutes),
           prep_min: Number(form.value.prep_min),
           prep_max: Number(form.value.prep_max),
+          max_active_orders: Number(form.value.max_active_orders || 0),
+          queue_step_minutes: Number(form.value.queue_step_minutes || 0),
+          max_queue_minutes: Number(form.value.max_queue_minutes ?? 60),
           periods: form.value.periods,
         },
         "PATCH",
@@ -136,6 +143,52 @@ function add() {
           Los pedidos web nuevos que no confirmes a tiempo se cancelan, siempre
           que no tengan un cobro en curso. Estos plazos no modifican pedidos
           anteriores.
+        </p>
+      </fieldset>
+      <fieldset :disabled="w.busy.value || !loaded">
+        <legend>Capacidad de cocina</legend>
+        <p>
+          Hay {{ form.active_count || 0 }} pedidos pendientes, aceptados o en
+          preparación. Los pedidos listos y despachados dejan lugar para nuevas
+          compras.
+        </p>
+        <div class="form-row">
+          <label
+            >Pedidos simultáneos admitidos<input
+              v-model.number="form.max_active_orders"
+              type="number"
+              min="0"
+              max="1000"
+              required /></label
+          ><label
+            >Minutos extra por pedido en cola<input
+              v-model.number="form.queue_step_minutes"
+              type="number"
+              min="0"
+              max="30"
+              required /></label
+          ><label
+            >Tope de demora adicional (min)<input
+              v-model.number="form.max_queue_minutes"
+              type="number"
+              min="0"
+              max="180"
+              required
+          /></label>
+        </div>
+        <p>
+          Cero pedidos admitidos significa sin límite. Al alcanzar el límite, se
+          pausan nuevas compras y pedidos de mostrador; se reactivan al liberar
+          lugar. Cero minutos por pedido desactiva la demora adicional.
+        </p>
+        <p v-if="form.capacity_full" role="status">
+          La cocina está al máximo de su capacidad.
+        </p>
+        <p>
+          Estimación actual: {{ form.estimated_prep_min ?? form.prep_min }}–{{
+            form.estimated_prep_max ?? form.prep_max
+          }}
+          min. Los pedidos existentes mantienen el tiempo que se les informó.
         </p>
       </fieldset>
       <fieldset :disabled="w.busy.value || !loaded">

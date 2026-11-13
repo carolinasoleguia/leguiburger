@@ -84,7 +84,9 @@ onMounted(load);
         <div v-for="(item, i) in ticket.items" :key="i" class="ticket-line">
           <strong>{{ item.quantity }} × {{ item.name }}</strong>
           <p v-for="(extra, j) in item.extras" :key="j">
-            + {{ extra.quantity }} {{ extra.name }} por unidad
+            + {{ extra.quantity }}
+            {{ extra.group_name ? extra.group_name + ": " : ""
+            }}{{ extra.name }} por unidad
           </p>
           <p v-if="item.note" class="ticket-note">Nota: {{ item.note }}</p>
         </div>

@@ -37,6 +37,11 @@ func (h *Handler) publicMenu(w http.ResponseWriter, r *http.Request) {
 		writeError(w, e)
 		return
 	}
+	productFilter := r.URL.Query().Get("product_id")
+	if productFilter != "" && !validID(productFilter) {
+		writeError(w, badInput("Producto inválido"))
+		return
+	}
 	category := strings.TrimSpace(r.URL.Query().Get("category"))
 	if len([]rune(category)) > 60 {
 		writeError(w, badInput("Categoría inválida"))
@@ -45,13 +50,13 @@ func (h *Handler) publicMenu(w http.ResponseWriter, r *http.Request) {
 	data, e := h.repo.JSON(ctx, `WITH location AS(SELECT t.id,t.brand_id,coalesce(nullif(t.display_name,''),t.subdomain) name,t.address,t.contact_phone,t.service_hours,t.ordering_enabled,b.name brand_name
  FROM public.tenants t JOIN public.brands b ON b.id=t.brand_id WHERE t.id=? AND t.active AND t.menu_published AND b.suspended_at IS NULL AND b.closed_at IS NULL),
  menu AS(SELECT p.id,p.name,p.description,p.image_url,p.category,coalesce(tp.price_override,p.base_price)::text price,
- (tp.is_available AND coalesce(legui_private.product_capacity(tp.tenant_id,p.id)>0,true)) available
+ (tp.is_available AND coalesce(legui_private.product_capacity(tp.tenant_id,p.id)>0,true) AND legui_private.product_groups_ready(tp.tenant_id,p.id)) available,tp.options_configured,legui_private.product_options(tp.tenant_id,p.id) option_groups
  FROM location l JOIN public.tenant_products tp ON tp.tenant_id=l.id JOIN public.products p ON p.id=tp.product_id AND p.brand_id=l.brand_id WHERE tp.is_active AND p.is_active),
- filtered AS(SELECT * FROM menu WHERE (?='' OR strpos(lower(name||' '||coalesce(description,'')),lower(?))>0) AND (?='' OR category=?))
+ filtered AS(SELECT * FROM menu WHERE (?='' OR strpos(lower(name||' '||coalesce(description,'')),lower(?))>0) AND (?='' OR category=?) AND (?='' OR id=nullif(?,'')::uuid))
  SELECT jsonb_build_object('location',jsonb_build_object('id',l.id,'name',l.name,'brand_name',l.brand_name,'address',l.address,'phone',l.contact_phone,'hours',l.service_hours),
- 'currency','ARS','ordering_enabled',l.ordering_enabled,'ordering_ready',legui_private.tenant_receiving(l.id),'prep_min',coalesce((SELECT prep_min FROM legui_private.tenant_ordering WHERE tenant_id=l.id),20),'prep_max',coalesce((SELECT prep_max FROM legui_private.tenant_ordering WHERE tenant_id=l.id),35),'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('id',x.id,'name',x.name,'price',x.current_price::text,'available',NOT x.track_stock OR x.current_stock>0) ORDER BY x.name,x.id) FROM public.extras x WHERE x.tenant_id=l.id AND x.is_active),'[]'::jsonb),'delivery_zones_enabled',coalesce((SELECT zones_enabled FROM legui_private.delivery_settings WHERE tenant_id=l.id),false),'delivery_zones',coalesce((SELECT jsonb_agg(jsonb_build_object('id',z.id,'name',m.name,'description',z.description,'price',m.cost::text,'minimum',z.minimum::text,'postal_codes',z.postal_codes) ORDER BY m.name,z.id) FROM legui_private.delivery_zones z JOIN public.shipping_methods m ON m.id=z.shipping_method_id AND m.tenant_id=z.tenant_id AND m.is_active WHERE z.tenant_id=l.id),'[]'::jsonb),'shipping_methods',coalesce((SELECT jsonb_agg(jsonb_build_object('id',m.id,'name',m.name,'price',m.cost::text) ORDER BY m.name,m.id) FROM public.shipping_methods m WHERE m.tenant_id=l.id AND m.is_active),'[]'::jsonb),'categories',coalesce((SELECT jsonb_agg(category ORDER BY category) FROM(SELECT DISTINCT category FROM menu)c),'[]'::jsonb),
+ 'currency','ARS','ordering_enabled',l.ordering_enabled,'ordering_ready',legui_private.tenant_receiving(l.id),'capacity_full',legui_private.kitchen_full(l.id),'prep_min',coalesce((SELECT prep_min FROM legui_private.tenant_ordering WHERE tenant_id=l.id),20)+legui_private.queue_delay(l.id),'prep_max',coalesce((SELECT prep_max FROM legui_private.tenant_ordering WHERE tenant_id=l.id),35)+legui_private.queue_delay(l.id),'extras',coalesce((SELECT jsonb_agg(jsonb_build_object('id',x.id,'name',x.name,'price',x.current_price::text,'available',NOT x.track_stock OR x.current_stock>0) ORDER BY x.name,x.id) FROM public.extras x WHERE x.tenant_id=l.id AND x.is_active),'[]'::jsonb),'delivery_zones_enabled',coalesce((SELECT zones_enabled FROM legui_private.delivery_settings WHERE tenant_id=l.id),false),'delivery_zones',coalesce((SELECT jsonb_agg(jsonb_build_object('id',z.id,'name',m.name,'description',z.description,'price',m.cost::text,'minimum',z.minimum::text,'postal_codes',z.postal_codes) ORDER BY m.name,z.id) FROM legui_private.delivery_zones z JOIN public.shipping_methods m ON m.id=z.shipping_method_id AND m.tenant_id=z.tenant_id AND m.is_active WHERE z.tenant_id=l.id),'[]'::jsonb),'shipping_methods',coalesce((SELECT jsonb_agg(jsonb_build_object('id',m.id,'name',m.name,'price',m.cost::text) ORDER BY m.name,m.id) FROM public.shipping_methods m WHERE m.tenant_id=l.id AND m.is_active),'[]'::jsonb),'categories',coalesce((SELECT jsonb_agg(category ORDER BY category) FROM(SELECT DISTINCT category FROM menu)c),'[]'::jsonb),
  'total',(SELECT count(*) FROM filtered),'limit',?::int,'offset',?::int,
- 'items',coalesce((SELECT jsonb_agg(to_jsonb(v) ORDER BY v.category,v.name,v.id) FROM(SELECT * FROM filtered ORDER BY category,name,id LIMIT ? OFFSET ?)v),'[]'::jsonb))::text payload FROM location l`, id, search, search, category, category, limit, offset, limit, offset)
+ 'items',coalesce((SELECT jsonb_agg(to_jsonb(v) ORDER BY v.category,v.name,v.id) FROM(SELECT * FROM filtered ORDER BY category,name,id LIMIT ? OFFSET ?)v),'[]'::jsonb))::text payload FROM location l`, id, search, search, category, category, productFilter, productFilter, limit, offset, limit, offset)
 	if e != nil {
 		writeError(w, e)
 		return

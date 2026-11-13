@@ -16,18 +16,21 @@ type OrderingPeriod struct {
 	Closes string `json:"closes"`
 }
 type OrderingSettings struct {
-	Timezone        string           `json:"timezone"`
-	ScheduleEnabled bool             `json:"schedule_enabled"`
-	Paused          bool             `json:"paused"`
-	PauseMinutes    int              `json:"pause_minutes"`
-	PendingMinutes  int              `json:"pending_minutes"`
-	PrepMin         int              `json:"prep_min"`
-	PrepMax         int              `json:"prep_max"`
-	Periods         []OrderingPeriod `json:"periods"`
+	MaxActiveOrders  *int             `json:"max_active_orders,omitempty"`
+	QueueStepMinutes *int             `json:"queue_step_minutes,omitempty"`
+	MaxQueueMinutes  *int             `json:"max_queue_minutes,omitempty"`
+	Timezone         string           `json:"timezone"`
+	ScheduleEnabled  bool             `json:"schedule_enabled"`
+	Paused           bool             `json:"paused"`
+	PauseMinutes     int              `json:"pause_minutes"`
+	PendingMinutes   int              `json:"pending_minutes"`
+	PrepMin          int              `json:"prep_min"`
+	PrepMax          int              `json:"prep_max"`
+	Periods          []OrderingPeriod `json:"periods"`
 }
 
 func orderingData(tx *gorm.DB, tenant string) (json.RawMessage, error) {
-	return jsonQuery(tx, `SELECT jsonb_build_object('timezone',coalesce(c.timezone,'America/Argentina/Buenos_Aires'),'schedule_enabled',coalesce(c.schedule_enabled,false),'paused',coalesce(c.paused AND(c.pause_until IS NULL OR c.pause_until>clock_timestamp()),false),'pause_until',c.pause_until,'pause_minutes',0,'pending_minutes',coalesce(c.pending_minutes,15),'prep_min',coalesce(c.prep_min,20),'prep_max',coalesce(c.prep_max,35),'receiving',legui_private.tenant_receiving(t.id),'periods',coalesce((SELECT jsonb_agg(jsonb_build_object('day',p.day,'opens',lpad((p.opens/60)::text,2,'0')||':'||lpad((p.opens%60)::text,2,'0'),'closes',lpad((p.closes/60)::text,2,'0')||':'||lpad((p.closes%60)::text,2,'0')) ORDER BY p.day,p.opens) FROM legui_private.ordering_periods p WHERE p.tenant_id=t.id),'[]'::jsonb))::text payload FROM public.tenants t LEFT JOIN legui_private.tenant_ordering c ON c.tenant_id=t.id WHERE t.id=?`, tenant)
+	return jsonQuery(tx, `SELECT jsonb_build_object('timezone',coalesce(c.timezone,'America/Argentina/Buenos_Aires'),'schedule_enabled',coalesce(c.schedule_enabled,false),'paused',coalesce(c.paused AND(c.pause_until IS NULL OR c.pause_until>clock_timestamp()),false),'pause_until',c.pause_until,'pause_minutes',0,'pending_minutes',coalesce(c.pending_minutes,15),'prep_min',coalesce(c.prep_min,20),'prep_max',coalesce(c.prep_max,35),'receiving',legui_private.tenant_receiving(t.id),'active_count',legui_private.kitchen_load(t.id),'capacity_full',legui_private.kitchen_full(t.id),'max_active_orders',coalesce(c.max_active_orders,0),'queue_step_minutes',coalesce(c.queue_step_minutes,0),'max_queue_minutes',coalesce(c.max_queue_minutes,60),'estimated_prep_min',coalesce(c.prep_min,20)+legui_private.queue_delay(t.id),'estimated_prep_max',coalesce(c.prep_max,35)+legui_private.queue_delay(t.id),'periods',coalesce((SELECT jsonb_agg(jsonb_build_object('day',p.day,'opens',lpad((p.opens/60)::text,2,'0')||':'||lpad((p.opens%60)::text,2,'0'),'closes',lpad((p.closes/60)::text,2,'0')||':'||lpad((p.closes%60)::text,2,'0')) ORDER BY p.day,p.opens) FROM legui_private.ordering_periods p WHERE p.tenant_id=t.id),'[]'::jsonb))::text payload FROM public.tenants t LEFT JOIN legui_private.tenant_ordering c ON c.tenant_id=t.id WHERE t.id=?`, tenant)
 }
 func clockMinutes(raw string, close bool) (int, error) {
 	if raw == "24:00" && close {
@@ -49,6 +52,14 @@ type minutePeriod struct{ day, opens, closes int }
 func validateOrdering(input OrderingSettings) ([]minutePeriod, error) {
 	if _, e := time.LoadLocation(input.Timezone); e != nil || input.Timezone == "" || input.Timezone == "Local" || len(input.Timezone) > 80 {
 		return nil, badInput("Zona horaria inválida")
+	}
+	for _, v := range []struct {
+		n   *int
+		max int
+	}{{input.MaxActiveOrders, 1000}, {input.QueueStepMinutes, 30}, {input.MaxQueueMinutes, 180}} {
+		if v.n != nil && (*v.n < 0 || *v.n > v.max) {
+			return nil, badInput("Revisá el límite de pedidos y la demora por cola")
+		}
 	}
 	if input.PendingMinutes < 5 || input.PendingMinutes > 60 || input.PrepMin < 1 || input.PrepMin > 180 || input.PrepMax < input.PrepMin || input.PrepMax > 240 || input.PauseMinutes < 0 || input.PauseMinutes > 720 || len(input.Periods) > 28 {
 		return nil, badInput("Revisá los plazos y horarios del local")
@@ -125,6 +136,9 @@ func (h *Handler) orderingSettings(r *http.Request, p Principal) (Result, error)
 		}
 		e := tx.Exec(`INSERT INTO legui_private.tenant_ordering(tenant_id,timezone,schedule_enabled,paused,pause_until,pending_minutes,prep_min,prep_max) VALUES(?,?,?,?,CASE WHEN ?>0 AND ? THEN clock_timestamp()+make_interval(mins=>?) ELSE NULL END,?,?,?) ON CONFLICT(tenant_id) DO UPDATE SET timezone=excluded.timezone,schedule_enabled=excluded.schedule_enabled,paused=excluded.paused,pause_until=excluded.pause_until,pending_minutes=excluded.pending_minutes,prep_min=excluded.prep_min,prep_max=excluded.prep_max,updated_at=clock_timestamp()`, scope.TenantID, input.Timezone, input.ScheduleEnabled, input.Paused, input.PauseMinutes, input.Paused, input.PauseMinutes, input.PendingMinutes, input.PrepMin, input.PrepMax).Error
 		if e != nil {
+			return nil, 0, e
+		}
+		if e = tx.Exec(`UPDATE legui_private.tenant_ordering SET max_active_orders=coalesce(?,max_active_orders),queue_step_minutes=coalesce(?,queue_step_minutes),max_queue_minutes=coalesce(?,max_queue_minutes) WHERE tenant_id=?`, input.MaxActiveOrders, input.QueueStepMinutes, input.MaxQueueMinutes, scope.TenantID).Error; e != nil {
 			return nil, 0, e
 		}
 		if e = tx.Exec(`DELETE FROM legui_private.ordering_periods WHERE tenant_id=?`, scope.TenantID).Error; e != nil {

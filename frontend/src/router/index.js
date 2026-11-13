@@ -33,6 +33,11 @@ const workspaceViews = {
 };
 const routes = [
   {
+    path: "/product-options",
+    component: () => import("../views/shared/ProductOptionsView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin", "admin"] },
+  },
+  {
     path: "/orders/:id/print",
     component: () => import("../views/shared/OrderPrintView.vue"),
     meta: {

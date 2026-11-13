@@ -168,6 +168,14 @@ try {
       captured.push({ type: "expense", body });
       result = { id: "expense-1" };
     } else if (p === "/api/expenses") result = { items: [] };
+    else if (p === "/api/kitchen/load")
+      result = {
+        active_count: 1,
+        max_active_orders: 0,
+        full: false,
+        prep_min: 20,
+        prep_max: 35,
+      };
     else if (p === "/api/kitchen")
       result = {
         items: [

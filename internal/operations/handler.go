@@ -66,6 +66,8 @@ func RegisterRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) {
 	mux.HandleFunc("POST /api/public/menu/{id}/orders", h.buyerWrap(h.buyerCreate))
 	mux.HandleFunc("GET /api/public/buyer-order", h.buyerWrap(h.buyerReceipt))
 	routes := map[string]endpoint{
+		"GET /api/menu/products/{id}/options": h.productOptions, "PUT /api/menu/products/{id}/options": h.productOptions,
+		"GET /api/kitchen/load":       h.kitchenLoad,
 		"GET /api/orders/{id}/ticket": h.orderTicket,
 		"GET /api/delivery/settings":  h.deliverySettings, "PATCH /api/delivery/settings": h.deliverySettings,
 		"GET /api/delivery/zones": h.deliveryZones, "POST /api/delivery/zones": h.deliveryZones, "PATCH /api/delivery/zones/{id}": h.deliveryZones,
@@ -156,7 +158,13 @@ func writeError(w http.ResponseWriter, err error) {
 				api = &apiError{409, "DUPLICATE", "La operación o el recurso ya existen"}
 			case "23503":
 				api = &apiError{409, "INVALID_REFERENCE", "Una relación del recurso no es válida para este negocio"}
-			case "23514", "23502", "22P02", "22003", "22007":
+			case "23514":
+				if pg.ConstraintName == "kitchen_capacity" {
+					api = &apiError{409, "KITCHEN_FULL", "La cocina está al máximo de su capacidad. Esperá unos minutos para hacer un nuevo pedido"}
+				} else {
+					api = &apiError{422, "INVALID_OPERATION", "La operación no cumple las reglas de importes, estado o integridad"}
+				}
+			case "23502", "22P02", "22003", "22007":
 				api = &apiError{422, "INVALID_OPERATION", "La operación no cumple las reglas de importes, estado o integridad"}
 			case "40001", "40P01", "55P03":
 				api = &apiError{409, "RETRY_OPERATION", "Hubo un cambio concurrente; reintentá con la misma clave de operación"}

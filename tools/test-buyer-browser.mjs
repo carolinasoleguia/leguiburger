@@ -236,7 +236,7 @@ try {
       await button(page, "Elegir producto");
       await page.waitForSelector(".buyer-extra input");
       await page.click(".buyer-extra input");
-      await page.$eval(".buyer-dialog input[type=number]", (el) => {
+      await page.$eval(".buyer-dialog input[name=product-quantity]", (el) => {
         el.value = "2";
         el.dispatchEvent(new Event("input", { bubbles: true }));
       });

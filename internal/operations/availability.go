@@ -39,7 +39,7 @@ func (h *Handler) menuAvailability(r *http.Request, p Principal) (Result, error)
 		if e != nil {
 			return Result{}, e
 		}
-		return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v) ORDER BY v.name,v.id),'[]'::jsonb))::text payload FROM(SELECT p.id,p.name,tp.is_available enabled,coalesce(legui_private.product_capacity(tp.tenant_id,p.id)>0,true) in_stock,(tp.is_available AND coalesce(legui_private.product_capacity(tp.tenant_id,p.id)>0,true)) available FROM public.tenant_products tp JOIN public.products p ON p.id=tp.product_id AND p.brand_id=? AND p.is_active WHERE tp.tenant_id=? AND tp.is_active AND (?='' OR strpos(lower(p.name),lower(?))>0) ORDER BY p.name,p.id LIMIT ? OFFSET ?)v`, scope.BrandID, scope.TenantID, search, search, limit, offset))
+		return resultJSON(h.repo.JSON(r.Context(), `SELECT jsonb_build_object('items',coalesce(jsonb_agg(to_jsonb(v) ORDER BY v.name,v.id),'[]'::jsonb))::text payload FROM(SELECT p.id,p.name,tp.is_available enabled,(coalesce(legui_private.product_capacity(tp.tenant_id,p.id)>0,true) AND legui_private.product_groups_ready(tp.tenant_id,p.id)) in_stock,(tp.is_available AND (coalesce(legui_private.product_capacity(tp.tenant_id,p.id)>0,true) AND legui_private.product_groups_ready(tp.tenant_id,p.id))) available FROM public.tenant_products tp JOIN public.products p ON p.id=tp.product_id AND p.brand_id=? AND p.is_active WHERE tp.tenant_id=? AND tp.is_active AND (?='' OR strpos(lower(p.name),lower(?))>0) ORDER BY p.name,p.id LIMIT ? OFFSET ?)v`, scope.BrandID, scope.TenantID, search, search, limit, offset))
 	}
 	id, e := resourceID(r)
 	if e != nil {

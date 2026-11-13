@@ -1,5 +1,11 @@
 <script setup>
 import { confirmAction } from "../services/confirmation.js";
+import ProductOptionsPicker from "./ProductOptionsPicker.vue";
+import {
+  optionsComplete,
+  optionGroups,
+  selectedOptions,
+} from "../composables/productOptions.js";
 import { useRoute } from "vue-router";
 import { shopper, loadShopper } from "../composables/useShopper.js";
 import { computed, onBeforeUnmount, ref } from "vue";
@@ -18,6 +24,7 @@ function closePanel() {
   panel.value = false;
   if (props.orderId) emit("closed");
 }
+const editingLine = ref(null);
 const cart = ref([]),
   selected = ref(null),
   extras = ref([]),
@@ -261,29 +268,98 @@ function open(item) {
     return;
   }
   selected.value = item;
+  editingLine.value = null;
   extras.value = [];
   quantity.value = 1;
   note.value = "";
   error.value = "";
 }
+const validOptions = computed(() =>
+  optionsComplete(
+    selected.value,
+    extras.value,
+    selected.value?.selection_extras || props.menu?.extras || [],
+  ),
+);
+async function editLine(item, index) {
+  if (locked.value || receipt.value) return;
+  busy.value = true;
+  error.value = "";
+  try {
+    const latest = await request(
+      `/api/public/menu/${props.tenant}?product_id=${encodeURIComponent(item.id)}&limit=1`,
+    );
+    if (!alive || !panel.value) return;
+    const current = latest.items?.find((x) => x.id === item.id);
+    if (!current || !current.available)
+      throw new Error(
+        "Este producto ya no está disponible. Podés quitarlo y elegir otra opción de la carta.",
+      );
+    const kept = [];
+    for (const group of optionGroups(current, latest.extras || [])) {
+      let count = 0;
+      for (const old of item.extras) {
+        const quantity = old.quantity || 1;
+        if (
+          group.options.some((o) => o.id === old.id) &&
+          count + quantity <= group.max
+        ) {
+          kept.push({ id: old.id, quantity });
+          count += quantity;
+        }
+      }
+    }
+    panel.value = false;
+    selected.value = { ...current, selection_extras: latest.extras || [] };
+    editingLine.value = index;
+    quantity.value = item.quantity;
+    note.value = item.note || "";
+    extras.value = kept;
+    if (kept.length !== item.extras.length)
+      error.value =
+        "Algunas opciones cambiaron. Revisá las elecciones actuales antes de guardar.";
+  } catch (e) {
+    if (alive) error.value = e.message;
+  } finally {
+    if (alive) busy.value = false;
+  }
+}
+function closeProduct() {
+  const edited = editingLine.value !== null;
+  selected.value = null;
+  editingLine.value = null;
+  if (edited) panel.value = true;
+}
 function add() {
+  const edited = editingLine.value !== null;
+  const previous =
+    editingLine.value === null
+      ? 0
+      : cart.value[editingLine.value]?.quantity || 0;
   if (
     !selected.value ||
-    count.value + quantity.value > 100 ||
-    cart.value.length >= 30
+    !validOptions.value ||
+    count.value - previous + quantity.value > 100 ||
+    (editingLine.value === null && cart.value.length >= 30)
   ) {
-    error.value = "Podés sumar hasta 100 productos en 30 selecciones.";
+    error.value = "Revisá las opciones y cantidades del producto.";
     return;
   }
-  cart.value.push({
+  const line = {
     ...selected.value,
     quantity: quantity.value,
-    extras: (props.menu?.extras || []).filter((x) =>
-      extras.value.includes(x.id),
+    extras: selectedOptions(
+      selected.value,
+      extras.value,
+      selected.value?.selection_extras || props.menu?.extras || [],
     ),
     note: note.value.trim(),
-  });
+  };
+  if (editingLine.value === null) cart.value.push(line);
+  else cart.value.splice(editingLine.value, 1, line);
   selected.value = null;
+  editingLine.value = null;
+  if (edited) panel.value = true;
   quote.value = null;
 }
 async function review() {
@@ -555,31 +631,20 @@ defineExpose({
   </button>
   <Teleport to="body">
     <Transition name="modal"
-      ><div v-if="selected" class="modal-overlay" @click.self="selected = null">
+      ><div v-if="selected" class="modal-overlay" @click.self="closeProduct">
         <section v-dialog-care class="modal-card buyer-dialog">
           <p class="eyebrow">A tu gusto</p>
           <h2>{{ selected.name }}</h2>
           <p>{{ selected.description }}</p>
           <form class="buyer-form" @submit.prevent="add">
-            <fieldset v-if="menu?.extras?.length">
-              <legend>¿Le sumamos algo?</legend>
-              <label
-                v-for="extra in menu.extras"
-                :key="extra.id"
-                class="buyer-extra"
-                ><input
-                  v-model="extras"
-                  type="checkbox"
-                  :value="extra.id"
-                  :disabled="
-                    !extra.available ||
-                    (!extras.includes(extra.id) && extras.length >= 10)
-                  "
-                />{{ extra.name }} <span>{{ money(extra.price) }}</span></label
-              >
-            </fieldset>
+            <ProductOptionsPicker
+              v-model="extras"
+              :product="selected"
+              :extras="selected?.selection_extras || menu?.extras || []"
+            />
             <label
               >Cantidad<input
+                name="product-quantity"
                 v-model.number="quantity"
                 type="number"
                 min="1"
@@ -597,12 +662,14 @@ defineExpose({
               />
             </label>
             <p v-if="error" role="alert" class="error-msg">{{ error }}</p>
-            <button class="btn-primary">Sumar al pedido</button>
+            <button class="btn-primary" :disabled="!validOptions">
+              {{ editingLine === null ? "Sumar al pedido" : "Guardar cambios" }}
+            </button>
           </form>
           <button
             class="modal-close"
             aria-label="Cerrar producto"
-            @click="selected = null"
+            @click="closeProduct"
           >
             ×
           </button>
@@ -760,7 +827,8 @@ defineExpose({
             >
               <strong>{{ item.quantity }} × {{ item.name }}</strong
               ><small v-for="x in item.extras" :key="x.name"
-                >+ {{ x.quantity }} {{ x.name }}</small
+                >+ {{ x.quantity }} {{ x.group_name ? x.group_name + ": " : ""
+                }}{{ x.name }}</small
               ><small v-if="item.note">{{ item.note }}</small>
             </div>
             <p>
@@ -858,6 +926,14 @@ defineExpose({
                   Quitar
                 </button>
               </div>
+              <button
+                type="button"
+                class="text-button"
+                :disabled="locked"
+                @click="editLine(item, index)"
+              >
+                Cambiar opciones
+              </button>
               <small v-for="x in item.extras" :key="x.id"
                 >+ {{ x.quantity || 1 }} {{ x.name }}</small
               ><small v-if="item.note">{{ item.note }}</small>
