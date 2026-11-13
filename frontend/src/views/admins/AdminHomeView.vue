@@ -160,6 +160,10 @@ const maxUnits = computed(() =>
         <p>Ventas, pedidos y cobros de tu hamburguesería.</p>
       </div>
       <div class="page-heading-actions overview-context">
+        <div class="overview-global-period">
+          <span>Período de todo el resumen</span>
+          <OverviewDateRange :from="from" :to="to" @change="customPeriod" />
+        </div>
         <label
           >Local<select v-model="w.tenant.value">
             <option v-for="t in w.tenants.value" :key="t.id" :value="t.id">
@@ -170,8 +174,6 @@ const maxUnits = computed(() =>
           >Moneda<select v-model="currency">
             <option v-for="c in currencies" :key="c">{{ c }}</option>
           </select></label
-        ><router-link class="btn-primary" to="/orders"
-          ><AppIcon name="plus" :size="16" />Nuevo pedido</router-link
         >
       </div>
     </header>
@@ -196,8 +198,7 @@ const maxUnits = computed(() =>
                 :size="16"
             /></span>
           </div>
-          <strong>{{ card[1] }}</strong
-          ><small>{{ card[2] }}</small>
+          <strong>{{ card[1] }}</strong><small>{{ card[2] }}</small>
         </article>
       </div>
       <div class="report-grid overview-activity">
@@ -230,7 +231,6 @@ const maxUnits = computed(() =>
                   {{ range.label }}
                 </button>
               </div>
-              <OverviewDateRange :from="from" :to="to" @change="customPeriod" />
             </div>
           </div>
           <OverviewAreaChart
@@ -284,8 +284,7 @@ const maxUnits = computed(() =>
               class="overview-state"
             >
               <div>
-                <span>{{ label }}</span
-                ><strong>{{ value }}</strong>
+                <span>{{ label }}</span><strong>{{ value }}</strong>
               </div>
               <div class="overview-state-track">
                 <span
@@ -339,8 +338,9 @@ const maxUnits = computed(() =>
               class="overview-product"
             >
               <div>
-                <span>{{ p.product_name }}</span
-                ><strong>{{ p.units }} u.</strong>
+                <span>{{ p.product_name }}</span><strong
+                  >{{ p.units }} u.</strong
+                >
               </div>
               <div class="overview-product-track">
                 <span
@@ -355,14 +355,14 @@ const maxUnits = computed(() =>
         </section>
         <section class="card overview-result">
           <h2>Resultado del período</h2>
+          <p class="overview-panel-description">{{ periodLabel }}</p>
           <div
             v-for="card in secondaryCards"
             :key="card[0]"
             class="overview-result-item"
           >
             <h3>{{ card[0] }}</h3>
-            <strong>{{ card[1] }}</strong
-            ><small>{{ card[2] }}</small>
+            <strong>{{ card[1] }}</strong><small>{{ card[2] }}</small>
           </div>
         </section>
       </div>
@@ -374,9 +374,6 @@ const maxUnits = computed(() =>
               Los últimos movimientos de tu local
             </p>
           </div>
-          <router-link to="/orders" class="text-button"
-            >Ver todos<AppIcon name="arrow" :size="14"
-          /></router-link>
         </div>
         <div class="card table-scroll overview-recent-table">
           <table class="data-table">

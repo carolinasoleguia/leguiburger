@@ -54,7 +54,7 @@ func TestRolesDoNotShareFinancialPermissions(t *testing.T) {
 	if employee.Platform() || employee.Manager() || employee.Cashier() {
 		t.Fatal("employee financial escalation")
 	}
-	if manager.Platform() || !manager.Manager() {
+	if manager.Platform() || !manager.Manager() || manager.Cashier() || manager.Operator() {
 		t.Fatal("business manager platform escalation")
 	}
 	if !owner.Platform() || !owner.Manager() {
@@ -106,5 +106,28 @@ func TestMenuManagementAndCashRoutesRequireSession(t *testing.T) {
 		if w.Code != 401 {
 			t.Errorf("%s allowed anonymous access: %d", route, w.Code)
 		}
+	}
+}
+
+// Every operational handler must reject restaurant administrators before resolving
+// a tenant/resource or decoding input. A forged ID cannot turn ownership into POS access.
+func TestRestaurantAdminCannotOperateService(t *testing.T) {
+	h := &Handler{}
+	admin := Principal{Kind: "user", Role: "admin", BrandID: "fixture"}
+	for name, handler := range map[string]endpoint{
+		"orders.list": h.listOrders, "orders.create": h.createOrder, "orders.get": h.getOrder,
+		"orders.status": h.changeOrderStatus, "orders.payment": h.createOrderPayment, "orders.payments": h.listOrderPayments,
+		"orders.inbox": h.orderInbox, "orders.link": h.orderLink, "orders.ticket": h.orderTicket,
+		"cash.list": h.cashShifts, "cash.open": h.openCash, "cash.get": h.cashShift,
+		"cash.entries": h.cashEntries, "cash.move": h.moveCash, "cash.close": h.closeCash,
+		"pos.catalog": h.posCatalog, "kitchen.list": h.kitchenOrders, "kitchen.status": h.kitchenStatus, "kitchen.load": h.kitchenLoad,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := handler(httptest.NewRequest("GET", "/api/forged", nil), admin)
+			api, ok := err.(*apiError)
+			if !ok || api.Status != http.StatusForbidden {
+				t.Fatalf("wanted forbidden, got %v", err)
+			}
+		})
 	}
 }

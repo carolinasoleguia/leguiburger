@@ -42,14 +42,7 @@ const routes = [
     component: () => import("../views/shared/OrderPrintView.vue"),
     meta: {
       requiresAuth: true,
-      roles: [
-        "owner",
-        "super_admin",
-        "admin",
-        "cashier",
-        "kitchen",
-        "employee",
-      ],
+      roles: ["owner", "super_admin", "cashier", "kitchen", "employee"],
     },
   },
   {
@@ -125,12 +118,12 @@ const routes = [
     meta: { authAction: "business-invite" },
   },
   ...[
-    ["/cash", "CashView", ["owner", "super_admin", "admin", "cashier"]],
-    ["/orders", "OrdersView", ["owner", "super_admin", "admin", "cashier"]],
+    ["/cash", "CashView", ["owner", "super_admin", "cashier"]],
+    ["/orders", "OrdersView", ["owner", "super_admin", "cashier"]],
     [
       "/kitchen",
       "KitchenView",
-      ["owner", "super_admin", "admin", "employee", "cashier", "kitchen"],
+      ["owner", "super_admin", "employee", "cashier", "kitchen"],
     ],
     [
       "/inventory",
@@ -161,7 +154,7 @@ const routes = [
   },
   {
     path: "/payments",
-    component: () => import("../views/shared/PaymentsView.vue"),
+    component: () => import("../views/shared/PaymentsEntryView.vue"),
     meta: {
       requiresAuth: true,
       roles: ["owner", "super_admin", "admin", "cashier"],

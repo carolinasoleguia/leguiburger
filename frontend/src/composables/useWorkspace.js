@@ -17,7 +17,7 @@ export function useWorkspace(load) {
     () => platform.value || auth.userRole.value === "admin",
   );
   const cashier = computed(
-    () => manager.value || auth.userRole.value === "cashier",
+    () => platform.value || auth.userRole.value === "cashier",
   );
   const shellRole = computed(() =>
     platform.value ? "owner" : manager.value ? "admin" : "employee",

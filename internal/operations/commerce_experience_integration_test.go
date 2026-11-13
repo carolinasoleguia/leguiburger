@@ -276,7 +276,7 @@ func TestCommerceExperienceIntegration(t *testing.T) {
 	zoneInput["name"] = "Centro nuevo"
 	zoneInput["cost"] = "40.00"
 	request("PATCH", "/api/delivery/zones/"+zone, "admin_a", t1, nil, zoneInput, 200)
-	full := parse(request("GET", "/api/orders/"+order, "admin_a", t1, nil, nil, 200))
+	full := parse(request("GET", "/api/orders/"+order, "cashier", t1, nil, nil, 200))
 	if full["delivery_zone_name"] != "Centro" || fmt.Sprint(full["shipping_cost"]) != "20" {
 		t.Fatal("historical delivery snapshot changed")
 	}
@@ -284,7 +284,7 @@ func TestCommerceExperienceIntegration(t *testing.T) {
 	request("POST", "/api/shopper/orders/"+order+"/repeat", "", "", cb, map[string]any{}, 404)
 	request("GET", "/api/orders/"+order+"/ticket?kind=receipt", "kitchen", t1, nil, nil, 403)
 	request("GET", "/api/orders/"+order+"/ticket?kind=kitchen", "cashier", t2, nil, nil, 403)
-	request("GET", "/api/orders/"+order+"/ticket?kind=receipt", "admin_b", t2, nil, nil, 404)
+	request("GET", "/api/orders/"+order+"/ticket?kind=receipt", "admin_b", t2, nil, nil, 403)
 	kt := parse(request("GET", "/api/orders/"+order+"/ticket?kind=kitchen", "kitchen", t1, nil, nil, 200))
 	for _, field := range []string{"phone", "address", "name", "total_due", "total_paid", "currency"} {
 		if _, ok := kt[field]; ok {

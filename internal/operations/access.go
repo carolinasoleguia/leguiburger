@@ -24,7 +24,11 @@ func (p Principal) Platform() bool {
 }
 func (p Principal) Manager() bool { return p.Platform() || (p.Kind == "user" && p.Role == "admin") }
 func (p Principal) Cashier() bool {
-	return p.Manager() || (p.Kind == "employee" && p.Role == "cashier")
+	return p.Platform() || (p.Kind == "employee" && p.Role == "cashier")
+}
+
+func (p Principal) Operator() bool {
+	return (auth.SessionPrincipal{Kind: p.Kind, Role: p.Role}).Operator()
 }
 
 type Scope struct {

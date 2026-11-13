@@ -69,6 +69,12 @@ func TestShopperAccountsIntegration(t *testing.T) {
 	}
 	must := func(q string, args ...any) {
 		t.Helper()
+		// Fixture writes are outside an HTTP actor; never inherit the last
+		// counter session across this rollback transaction's savepoints.
+		if e := tx.Exec(`SELECT set_config('leguiburger.actor_user_id','',true),set_config('leguiburger.actor_employee_id','',true),set_config('leguiburger.operation_key','',true),set_config('leguiburger.request_digest','',true),set_config('leguiburger.source_order_id','',true)`).Error; e != nil {
+			t.Fatal(e)
+		}
+
 		if e := tx.Exec(q, args...).Error; e != nil {
 			t.Fatal(e)
 		}
@@ -236,8 +242,8 @@ func TestShopperAccountsIntegration(t *testing.T) {
 	}
 	thief := map[string]string{"Cookie": cb["Cookie"], "X-Shopper-Order": discounted}
 	request("GET", "/api/public/buyer-order", "", "", thief, nil, 404)
-	current := parse(request("GET", "/api/orders/"+discounted, "admin_a", t1, nil, nil, 200))
-	request("PATCH", "/api/orders/"+discounted+"/status", "admin_a", t1, nil, map[string]any{"status": "accepted", "expected_version": current["version"]}, 200)
+	current := parse(request("GET", "/api/orders/"+discounted, "cashier", t1, nil, nil, 200))
+	request("PATCH", "/api/orders/"+discounted+"/status", "cashier", t1, nil, map[string]any{"status": "accepted", "expected_version": current["version"]}, 200)
 	var net, discount string
 	if e := tx.Raw(`SELECT sum(total_net_revenue)::text,sum(total_discount_applied)::text FROM public.sales WHERE order_id=?`, discounted).Row().Scan(&net, &discount); e != nil {
 		t.Fatal(e)
@@ -266,7 +272,7 @@ func TestShopperAccountsIntegration(t *testing.T) {
 	if enabled["spent"] != "0.00" || enabled["segment"] != "Primera compra" || enabled["orders"] != float64(2) {
 		t.Fatalf("scoped shopper metrics invalid %v", enabled)
 	}
-	request("POST", "/api/orders/"+discounted+"/payments", "admin_a", t1, nil, map[string]any{"kind": "charge", "method": "transfer", "amount": "90.00"}, 201)
+	request("POST", "/api/orders/"+discounted+"/payments", "cashier", t1, nil, map[string]any{"kind": "charge", "method": "transfer", "amount": "90.00"}, 201)
 	enabled = parse(request("GET", "/api/marketing/customers", "admin_a", t1, nil, nil, 200))["items"].([]any)[0].(map[string]any)
 	if enabled["spent"] != "90.00" || enabled["favorite_product"] != "__isolation_product_a" || enabled["segment"] != "En crecimiento" {
 		t.Fatalf("purchase profiling invalid %v", enabled)

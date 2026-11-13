@@ -12,7 +12,7 @@ func (h *Handler) orderTicket(r *http.Request, p Principal) (Result, error) {
 	if !isOneOf(kind, "receipt", "kitchen") {
 		return Result{}, badInput("Tipo de comprobante inválido")
 	}
-	if kind == "receipt" && !p.Cashier() {
+	if !p.Operator() || kind == "receipt" && !p.Cashier() {
 		return Result{}, forbidden()
 	}
 	scope, e := h.tenantScope(r.Context(), p, r)

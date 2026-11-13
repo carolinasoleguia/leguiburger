@@ -12,6 +12,7 @@ const tenant = "10000000-0000-4000-8000-000000000001",
   product = "20000000-0000-4000-8000-000000000001",
   drink = "30000000-0000-4000-8000-000000000001",
   cheddar = "30000000-0000-4000-8000-000000000002";
+let staffRole = "admin";
 let staff = true,
   queue = 0,
   extras = [],
@@ -80,7 +81,12 @@ const server = createServer(async (req, res) => {
       return staff
         ? reply({
             token: "staff-options",
-            user: { id: "admin", role: "admin", brand_id: "brand" },
+            user: {
+              id: "staff",
+              role: staffRole,
+              brand_id: "brand",
+              tenant_id: staffRole === "cashier" ? tenant : undefined,
+            },
           })
         : reply({}, 401);
     if (p === "/api/tenants")
@@ -329,6 +335,7 @@ async function settle(page) {
 try {
   for (const width of [1440, 390])
     for (const theme of ["light", "dark"]) {
+      staffRole = "admin";
       staff = true;
       queue = 0;
       lastOrder = null;
@@ -545,6 +552,7 @@ try {
       await text(page, "Bebida");
       checks++;
       staff = true;
+      staffRole = "cashier";
       await page.goto(origin + "/kitchen", { waitUntil: "domcontentloaded" });
       await text(page, "Carga de cocina");
       await text(page, "23–38");

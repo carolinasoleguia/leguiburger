@@ -256,14 +256,14 @@ func TestDatabaseIntegration(t *testing.T) {
 	callback := "/api/integrations/mercadopago/callback?code=fixture-code&state=" + url.QueryEscape(redirect.Query().Get("state"))
 	request("GET", callback, "", "", "", nil, 303, authorization.Cookies...)
 	count(`SELECT count(*) FROM legui_private.mp_connections WHERE id=? AND state='connected' AND credential_cipher NOT LIKE '%business-token%'`, 1, conn)
-	order := request("POST", "/api/orders", adminToken, "order-create", tenant, map[string]any{"channel": "web", "environment": "sandbox", "items": []any{map[string]any{"product_id": product, "quantity": 2}}}, 201).Body["id"].(string)
-	request("POST", "/api/orders/"+order+"/checkout", otherToken, "cross", otherTenant, map[string]any{}, 404)
-	coResult := request("POST", "/api/orders/"+order+"/checkout", adminToken, "order-checkout", tenant, map[string]any{}, 200)
+	order := request("POST", "/api/orders", ownerToken, "order-create", tenant, map[string]any{"channel": "web", "environment": "sandbox", "items": []any{map[string]any{"product_id": product, "quantity": 2}}}, 201).Body["id"].(string)
+	request("POST", "/api/orders/"+order+"/checkout", otherToken, "cross", otherTenant, map[string]any{}, 403)
+	coResult := request("POST", "/api/orders/"+order+"/checkout", ownerToken, "order-checkout", tenant, map[string]any{}, 200)
 	checkoutID := coResult.Body["id"].(string)
 	if coResult.Body["state"] != "created" {
 		t.Fatalf("checkout not created: state=%v reason=%v", coResult.Body["state"], coResult.Body["reason"])
 	}
-	request("POST", "/api/orders/"+order+"/checkout", adminToken, "order-checkout", tenant, map[string]any{}, 200)
+	request("POST", "/api/orders/"+order+"/checkout", ownerToken, "order-checkout", tenant, map[string]any{}, 200)
 	if creates != 1 {
 		t.Fatal("checkout retry created another remote checkout")
 	}
@@ -352,16 +352,16 @@ func TestDatabaseIntegration(t *testing.T) {
 	request("GET", "/api/payments/mercadopago/reviews", adminToken, "", "", nil, 200)
 	request("GET", "/api/billing/my-account", adminToken, "", "", nil, 200)
 	// An uncertain POST is recovered with GET/search, never a second creation.
-	uncertainOrder := request("POST", "/api/orders", adminToken, "uncertain-order", tenant, map[string]any{"channel": "web", "environment": "sandbox", "items": []any{map[string]any{"product_id": product, "quantity": 1}}}, 201).Body["id"].(string)
+	uncertainOrder := request("POST", "/api/orders", ownerToken, "uncertain-order", tenant, map[string]any{"channel": "web", "environment": "sandbox", "items": []any{map[string]any{"product_id": product, "quantity": 1}}}, 201).Body["id"].(string)
 	mutex.Lock()
 	ambiguousNext = true
 	beforeCreates := creates
 	mutex.Unlock()
-	uncertain := request("POST", "/api/orders/"+uncertainOrder+"/checkout", adminToken, "uncertain-checkout", tenant, map[string]any{}, 200)
+	uncertain := request("POST", "/api/orders/"+uncertainOrder+"/checkout", ownerToken, "uncertain-checkout", tenant, map[string]any{}, 200)
 	if uncertain.Body["state"] != "review" {
 		t.Fatal("uncertain provider outcome was not held")
 	}
-	request("POST", "/api/orders/"+uncertainOrder+"/checkout", adminToken, "uncertain-checkout", tenant, map[string]any{}, 200)
+	request("POST", "/api/orders/"+uncertainOrder+"/checkout", ownerToken, "uncertain-checkout", tenant, map[string]any{}, 200)
 	if creates != beforeCreates+1 {
 		t.Fatal("uncertain creation repeated POST")
 	}
@@ -415,8 +415,8 @@ func TestDatabaseIntegration(t *testing.T) {
 	guestSession := request("POST", "/api/public/menu/"+tenant+"/buyer-session", guest, "", "", map[string]any{"legacy_key": guestCreationKey}, 200)
 	guestKey := uuid.NewString()
 	request("POST", "/api/public/buyer-order/mercadopago", guest, guestKey, otherTenant, map[string]any{}, 409)
-	privateOrder := request("GET", "/api/orders/"+guestOrder, adminToken, "", tenant, nil, 200)
-	request("PATCH", "/api/orders/"+guestOrder+"/status", adminToken, uuid.NewString(), tenant, map[string]any{"status": "accepted", "expected_version": privateOrder.Body["version"]}, 200)
+	privateOrder := request("GET", "/api/orders/"+guestOrder, ownerToken, "", tenant, nil, 200)
+	request("PATCH", "/api/orders/"+guestOrder+"/status", ownerToken, uuid.NewString(), tenant, map[string]any{"status": "accepted", "expected_version": privateOrder.Body["version"]}, 200)
 	request("POST", "/api/public/buyer-order/mercadopago", guest, guestKey, otherTenant, map[string]any{"amount": "0.01"}, 400)
 	request("POST", "/api/public/buyer-order/mercadopago", buyeraccess.TrackingToken(guest), guestKey, tenant, map[string]any{}, 404)
 	beforeGuestCreates := creates

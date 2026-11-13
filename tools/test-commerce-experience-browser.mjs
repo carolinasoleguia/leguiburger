@@ -12,6 +12,8 @@ const tenant = "10000000-0000-4000-8000-000000000001",
   product = "20000000-0000-4000-8000-000000000001",
   zoneId = "30000000-0000-4000-8000-000000000001",
   orderId = "40000000-0000-4000-8000-000000000001";
+let activePage;
+let staffRole = "admin";
 let staff = true,
   zones = [],
   zoned = false,
@@ -52,7 +54,12 @@ const server = createServer(async (req, res) => {
       return staff
         ? reply({
             token: "staff-token",
-            user: { id: "admin", role: "admin", brand_id: "brand" },
+            user: {
+              id: "staff",
+              role: staffRole,
+              brand_id: "brand",
+              tenant_id: staffRole === "cashier" ? tenant : undefined,
+            },
           })
         : reply({}, 401);
     if (p === "/api/tenants")
@@ -332,6 +339,7 @@ try {
       const creationsBefore = calls.filter(
         (c) => c.p.endsWith("/orders") && c.method === "POST",
       ).length;
+      staffRole = "admin";
       staff = true;
       zones = [];
       zoned = false;
@@ -339,7 +347,7 @@ try {
       paused = false;
       stock = true;
       failSave = true;
-      const page = await browser.newPage(),
+      const page = (activePage = await browser.newPage()),
         errors = [];
       page.on("pageerror", (e) => errors.push(e.message));
       await page.setViewport({ width, height: 950 });
@@ -537,6 +545,7 @@ try {
       );
       checks += 6;
       staff = true;
+      staffRole = "cashier";
       for (const kind of ["kitchen", "receipt"]) {
         await page.goto(
           origin + `/orders/${orderId}/print?tenant=${tenant}&kind=${kind}`,
@@ -597,6 +606,19 @@ try {
   console.log(
     `Commerce browser: ${checks} checks passed on desktop/mobile in light/dark: scoped zone setup/retry, ingredient availability, favorites, repeat changes/current quote, coverage rejection and safe 80mm print projection.`,
   );
+} catch (error) {
+  if (activePage && !activePage.isClosed()) {
+    console.error(
+      activePage.url(),
+      await activePage.$eval("body", (e) => e.innerText.slice(-3000)),
+      calls.slice(-10),
+    );
+    await activePage.screenshot({
+      path: ".cache/commerce-experience-failure.png",
+      fullPage: true,
+    });
+  }
+  throw error;
 } finally {
   await browser.close();
   await new Promise((r) => server.close(r));

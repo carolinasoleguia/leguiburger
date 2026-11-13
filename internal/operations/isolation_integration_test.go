@@ -137,7 +137,7 @@ func TestTenantIsolationIntegration(t *testing.T) {
 		request("GET", "/api/products?brand_id="+b2, actor, "", nil, nil, 403)
 		request("GET", "/api/products", actor, "", map[string]string{"X-Brand-ID": b2}, nil, 403)
 		request("GET", "/api/products/"+p2, actor, "", nil, nil, 404)
-		for _, path := range []string{"/api/tenant-products", "/api/supplies", "/api/recipes", "/api/inventory", "/api/inventory/movements", "/api/kitchen"} {
+		for _, path := range []string{"/api/tenant-products", "/api/supplies", "/api/recipes", "/api/inventory", "/api/inventory/movements"} {
 			request("GET", path, actor, t1, nil, nil, 200)
 			request("GET", path, actor, t2, nil, nil, 403)
 			request("GET", path, actor, t3, nil, nil, map[bool]int{true: 200, false: 403}[actor == "admin_a"])
@@ -148,6 +148,32 @@ func TestTenantIsolationIntegration(t *testing.T) {
 		for _, path := range []string{"/api/analytics/platform", "/api/platform/businesses", "/api/platform/billing/accounts", "/api/platform/restaurants"} {
 			request("GET", path, actor, t1, nil, nil, 403)
 		}
+	}
+	// Restaurant administrators retain reporting/configuration, never the service counter.
+	for _, route := range [][2]string{
+		{"GET", "/api/orders"}, {"POST", "/api/orders"}, {"GET", "/api/orders/inbox"},
+		{"GET", "/api/orders/events"}, {"GET", "/api/orders/" + p1},
+		{"PATCH", "/api/orders/" + p1 + "/status"}, {"POST", "/api/orders/" + p1 + "/payments"},
+		{"GET", "/api/orders/" + p1 + "/payments"}, {"POST", "/api/orders/" + p1 + "/link"},
+		{"DELETE", "/api/orders/" + p1 + "/link"}, {"GET", "/api/orders/" + p1 + "/ticket"},
+		{"GET", "/api/orders/" + p1 + "/ticket?kind=kitchen"},
+		{"POST", "/api/orders/" + p1 + "/checkout"},
+		{"GET", "/api/cash/shifts"}, {"POST", "/api/cash/shifts"},
+		{"GET", "/api/cash/shifts/" + p1}, {"GET", "/api/cash/shifts/" + p1 + "/entries"},
+		{"POST", "/api/cash/shifts/" + p1 + "/entries"}, {"POST", "/api/cash/shifts/" + p1 + "/close"},
+		{"GET", "/api/pos/catalog"}, {"GET", "/api/kitchen"}, {"GET", "/api/kitchen/load"},
+		{"PATCH", "/api/kitchen/" + p1 + "/status"},
+	} {
+		for _, local := range []string{t1, t2, t3} {
+			request(route[0], route[1], "admin_a", local, nil, map[string]any{}, 403)
+		}
+	}
+	request("GET", "/api/analytics/restaurant", "admin_a", t1, nil, nil, 200)
+	request("GET", "/api/crm/customers", "admin_a", t1, nil, nil, 200)
+	for _, actor := range []string{"cashier", "kitchen"} {
+		request("GET", "/api/kitchen", actor, t1, nil, nil, 200)
+		request("GET", "/api/kitchen", actor, t2, nil, nil, 403)
+		request("GET", "/api/kitchen", actor, t3, nil, nil, 403)
 	}
 	for _, path := range []string{"/api/orders", "/api/cash/shifts", "/api/pos/catalog"} {
 		request("GET", path, "cashier", t2, nil, nil, 403)
@@ -233,11 +259,11 @@ func TestTenantIsolationIntegration(t *testing.T) {
 		t.Fatal("opening retry was not replayed")
 	}
 	request("POST", "/api/cash/shifts", "cashier", t1, nil, openBody, 409)
-	otherShift := object(request("POST", "/api/cash/shifts", "admin_b", t2, nil, openBody, 201))["id"].(string)
+	otherShift := object(request("POST", "/api/cash/shifts", "owner", t2, nil, openBody, 201))["id"].(string)
 	for _, suffix := range []string{"", "/entries"} {
-		request("GET", "/api/cash/shifts/"+otherShift+suffix, "admin_a", t1, nil, nil, 404)
+		request("GET", "/api/cash/shifts/"+otherShift+suffix, "cashier", t1, nil, nil, 404)
 	}
-	request("POST", "/api/cash/shifts/"+otherShift+"/close", "admin_a", t1, nil, map[string]any{"counted_balance": "100.00", "note": "forged"}, 404)
+	request("POST", "/api/cash/shifts/"+otherShift+"/close", "cashier", t1, nil, map[string]any{"counted_balance": "100.00", "note": "forged"}, 404)
 	created := object(request("POST", "/api/orders", "cashier", t1, nil, map[string]any{"channel": "counter", "environment": "production", "items": []map[string]any{{"product_id": p1, "quantity": 1}}}, 201))
 	order := created["id"].(string)
 	paid := object(request("POST", "/api/orders/"+order+"/payments", "cashier", t1, nil, map[string]any{"kind": "charge", "method": "cash", "amount": "60.00"}, 201))

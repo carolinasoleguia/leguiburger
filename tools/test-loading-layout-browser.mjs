@@ -352,7 +352,12 @@ try {
           ? scenario.split(":")
           : [null, scenario];
         const role =
-            overrideRole || (path.startsWith("/owner") ? "owner" : "admin"),
+            overrideRole ||
+            (path.startsWith("/owner")
+              ? "owner"
+              : ["/orders", "/cash", "/kitchen"].includes(path)
+                ? "cashier"
+                : "admin"),
           queued = [],
           errors = [];
         let holding = true;

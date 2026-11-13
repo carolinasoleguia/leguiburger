@@ -20,9 +20,11 @@ La navegación de plataforma, restaurante y colaboradores está definida por sep
 - `OrderCheckout`: motor común del carrito, cotización, creación, cookies, pago y seguimiento SSE. No importa el estado del comprador ni comprueba roles. `GuestCheckout` aporta el acceso invitado; `ShopperCheckout` aporta cupón, contacto, repetición y vínculo visual con la cuenta.
 - Formularios, skeletons, selectores de producto, iconos, colores y tipografía siguen siendo reutilizables.
 
-Los controles del gráfico actualizan el período de todo el resumen. Un único calendario permite elegir inicio y fin; el rango usa días de Argentina y admite hasta 366 días. No se presentan los campos Desde/Hasta separados. El tooltip se puede consultar con puntero o teclado, y el detalle diario sigue disponible como tabla.
+El calendario del encabezado filtra todas las métricas, gastos y tablas del resumen; los botones de 7 días, 15 días y un mes del gráfico se sincronizan con ese filtro general. Las fechas también se muestran en Resultado del período. Un único calendario permite elegir inicio y fin; el rango usa días de Argentina y admite hasta 366 días. No se presentan los campos Desde/Hasta separados. El tooltip se puede consultar con puntero o teclado, y el detalle diario sigue disponible como tabla.
 
-Esta separación organiza el frontend; la autorización sigue en la API. El backend valida sesión, rol, marca, local y recurso. Un administrador de restaurante no puede consultar `/api/analytics/platform`, aunque cambie el cliente o fuerce la URL. No se modificaron roles ni permisos para aplicar esta organización.
+Esta separación organiza el frontend; la autorización sigue en la API. El backend valida sesión, rol, marca, local y recurso. Un administrador de restaurante no puede consultar `/api/analytics/platform`, aunque cambie el cliente o fuerce la URL. El rol `admin` administra carta, locales, equipo, clientes, finanzas y reportes. No hereda permisos de caja ni puede consultar o modificar pedidos, imprimir tickets, generar links de cobro de pedidos, abrir/cerrar caja, usar cocina o suscribirse al SSE del personal. Los colaboradores conservan su operación según rol y local asignado; los dueños de la app conservan su acceso global. Estas restricciones se aplican en rutas Vue y handlers Go, sin cambios de esquema.
+
+`views/admins/AdminPaymentsView.vue` contiene la experiencia financiera administrativa (movimientos, cuentas, revisiones y su propia membresía). `PaymentsEntryView` elige esa página o la experiencia de cobros operativos; el admin no carga pedidos ni el formulario para cobrarlos.
 
 ## Verificación
 

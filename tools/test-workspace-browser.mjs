@@ -358,6 +358,7 @@ try {
     captured.find((x) => x.type === "expense").body.amount,
     "120.50",
   );
+  role = "cashier";
   await goto("/orders");
   await fill("Hamburguesa", "product-1");
   await click("Sumar al pedido");
@@ -397,6 +398,7 @@ try {
   await page.waitForFunction(() =>
     document.querySelector("main").textContent.includes("0 sin leer"),
   );
+  role = "admin";
   await goto("/onboarding");
   await click("Finalizar preparación");
   await page.waitForFunction(() =>
@@ -416,6 +418,7 @@ try {
       "/notifications",
       "/onboarding",
     ]) {
+      role = ["/orders", "/kitchen"].includes(route) ? "cashier" : "admin";
       await goto(route);
       assert(
         await page.evaluate(

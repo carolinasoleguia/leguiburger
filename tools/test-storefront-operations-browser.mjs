@@ -1,3 +1,4 @@
+let staffRole = "admin";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile, mkdir } from "node:fs/promises";
@@ -55,7 +56,12 @@ const server = createServer(async (req, res) => {
       return staff
         ? reply({
             token: "staff-fixture",
-            user: { id: "admin", role: "admin", brand_id: "brand" },
+            user: {
+              id: "staff",
+              role: staffRole,
+              brand_id: "brand",
+              tenant_id: staffRole === "cashier" ? tenant : undefined,
+            },
           })
         : reply({}, 401);
     if (p === "/api/tenants")
@@ -307,6 +313,7 @@ try {
         };
       });
 
+      staffRole = "cashier";
       await page.goto(origin + "/orders", { waitUntil: "domcontentloaded" });
       await text(page, "Pedidos en vivo");
       assert.equal(await page.evaluate(() => window.chimes), 0);
@@ -364,6 +371,7 @@ try {
         path: `.cache/storefront-browser/inbox-${width}-${theme}.png`,
         fullPage: true,
       });
+      staffRole = "admin";
       await page.goto(origin + "/store-operations", {
         waitUntil: "domcontentloaded",
       });

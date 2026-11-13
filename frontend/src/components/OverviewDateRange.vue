@@ -14,6 +14,7 @@ const emit = defineEmits(["change"]);
 const id = useId(),
   root = ref(null),
   trigger = ref(null),
+  popup = ref(null),
   open = ref(false);
 const month = ref(""),
   start = ref(""),
@@ -24,9 +25,8 @@ const weekdays = ["lu", "ma", "mi", "ju", "vi", "sá", "do"];
 const popupStyle = ref({});
 function positionCalendar() {
   const box = trigger.value?.getBoundingClientRect();
-  const popup = root.value?.querySelector(".overview-calendar");
-  if (!box || !popup) return;
-  const size = popup.getBoundingClientRect();
+  if (!box || !popup.value) return;
+  const size = popup.value.getBoundingClientRect();
   popupStyle.value = {
     left: `${Math.max(8, Math.min(box.right - size.width, innerWidth - size.width - 8))}px`,
     top: `${Math.max(8, Math.min(box.bottom + 8, innerHeight - size.height - 8))}px`,
@@ -57,7 +57,7 @@ function show() {
   open.value = true;
   nextTick(() => {
     positionCalendar();
-    root.value?.querySelector('[tabindex="0"]')?.focus();
+    popup.value?.querySelector('[tabindex="0"]')?.focus();
   });
 }
 function close() {
@@ -100,14 +100,19 @@ async function navigate(event, key) {
   focus.value = next;
   month.value = next.slice(0, 7);
   await nextTick();
-  root.value?.querySelector(`[data-date="${next}"]`)?.focus();
+  popup.value?.querySelector(`[data-date="${next}"]`)?.focus();
 }
 function apply() {
   emit("change", { from: start.value, to: end.value });
   close();
 }
 function outside(event) {
-  if (open.value && !root.value?.contains(event.target)) open.value = false;
+  if (
+    open.value &&
+    !root.value?.contains(event.target) &&
+    !popup.value?.contains(event.target)
+  )
+    open.value = false;
 }
 function escape(event) {
   if (open.value && event.key === "Escape") {
@@ -140,101 +145,104 @@ onBeforeUnmount(() => {
       <AppIcon name="calendar" :size="15" /><span>{{ label }}</span
       ><AppIcon name="chevron" :size="14" />
     </button>
-    <section
-      v-if="open"
-      :id="id"
-      role="dialog"
-      aria-label="Elegir período del resumen"
-      class="overview-calendar"
-      :style="popupStyle"
-    >
-      <div class="calendar-heading">
-        <button
-          type="button"
-          class="icon-button"
-          aria-label="Mes anterior"
-          @click="moveMonth(-1)"
-        >
-          <AppIcon name="arrow" :size="16" class="previous-month" />
-        </button>
-        <strong>{{
-          formatDay(month + "-01", { month: "long", year: "numeric" })
-        }}</strong>
-        <button
-          type="button"
-          class="icon-button"
-          aria-label="Mes siguiente"
-          @click="moveMonth(1)"
-        >
-          <AppIcon name="arrow" :size="16" />
-        </button>
-      </div>
-      <p class="calendar-instruction" role="status">
-        {{
-          end
-            ? "Elegí un nuevo inicio o aplicá el período."
-            : "Ahora elegí el último día del período."
-        }}
-      </p>
-      <table
-        class="calendar-grid"
-        aria-label="Calendario de selección de período"
+    <Teleport to="body">
+      <section
+        ref="popup"
+        v-if="open"
+        :id="id"
+        role="dialog"
+        aria-label="Elegir período del resumen"
+        class="overview-calendar"
+        :style="popupStyle"
       >
-        <thead>
-          <tr>
-            <th v-for="day in weekdays" :key="day" scope="col">{{ day }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="week in 6" :key="week">
-            <td
-              v-for="cell in cells.slice((week - 1) * 7, week * 7)"
-              :key="cell.key"
-            >
-              <button
-                type="button"
-                :data-date="cell.key"
-                :tabindex="focus === cell.key ? 0 : -1"
-                :aria-label="
-                  formatDay(cell.key, {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })
-                "
-                :aria-pressed="cell.key === start || cell.key === end"
-                :class="{
-                  'is-outside': cell.outside,
-                  'is-endpoint': cell.key === start || cell.key === end,
-                  'is-between': end && cell.key > start && cell.key < end,
-                }"
-                @click="choose(cell.key)"
-                @keydown="navigate($event, cell.key)"
-              >
-                {{ cell.day }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p class="calendar-selection">
-        {{ start ? formatDay(start) : "Inicio" }} –
-        {{ end ? formatDay(end) : "Fin" }}
-      </p>
-      <p v-if="error" role="alert" class="error-msg">{{ error }}</p>
-      <div class="calendar-actions">
-        <button type="button" class="btn-secondary" @click="close">
-          Cancelar</button
-        ><button
-          type="button"
-          class="btn-primary"
-          :disabled="!start || !end || !!error"
-          @click="apply"
+        <div class="calendar-heading">
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="Mes anterior"
+            @click="moveMonth(-1)"
+          >
+            <AppIcon name="arrow" :size="16" class="previous-month" />
+          </button>
+          <strong>{{
+            formatDay(month + "-01", { month: "long", year: "numeric" })
+          }}</strong>
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="Mes siguiente"
+            @click="moveMonth(1)"
+          >
+            <AppIcon name="arrow" :size="16" />
+          </button>
+        </div>
+        <p class="calendar-instruction" role="status">
+          {{
+            end
+              ? "Elegí un nuevo inicio o aplicá el período."
+              : "Ahora elegí el último día del período."
+          }}
+        </p>
+        <table
+          class="calendar-grid"
+          aria-label="Calendario de selección de período"
         >
-          Aplicar período
-        </button>
-      </div>
-    </section>
+          <thead>
+            <tr>
+              <th v-for="day in weekdays" :key="day" scope="col">{{ day }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="week in 6" :key="week">
+              <td
+                v-for="cell in cells.slice((week - 1) * 7, week * 7)"
+                :key="cell.key"
+              >
+                <button
+                  type="button"
+                  :data-date="cell.key"
+                  :tabindex="focus === cell.key ? 0 : -1"
+                  :aria-label="
+                    formatDay(cell.key, {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })
+                  "
+                  :aria-pressed="cell.key === start || cell.key === end"
+                  :class="{
+                    'is-outside': cell.outside,
+                    'is-endpoint': cell.key === start || cell.key === end,
+                    'is-between': end && cell.key > start && cell.key < end,
+                  }"
+                  @click="choose(cell.key)"
+                  @keydown="navigate($event, cell.key)"
+                >
+                  {{ cell.day }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="calendar-selection">
+          {{ start ? formatDay(start) : "Inicio" }} –
+          {{ end ? formatDay(end) : "Fin" }}
+        </p>
+        <p v-if="error" role="alert" class="error-msg">{{ error }}</p>
+        <div class="calendar-actions">
+          <button type="button" class="btn-secondary" @click="close">
+            Cancelar</button
+          ><button
+            type="button"
+            class="btn-primary"
+            :disabled="!start || !end || !!error"
+            @click="apply"
+          >
+            Aplicar período
+          </button>
+        </div>
+      </section>
+    </Teleport>
   </div>
 </template>
 <style scoped>

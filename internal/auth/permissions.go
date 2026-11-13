@@ -14,6 +14,14 @@ func (p SessionPrincipal) Manager() bool {
 	return p.Platform() || p.Kind == "user" && p.Role == "admin" && p.BrandID != ""
 }
 
+// Administrative restaurant ownership does not grant counter or kitchen access.
+func (p SessionPrincipal) Cashier() bool {
+	return p.Platform() || p.Kind == "employee" && p.Role == "cashier"
+}
+func (p SessionPrincipal) Operator() bool {
+	return p.Platform() || p.Kind == "employee" && (p.Role == "cashier" || p.Role == "employee" || p.Role == "kitchen")
+}
+
 // CanLegacy is the complete allowlist for the original API; new modules must opt in.
 func CanLegacy(p SessionPrincipal, group, method string) bool {
 	read := method == http.MethodGet

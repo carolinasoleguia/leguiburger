@@ -254,6 +254,25 @@ try {
             false,
           );
           assert.equal(analytics().headers["x-tenant-id"], "tenant-1");
+          assert.equal(await page.$('main a[href="/orders"]'), null);
+          assert.equal(
+            (await page.$("header .overview-calendar-trigger")) !== null,
+            true,
+          );
+          assert.equal(
+            await page.$(".overview-sales .overview-calendar-trigger"),
+            null,
+          );
+          assert.ok(
+            await page.$eval(
+              ".overview-global-period",
+              (e) =>
+                e.getBoundingClientRect().bottom <=
+                document.querySelector(".metric-grid").getBoundingClientRect()
+                  .top,
+            ),
+          );
+          checks += 4;
         } else
           assert.equal(
             await page.$eval("main", (e) =>
@@ -304,6 +323,17 @@ try {
         );
         await page.click(".overview-calendar-trigger");
         await page.waitForSelector(".calendar-grid");
+        await page.keyboard.press("ArrowLeft");
+        assert.equal(
+          await page.evaluate(() => document.activeElement?.dataset.date),
+          "2026-02-27",
+        );
+        await page.keyboard.press("ArrowRight");
+        assert.equal(
+          await page.evaluate(() => document.activeElement?.dataset.date),
+          "2026-02-28",
+        );
+        checks += 2;
         await page.click('[data-date="2026-02-10"]');
         await page.click('[data-date="2026-02-18"]');
         await click(page, "Aplicar período");
@@ -316,6 +346,30 @@ try {
           await page.$(".overview-range-presets [aria-pressed=true]"),
           null,
         );
+        if (role === "admin") {
+          const summary = await page.$$eval(
+            ".metric-grid article strong",
+            (nodes) => nodes.map((n) => n.textContent),
+          );
+          assert.equal(summary[0].replace(/[^0-9]/g, ""), "900000");
+          assert.equal(summary[1], "9");
+          assert.equal(summary[2].replace(/[^0-9]/g, ""), "810000");
+          assert.equal(
+            await page.$eval(".overview-result-item strong", (e) =>
+              e.textContent.replace(/[^0-9]/g, ""),
+            ),
+            "90000",
+          );
+          assert.equal(
+            await page.$eval(
+              ".overview-result .overview-panel-description",
+              (e) =>
+                e.textContent.includes("10") && e.textContent.includes("18"),
+            ),
+            true,
+          );
+          checks += 5;
+        }
         await page.click(".overview-calendar-trigger");
         await page.keyboard.press("Escape");
         await page.waitForSelector(".calendar-grid", { hidden: true });

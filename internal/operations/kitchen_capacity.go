@@ -27,6 +27,9 @@ func kitchenLoadData(tx *gorm.DB, tenant string) (json.RawMessage, error) {
 	return jsonQuery(tx, `SELECT jsonb_build_object('active_count',legui_private.kitchen_load(t.id),'max_active_orders',coalesce(c.max_active_orders,0),'full',legui_private.kitchen_full(t.id),'queue_minutes',legui_private.queue_delay(t.id),'prep_min',coalesce(c.prep_min,20)+legui_private.queue_delay(t.id),'prep_max',coalesce(c.prep_max,35)+legui_private.queue_delay(t.id))::text payload FROM public.tenants t LEFT JOIN legui_private.tenant_ordering c ON c.tenant_id=t.id WHERE t.id=?`, tenant)
 }
 func (h *Handler) kitchenLoad(r *http.Request, p Principal) (Result, error) {
+	if !p.Operator() {
+		return Result{}, forbidden()
+	}
 	scope, e := h.tenantScope(r.Context(), p, r)
 	if e != nil {
 		return Result{}, e

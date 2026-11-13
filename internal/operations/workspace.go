@@ -15,6 +15,9 @@ import (
 // Kitchen sees preparation snapshots only. Customer identity, address and payments
 // are intentionally absent even when the same order has a public tracking link.
 func (h *Handler) kitchenOrders(r *http.Request, p Principal) (Result, error) {
+	if !p.Operator() {
+		return Result{}, forbidden()
+	}
 	scope, e := h.tenantScope(r.Context(), p, r)
 	if e != nil {
 		return Result{}, e
@@ -25,6 +28,9 @@ func (h *Handler) kitchenOrders(r *http.Request, p Principal) (Result, error) {
  FROM public.orders o JOIN public.order_statuses_lookup s ON s.id=o.order_status_id WHERE o.tenant_id=? AND o.payment_environment='production' AND s.code IN ('accepted','preparing','ready') ORDER BY o.created_at,o.id LIMIT 100)v`, scope.TenantID))
 }
 func (h *Handler) kitchenStatus(r *http.Request, p Principal) (Result, error) {
+	if !p.Operator() {
+		return Result{}, forbidden()
+	}
 	scope, e := h.tenantScope(r.Context(), p, r)
 	if e != nil {
 		return Result{}, e
@@ -57,7 +63,11 @@ func (h *Handler) notifications(r *http.Request, p Principal) (Result, error) {
 	if e != nil {
 		return Result{}, e
 	}
-	return resultJSON(h.repo.JSON(r.Context(), `WITH scoped AS(SELECT id,title,message,destination,created_at,read_at FROM legui_private.notifications WHERE `+notificationScopeSQL+`) SELECT jsonb_build_object('unread',(SELECT count(*) FROM scoped WHERE read_at IS NULL),'items',coalesce((SELECT jsonb_agg(to_jsonb(v) ORDER BY v.created_at DESC,v.id DESC) FROM(SELECT * FROM scoped ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?)v),'[]'::jsonb))::text payload`, p.Kind, p.ID, p.Platform(), p.Kind, p.BrandID, p.Kind, p.TenantID, limit, offset))
+	destination := "destination"
+	if p.Kind == "user" && p.Role == "admin" {
+		destination = `CASE WHEN destination='/orders' THEN '/payments' WHEN destination IN('/cash','/kitchen') THEN '/admin' ELSE destination END AS destination`
+	}
+	return resultJSON(h.repo.JSON(r.Context(), `WITH scoped AS(SELECT id,title,message,`+destination+`,created_at,read_at FROM legui_private.notifications WHERE `+notificationScopeSQL+`) SELECT jsonb_build_object('unread',(SELECT count(*) FROM scoped WHERE read_at IS NULL),'items',coalesce((SELECT jsonb_agg(to_jsonb(v) ORDER BY v.created_at DESC,v.id DESC) FROM(SELECT * FROM scoped ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?)v),'[]'::jsonb))::text payload`, p.Kind, p.ID, p.Platform(), p.Kind, p.BrandID, p.Kind, p.TenantID, limit, offset))
 }
 func (h *Handler) readNotifications(r *http.Request, p Principal) (Result, error) {
 	input, e := decode[struct {

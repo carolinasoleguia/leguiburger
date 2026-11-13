@@ -51,7 +51,7 @@ type checkoutInput struct {
 }
 
 func (h *Handler) orderCheckout(w http.ResponseWriter, r *http.Request, p auth.SessionPrincipal) error {
-	if !p.Manager() && !(p.Kind == "employee" && p.Role == "cashier") {
+	if !p.Cashier() {
 		return denied()
 	}
 	return h.beginCheckout(w, r, p, "order")

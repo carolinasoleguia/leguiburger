@@ -23,7 +23,7 @@ func validateRecipeBasket(tx *gorm.DB, tenant string, items []OrderItemRequest) 
 	return nil
 }
 func (h *Handler) menuAvailability(r *http.Request, p Principal) (Result, error) {
-	if !p.Cashier() {
+	if !p.Manager() && !p.Cashier() {
 		return Result{}, forbidden()
 	}
 	scope, e := h.tenantScope(r.Context(), p, r)

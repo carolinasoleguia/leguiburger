@@ -78,6 +78,9 @@ func (h *Handler) staffOrderStream(w http.ResponseWriter, r *http.Request) {
 			return "", unauthorized()
 		}
 		p := Principal{ID: session.ID, Kind: session.Kind, Role: session.Role, BrandID: session.BrandID, TenantID: session.TenantID}
+		if !p.Operator() {
+			return "", forbidden()
+		}
 		scope, e := h.tenantScope(ctx, p, r)
 		if e != nil {
 			return "", e

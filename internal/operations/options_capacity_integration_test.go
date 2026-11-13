@@ -245,8 +245,8 @@ func TestProductOptionsCapacityIntegration(t *testing.T) {
 	groups[1].(map[string]any)["name"] = "Tu bebida"
 	groups[2].(map[string]any)["options"] = []any{map[string]any{"extra_id": x1, "price_override": "20.00"}}
 	request("PUT", path, "admin_a", t1, nil, optionConfig, 200)
-	detail := parse(request("GET", "/api/orders/"+id, "admin_a", t1, nil, nil, 200))
-	request("PATCH", "/api/orders/"+id+"/status", "admin_a", t1, nil, map[string]any{"status": "accepted", "expected_version": detail["version"]}, 200)
+	detail := parse(request("GET", "/api/orders/"+id, "cashier", t1, nil, nil, 200))
+	request("PATCH", "/api/orders/"+id+"/status", "cashier", t1, nil, map[string]any{"status": "accepted", "expected_version": detail["version"]}, 200)
 	var stock int
 	tx.Raw(`SELECT current_stock FROM public.extras WHERE id=?`, x1).Scan(&stock)
 	if stock != 6 {
@@ -270,8 +270,8 @@ func TestProductOptionsCapacityIntegration(t *testing.T) {
 	if receipt["total_due"] != "240.00" {
 		t.Fatal("buyer quote and persisted choice charge disagree")
 	}
-	detail = parse(request("GET", "/api/orders/"+id, "admin_a", t1, nil, nil, 200))
-	request("PATCH", "/api/orders/"+id+"/status", "admin_a", t1, nil, map[string]any{"status": "canceled", "reason": "Fixture", "expected_version": detail["version"]}, 200)
+	detail = parse(request("GET", "/api/orders/"+id, "cashier", t1, nil, nil, 200))
+	request("PATCH", "/api/orders/"+id+"/status", "cashier", t1, nil, map[string]any{"status": "canceled", "reason": "Fixture", "expected_version": detail["version"]}, 200)
 	request("POST", "/api/orders", "cashier", t1, nil, map[string]any{"channel": "counter", "environment": "production", "items": []any{map[string]any{"product_id": p1, "quantity": 1}}}, 409)
 	settings := map[string]any{"timezone": "America/Argentina/Buenos_Aires", "schedule_enabled": false, "paused": false, "pause_minutes": 0, "pending_minutes": 15, "prep_min": 20, "prep_max": 35, "periods": []any{}, "max_active_orders": 2, "queue_step_minutes": 3, "max_queue_minutes": 6}
 	request("PATCH", "/api/ordering/settings", "admin_a", t1, nil, settings, 200)
@@ -320,8 +320,8 @@ func TestProductOptionsCapacityIntegration(t *testing.T) {
 	}
 	bid := second["id"].(string)
 	for _, next := range []string{"accepted", "preparing", "ready"} {
-		d := parse(request("GET", "/api/orders/"+bid, "admin_a", t1, nil, nil, 200))
-		request("PATCH", "/api/orders/"+bid+"/status", "admin_a", t1, nil, map[string]any{"status": next, "expected_version": d["version"]}, 200)
+		d := parse(request("GET", "/api/orders/"+bid, "cashier", t1, nil, nil, 200))
+		request("PATCH", "/api/orders/"+bid+"/status", "cashier", t1, nil, map[string]any{"status": next, "expected_version": d["version"]}, 200)
 	}
 	if parse(request("GET", "/api/kitchen/load", "kitchen", t1, nil, nil, 200))["active_count"] != float64(0) {
 		t.Fatal("ready orders still occupy kitchen slot")

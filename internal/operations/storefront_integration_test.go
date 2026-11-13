@@ -233,10 +233,10 @@ func TestStorefrontOperationsIntegration(t *testing.T) {
 	request("POST", "/api/public/buyer-order/cancel", "", "", own, map[string]any{}, 200)
 	second := makeOrder(t1, p1, ca)
 	must(`UPDATE public.orders SET pending_deadline=clock_timestamp()-interval '1 minute' WHERE id=?`, second)
-	d := parse(request("GET", "/api/orders/"+second, "admin_a", t1, nil, nil, 200))
-	request("PATCH", "/api/orders/"+second+"/status", "admin_a", t1, nil, map[string]any{"status": "accepted", "expected_version": d["version"]}, 409)
+	d := parse(request("GET", "/api/orders/"+second, "cashier", t1, nil, nil, 200))
+	request("PATCH", "/api/orders/"+second+"/status", "cashier", t1, nil, map[string]any{"status": "accepted", "expected_version": d["version"]}, 409)
 	must(`SELECT legui_private.expire_pending_orders()`)
-	if parse(request("GET", "/api/orders/"+second, "admin_a", t1, nil, nil, 200))["status"] != "canceled" {
+	if parse(request("GET", "/api/orders/"+second, "cashier", t1, nil, nil, 200))["status"] != "canceled" {
 		t.Fatal("pending not expired")
 	}
 	guestRaw := base64.RawURLEncoding.EncodeToString([]byte(uuid.NewString()[:32]))
@@ -254,20 +254,20 @@ func TestStorefrontOperationsIntegration(t *testing.T) {
 	must(`UPDATE public.orders SET pending_deadline=clock_timestamp()-interval '1 minute' WHERE id=?`, protected)
 	request("POST", "/api/public/buyer-order/cancel", "", "", protectedHeaders, map[string]any{}, 409)
 	must(`SELECT legui_private.expire_pending_orders()`)
-	if parse(request("GET", "/api/orders/"+protected, "admin_a", t1, nil, nil, 200))["status"] != "pending" {
+	if parse(request("GET", "/api/orders/"+protected, "cashier", t1, nil, nil, 200))["status"] != "pending" {
 		t.Fatal("uncertain expired checkout lost protection")
 	}
 	must(`UPDATE legui_private.mp_checkouts SET state='failed' WHERE id=?`, checkout)
-	request("POST", "/api/orders/"+protected+"/payments", "admin_a", t1, nil, map[string]any{"kind": "charge", "method": "transfer", "amount": "100.00"}, 201)
+	request("POST", "/api/orders/"+protected+"/payments", "cashier", t1, nil, map[string]any{"kind": "charge", "method": "transfer", "amount": "100.00"}, 201)
 	request("POST", "/api/public/buyer-order/cancel", "", "", protectedHeaders, map[string]any{}, 409)
 	must(`SELECT legui_private.expire_pending_orders()`)
-	if parse(request("GET", "/api/orders/"+protected, "admin_a", t1, nil, nil, 200))["status"] != "pending" {
+	if parse(request("GET", "/api/orders/"+protected, "cashier", t1, nil, nil, 200))["status"] != "pending" {
 		t.Fatal("paid pending order auto canceled")
 	}
 	third := makeOrder(t1, p1, ca)
 	must(`UPDATE legui_private.shoppers SET email_verified=true WHERE id=?`, a)
-	d = parse(request("GET", "/api/orders/"+third, "admin_a", t1, nil, nil, 200))
-	d = parse(request("PATCH", "/api/orders/"+third+"/status", "admin_a", t1, nil, map[string]any{"status": "accepted", "expected_version": d["version"]}, 200))
+	d = parse(request("GET", "/api/orders/"+third, "cashier", t1, nil, nil, 200))
+	d = parse(request("PATCH", "/api/orders/"+third+"/status", "cashier", t1, nil, map[string]any{"status": "accepted", "expected_version": d["version"]}, 200))
 	if d["estimated_ready_at"] == nil {
 		t.Fatal("acceptance ETA missing")
 	}

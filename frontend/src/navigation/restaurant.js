@@ -7,13 +7,10 @@ export function restaurantWorkspace() {
     home: item("Resumen", "/admin", "grid"),
     groups: [
       {
-        key: "operation",
-        label: "Operación",
+        key: "management",
+        label: "Gestión y costos",
         icon: "receipt",
         items: [
-          item("Caja y pedidos", "/orders", "receipt"),
-          item("Turnos de caja", "/cash", "card"),
-          item("Cocina", "/kitchen", "flame"),
           item("Stock e insumos", "/inventory", "box"),
           item("Gastos", "/expenses", "receipt"),
           item("Producción", "/admin/production", "flame"),
@@ -49,7 +46,7 @@ export function restaurantWorkspace() {
           item("Locales", "/locations", "store"),
           item("Equipo", "/team", "users"),
           item("Invitaciones", "/team/invitations", "users"),
-          item("Cobros", "/payments", "card"),
+          item("Finanzas y membresía", "/payments", "card"),
           item("Preparar mi negocio", "/onboarding", "store"),
         ],
       },

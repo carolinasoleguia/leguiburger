@@ -437,3 +437,50 @@
     width: 100%;
   }
 }
+
+.app-shell .reference-overview .overview-global-period {
+  display: grid;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+@media (max-width: 800px) {
+  .app-shell .reference-overview .overview-global-period {
+    flex: 1 1 100%;
+  }
+  .app-shell
+    .reference-overview
+    .overview-global-period
+    .overview-calendar-trigger {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.app-shell
+  .reference-overview
+  .overview-global-period
+  .overview-calendar-trigger {
+  min-height: 42px;
+}
+@media (max-width: 800px) {
+  .app-shell
+    .reference-overview
+    .overview-global-period
+    .overview-calendar-trigger {
+    min-height: 44px;
+    padding: 6px 10px;
+  }
+  .app-shell
+    .reference-overview
+    .overview-global-period
+    .overview-calendar-trigger
+    > span,
+  .app-shell
+    .reference-overview
+    .overview-global-period
+    .overview-calendar-trigger
+    > svg:last-child {
+    display: inline;
+  }
+}
