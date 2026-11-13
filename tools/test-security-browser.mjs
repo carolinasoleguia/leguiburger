@@ -1,3 +1,4 @@
+import { paidMembership } from "./membership-fixture.mjs";
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -9,6 +10,7 @@ if (!modulePath) throw new Error('Set PUPPETEER_MODULE to the installed Puppetee
 const { default: puppeteer } = await import(pathToFileURL(modulePath).href);
 const dist = resolve('frontend/dist');
 const server = createServer(async (request, response) => {
+  if (new URL(request.url, 'http://localhost').pathname === '/api/membership') { response.writeHead(200, {'Content-Type':'application/json'});response.end(JSON.stringify(paidMembership));return; }
   let file = resolve(dist, '.' + new URL(request.url, 'http://localhost').pathname);
   if (!file.startsWith(dist + sep) || !extname(file)) file = resolve(dist, 'index.html');
   try { const body = await readFile(file); response.setHeader('Content-Type', ({ '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' })[extname(file)] || 'application/octet-stream'); response.end(body); }

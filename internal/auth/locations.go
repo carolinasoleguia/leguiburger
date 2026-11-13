@@ -5,7 +5,6 @@ import (
 	"gorm.io/gorm"
 	"net/http"
 	"strings"
-	"time"
 )
 
 func (h *SecurityHandler) locations(w http.ResponseWriter, r *http.Request) error {
@@ -190,11 +189,11 @@ func (h *SecurityHandler) switchLocation(w http.ResponseWriter, r *http.Request)
 		i.TenantID = in.TenantID
 		i.BrandID = brand
 		sid := uuid.NewString()
-		if e = tx.Exec(`INSERT INTO legui_private.auth_sessions(id,principal_kind,principal_id,role,brand_id,tenant_id,credential_digest,user_agent) VALUES(?,'employee',?,?,?,?,?,?)`, sid, p.ID, i.Role, i.BrandID, i.TenantID, digest(i.PasswordHash), truncate(r.UserAgent(), 200)).Error; e != nil {
+		c, _ := GetClaimsFromContext(r.Context())
+		if e = tx.Exec(`UPDATE legui_private.auth_sessions SET revoked_at=clock_timestamp() WHERE id=?`, c.SessionID).Error; e != nil {
 			return e
 		}
-		c, _ := GetClaimsFromContext(r.Context())
-		if e = tx.Exec(`UPDATE legui_private.auth_sessions SET revoked_at=? WHERE id=?`, time.Now(), c.SessionID).Error; e != nil {
+		if e = tx.Exec(`INSERT INTO legui_private.auth_sessions(id,principal_kind,principal_id,role,brand_id,tenant_id,credential_digest,user_agent) VALUES(?,'employee',?,?,?,?,?,?)`, sid, p.ID, i.Role, i.BrandID, i.TenantID, digest(i.PasswordHash), truncate(r.UserAgent(), 200)).Error; e != nil {
 			return e
 		}
 		output, refresh, e = issueSession(tx, i, sid, false)

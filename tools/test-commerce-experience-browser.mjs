@@ -1,3 +1,4 @@
+import { paidMembership } from "./membership-fixture.mjs";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile, mkdir } from "node:fs/promises";
@@ -39,6 +40,11 @@ const profile = {
   delivery_address: "Calle de la casa 123",
 };
 const server = createServer(async (req, res) => {
+  if (new URL(req.url, "http://localhost").pathname === "/api/membership") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(paidMembership));
+    return;
+  }
   const u = new URL(req.url, "http://localhost"),
     p = u.pathname;
   if (p.startsWith("/api/")) {
@@ -325,15 +331,16 @@ async function button(page, t) {
   );
 }
 async function settle(page) {
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-    await Promise.allSettled(
-      document
-        .getAnimations()
-        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
-        .map((a) => a.finished),
-    );
-  });
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (a) =>
+          a.effect?.getTiming().iterations === Infinity ||
+          ["finished", "idle"].includes(a.playState),
+      ),
+  );
 }
 try {
   for (const width of [1440, 390])
@@ -480,6 +487,7 @@ try {
         "repeat must not create a purchase",
       );
       checks++;
+      await page.waitForSelector('input[type="radio"][value="delivery"]');
       await page.evaluate(() => {
         const e = document.querySelector(
           'input[type="radio"][value="delivery"]',

@@ -111,6 +111,7 @@ func TestBusinessHierarchyIntegration(t *testing.T) {
 	body := map[string]any{"name": "__hierarchy_fixture", "email": email, "local": "h-" + uuid.NewString()[:18], "base_location_limit": 2, "base_collaborator_limit": 1}
 	created := obj(request("POST", "/api/platform/restaurants", platformToken, "hierarchy-create", body, 200))
 	brand, home := created["brand_id"].(string), created["tenant_id"].(string)
+	fixtureAccount, fixtureSubscription := paidLegacyFixture(t, tx, brand)
 	replay := obj(request("POST", "/api/platform/restaurants", platformToken, "hierarchy-create", body, 200))
 	if replay["brand_id"] != brand {
 		t.Fatal("business replay duplicated identity")
@@ -213,7 +214,8 @@ func TestBusinessHierarchyIntegration(t *testing.T) {
 	// A real current contract overrides base capacity; sandbox contracts do not.
 	plan := obj(request("POST", "/api/platform/billing/plans", platformToken, "hierarchy-plan", map[string]any{"code": "hierarchy_" + strings.ReplaceAll(uuid.NewString(), "-", ""), "name": "Hierarchy plan"}, 201))
 	price := obj(request("POST", "/api/platform/billing/plans/"+plan["id"].(string)+"/prices", platformToken, "hierarchy-price", map[string]any{"amount": "1000", "currency": "ARS", "interval_months": 1, "billing_unit": "brand", "maximum_locations": 3, "maximum_collaborators": 2}, 201))
-	account := obj(request("POST", "/api/platform/billing/accounts", platformToken, "hierarchy-account", map[string]any{"brand_id": brand, "currency": "ARS"}, 201))
+	must(`UPDATE legui_private.subscriptions SET status='canceled' WHERE id=?`, fixtureSubscription)
+	account := map[string]any{"id": fixtureAccount}
 	request("POST", "/api/platform/billing/subscriptions", platformToken, "hierarchy-contract", map[string]any{"account_id": account["id"], "plan_price_id": price["id"], "environment": "production", "quantity": 1, "status": "active", "period_start": time.Now().Add(-time.Hour), "period_end": time.Now().AddDate(0, 1, 0)}, 201)
 	locationBody["subdomain"] = "h-" + uuid.NewString()[:18]
 	request("POST", "/api/business/locations", successor, "hierarchy-upgraded-local", locationBody, 200)
@@ -256,7 +258,7 @@ func TestBusinessHierarchyIntegration(t *testing.T) {
 	request("GET", "/api/business/locations", successor, "", nil, 403)
 	var closed, noRenewal bool
 	tx.Raw(`SELECT closed_at IS NOT NULL FROM public.brands WHERE id=?`, brand).Scan(&closed)
-	tx.Raw(`SELECT bool_and(s.cancel_at_period_end) FROM legui_private.subscriptions s JOIN legui_private.billing_accounts a ON a.id=s.account_id WHERE a.brand_id=?`, brand).Scan(&noRenewal)
+	tx.Raw(`SELECT bool_and(s.cancel_at_period_end) FROM legui_private.subscriptions s JOIN legui_private.billing_accounts a ON a.id=s.account_id WHERE a.brand_id=? AND s.status<>'canceled'`, brand).Scan(&noRenewal)
 	if !closed || !noRenewal {
 		t.Fatal("closure did not stop local renewals")
 	}

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuth } from "../composables/useAuth.js";
 import { bootstrapSession } from "../services/session.js";
+import { useMembership } from "../composables/useMembership.js";
 import LandingView from "../views/public/LandingView.vue";
 import LoginView from "../views/auth/LoginView.vue";
 import OwnerDashboard from "../views/owner/OwnerDashboard.vue";
@@ -32,6 +33,21 @@ const workspaceViews = {
   HealthView: () => import("../views/shared/HealthView.vue"),
 };
 const routes = [
+  {
+    path: "/platform/plans",
+    component: () => import("../views/owner/MembershipPlansView.vue"),
+    meta: { requiresAuth: true, roles: ["owner", "super_admin"] },
+  },
+  {
+    path: "/admin/membership",
+    component: () => import("../views/admins/AdminMembershipView.vue"),
+    meta: { requiresAuth: true, roles: ["admin"] },
+  },
+  {
+    path: "/employee/membership",
+    component: () => import("../views/employees/EmployeeMembershipView.vue"),
+    meta: { requiresAuth: true, roles: ["employee", "cashier", "kitchen"] },
+  },
   {
     path: "/platform/security",
     component: () => import("../views/owner/AbuseIncidentsView.vue"),
@@ -357,7 +373,46 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: "Unauthorized" });
   }
 
+  if (
+    to.meta.requiresAuth &&
+    ["admin", "employee", "cashier", "kitchen"].includes(auth.userRole.value)
+  ) {
+    const membershipPage =
+      auth.userRole.value === "admin"
+        ? "/admin/membership"
+        : "/employee/membership";
+    const renewal =
+      auth.userRole.value === "admin" &&
+      ["/payments", "/care", "/account/security"].some(
+        (path) => to.path === path || to.path.startsWith(path + "/"),
+      );
+    if (to.path !== membershipPage) {
+      try {
+        const access = await useMembership().refresh();
+        if (access.operational === false && !renewal)
+          return next(membershipPage);
+        if (
+          access.premium === false &&
+          ["/inventory", "/expenses", "/admin/production"].some(
+            (p) => to.path === p || to.path.startsWith(p + "/"),
+          )
+        )
+          return next(membershipPage);
+      } catch {
+        return next(membershipPage);
+      }
+    }
+  }
   return next();
 });
 
 export default router;
+
+window.addEventListener("legui:membership-expired", () => {
+  if (router.currentRoute.value.meta.publicBuyer) return;
+  const role = useAuth().userRole.value;
+  if (role === "admin" && router.currentRoute.value.path !== "/payments")
+    router.replace("/admin/membership");
+  else if (["employee", "cashier", "kitchen"].includes(role))
+    router.replace("/employee/membership");
+});

@@ -110,6 +110,9 @@ type CreatePriceRequest struct {
 	TrialDays            int     `json:"trial_days"`
 	MaximumLocations     *int    `json:"maximum_locations,omitempty"`
 	MaximumCollaborators *int    `json:"maximum_collaborators,omitempty"`
+	MembershipTier       string  `json:"membership_tier,omitempty"`
+	ExtraLocationAmount  Decimal `json:"extra_location_amount,omitempty"`
+	Published            *bool   `json:"published,omitempty"`
 }
 type CreateBillingAccountRequest struct {
 	BrandID      string  `json:"brand_id"`
@@ -118,13 +121,14 @@ type CreateBillingAccountRequest struct {
 	ContactEmail string  `json:"contact_email,omitempty"`
 }
 type CreateSubscriptionRequest struct {
-	AccountID   string    `json:"account_id"`
-	PlanPriceID string    `json:"plan_price_id"`
-	Environment string    `json:"environment"`
-	Quantity    int       `json:"quantity"`
-	Status      string    `json:"status"`
-	PeriodStart time.Time `json:"period_start"`
-	PeriodEnd   time.Time `json:"period_end"`
+	AccountID          string    `json:"account_id"`
+	PlanPriceID        string    `json:"plan_price_id"`
+	Environment        string    `json:"environment"`
+	Quantity           int       `json:"quantity"`
+	PurchasedLocations int       `json:"purchased_locations,omitempty"`
+	Status             string    `json:"status"`
+	PeriodStart        time.Time `json:"period_start"`
+	PeriodEnd          time.Time `json:"period_end"`
 }
 type UpdateSubscriptionRequest struct {
 	ExpectedVersion   int64      `json:"expected_version"`

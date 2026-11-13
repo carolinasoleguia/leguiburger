@@ -103,7 +103,8 @@ func registerRoutes(mux *http.ServeMux, db *gorm.DB, options ...BuyerOptions) *H
 		"POST /api/expenses/{id}/void": h.voidExpense,
 		"GET /api/platform/businesses": h.listBusinesses, "PATCH /api/platform/businesses/{id}": h.updateBusiness,
 		"GET /api/platform/billing/plans": h.listPlans, "POST /api/platform/billing/plans": h.createPlan, "POST /api/platform/billing/plans/{id}/prices": h.createPlanPrice,
-		"GET /api/platform/billing/accounts": h.listBillingAccounts, "POST /api/platform/billing/accounts": h.createBillingAccount,
+		"PATCH /api/platform/billing/prices/{id}/publication": h.publishPlanPrice,
+		"GET /api/platform/billing/accounts":                  h.listBillingAccounts, "POST /api/platform/billing/accounts": h.createBillingAccount,
 		"GET /api/platform/billing/subscriptions": h.listSubscriptions, "POST /api/platform/billing/subscriptions": h.createSubscription, "PATCH /api/platform/billing/subscriptions/{id}": h.updateSubscription,
 		"GET /api/platform/billing/invoices": h.listInvoices, "POST /api/platform/billing/invoices": h.createInvoice,
 		"GET /api/platform/billing/invoices/{id}/payments": h.listBillingPayments, "POST /api/platform/billing/invoices/{id}/payments": h.createBillingPayment,
@@ -152,6 +153,7 @@ func (h *Handler) wrap(fn endpoint) http.HandlerFunc {
 		if len(result.Data) == 0 {
 			result.Data = json.RawMessage(`{}`)
 		}
+		result.Data = auth.RedactMembershipData(r.Context(), result.Data)
 		_, _ = w.Write(result.Data)
 	}
 }

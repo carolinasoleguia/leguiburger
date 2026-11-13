@@ -52,7 +52,10 @@ func RegisterSecurityRoutes(mux *http.ServeMux, database *gorm.DB, credentials S
 		mux.HandleFunc(pattern, h.handle(fn))
 	}
 	protected := map[string]func(http.ResponseWriter, *http.Request) error{
-		"GET /api/business": h.businesses, "GET /api/platform/restaurants": h.businesses,
+		"GET /api/membership":                h.membership,
+		"GET /api/billing/terminals":         h.operatingTerminals,
+		"DELETE /api/billing/terminals/{id}": h.revokeOperatingTerminal,
+		"GET /api/business":                  h.businesses, "GET /api/platform/restaurants": h.businesses,
 		"POST /api/platform/restaurants":              h.createRestaurant,
 		"POST /api/business/{id}/owner-invitation":    h.businessInvitation,
 		"DELETE /api/business/{id}/owner-invitation":  h.revokeBusinessInvitation,
@@ -215,6 +218,13 @@ func (h *SecurityHandler) login(w http.ResponseWriter, r *http.Request) error {
 			i.TenantID = input.TenantID
 		}
 		sid := uuid.NewString()
+		// Replacing a login in the same browser must not consume a second terminal.
+		// Credentials have already been checked; only this identity's cookie session is released.
+		if cookie, err := r.Cookie(refreshCookie); err == nil && len(cookie.Value) <= 200 {
+			if e = tx.Exec(`UPDATE legui_private.auth_sessions s SET revoked_at=coalesce(s.revoked_at,clock_timestamp()) FROM legui_private.auth_refresh_tokens t WHERE t.digest=? AND t.session_id=s.id AND s.principal_id=? AND s.principal_kind=?`, digest(cookie.Value), i.ID, i.Kind).Error; e != nil {
+				return e
+			}
+		}
 		platform := i.principal().Platform() && PlatformMFARequired()
 		lifetime := "7 days"
 		if platform {

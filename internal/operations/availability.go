@@ -7,6 +7,13 @@ import (
 )
 
 func validateRecipeBasket(tx *gorm.DB, tenant string, items []OrderItemRequest) error {
+	var premium bool
+	if err := tx.Raw(`SELECT legui_private.tenant_premium(?)`, tenant).Scan(&premium).Error; err != nil {
+		return err
+	}
+	if !premium {
+		return nil
+	}
 	raw, _ := json.Marshal(items)
 	var locked []struct{ ID string }
 	if e := tx.Raw(`SELECT s.id::text FROM public.supplies s WHERE s.tenant_id=? AND s.id IN(SELECT r.supply_id FROM public.recipes r JOIN public.tenant_products tp ON tp.product_id=r.product_id AND tp.tenant_id=s.tenant_id AND NOT tp.track_stock WHERE r.product_id IN(SELECT product_id FROM jsonb_to_recordset(?::jsonb) AS x(product_id uuid))) ORDER BY s.id FOR SHARE`, tenant, string(raw)).Scan(&locked).Error; e != nil {

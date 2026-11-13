@@ -91,49 +91,6 @@ const money = (value, currency = "ARS") =>
 const when = (value) =>
   value ? new Date(value).toLocaleString("es-AR") : "Por confirmar";
 const pendingKeys = new Map();
-const platformPlans = ref([]),
-  newPlanName = ref(""),
-  pricingPlan = ref(""),
-  newPrice = ref(""),
-  newInterval = ref(1),
-  newBillingUnit = ref("brand");
-const newPlanCode = ref(
-  `plan_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
-);
-const maximumLocations = ref(""),
-  maximumCollaborators = ref("");
-async function createPlan() {
-  return execute(async () => {
-    const result = await mutate("/platform/billing/plans", {
-      code: newPlanCode.value,
-      name: newPlanName.value,
-    });
-    pricingPlan.value = result.id;
-    newPlanName.value = "";
-    newPlanCode.value = `plan_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
-    notice.value = "Plan creado. Publicá su precio para ofrecerlo.";
-  });
-}
-async function publishPrice() {
-  return execute(async () => {
-    await mutate(`/platform/billing/plans/${pricingPlan.value}/prices`, {
-      currency: "ARS",
-      amount: String(newPrice.value),
-      interval_months: Number(newInterval.value),
-      billing_unit: newBillingUnit.value,
-      trial_days: 0,
-      maximum_locations:
-        maximumLocations.value === "" ? null : Number(maximumLocations.value),
-      maximum_collaborators:
-        maximumCollaborators.value === ""
-          ? null
-          : Number(maximumCollaborators.value),
-    });
-    newPrice.value = "";
-    notice.value =
-      "Precio publicado. Los contratos anteriores conservan sus condiciones.";
-  });
-}
 async function mutate(path, body = {}, method = "POST") {
   const operation = `${method}:${path}:${JSON.stringify(body)}`;
   if (!pendingKeys.has(operation))
@@ -199,9 +156,6 @@ async function refreshData() {
     ]);
     [connections.value, transactions.value, reviews.value, plans.value] =
       rows.map((item) => item.items || []);
-    if (isPlatform.value)
-      platformPlans.value =
-        (await getJSON("/platform/billing/plans")).items || [];
     if (!plan.value) plan.value = plans.value[0]?.id || "";
     if (brand.value)
       billing.value = await getJSON(
@@ -380,7 +334,13 @@ onMounted(async () => {
       <div class="section-header">
         <div class="section-title">
           <h2>Cobros y Mercado Pago</h2>
-          <p>Seguí tus cobros, conectá tu cuenta y administrá tu membresía.</p>
+          <p>
+            {{
+              isPlatform
+                ? "Consultá los cobros de la plataforma y las membresías de los restaurantes."
+                : "Seguí los cobros de pedidos de tu local."
+            }}
+          </p>
         </div>
         <button
           class="btn-secondary"
@@ -472,7 +432,9 @@ onMounted(async () => {
                 transactions: "Movimientos",
                 checkouts: "Links de cobro",
                 connections: "Cuentas conectadas",
-                membership: "Mi membresía",
+                membership: isPlatform
+                  ? "Membresías de restaurantes"
+                  : "Mi membresía",
                 reviews: `Revisiones (${openReviews.length})`,
               }[item]
             }}
@@ -729,6 +691,7 @@ onMounted(async () => {
         >
         <template v-if="tab === 'membership' && isManager"
           ><form
+            v-if="!isPlatform"
             v-form-care
             class="card action-form"
             @submit.prevent="startSubscription"
@@ -785,7 +748,11 @@ onMounted(async () => {
               >
             </div>
             <button
-              v-if="!item.provider_reference && item.status !== 'canceled'"
+              v-if="
+                !isPlatform &&
+                !item.provider_reference &&
+                item.status !== 'canceled'
+              "
               class="btn-primary"
               :disabled="busy || !config.platform_configured"
               @click="continueSubscription(item)"
@@ -842,98 +809,11 @@ onMounted(async () => {
               </tbody>
             </table>
           </div>
-          <template v-if="isPlatform"
-            ><form
-              v-form-care
-              class="card action-form"
-              @submit.prevent="createPlan"
-            >
-              <h3>Publicar planes de LeguiBurger</h3>
-              <div class="input-group">
-                <label for="new-plan-name">Nombre del nuevo plan</label
-                ><input
-                  id="new-plan-name"
-                  v-model="newPlanName"
-                  minlength="2"
-                  maxlength="120"
-                  required
-                />
-              </div>
-              <button class="btn-primary" :disabled="busy">Crear plan</button>
-            </form>
-            <form
-              v-form-care
-              class="card action-form"
-              @submit.prevent="publishPrice"
-            >
-              <h3>Agregar un precio</h3>
-              <p>
-                Cada precio nuevo conserva intactos los contratos ya vendidos.
-              </p>
-              <div class="input-group">
-                <label for="pricing-plan">Plan</label
-                ><select id="pricing-plan" v-model="pricingPlan" required>
-                  <option
-                    v-for="item in platformPlans"
-                    :key="item.id"
-                    :value="item.id"
-                  >
-                    {{ item.name }}
-                  </option>
-                </select>
-              </div>
-              <div class="input-group">
-                <label for="new-plan-price">Importe en pesos</label
-                ><input
-                  id="new-plan-price"
-                  v-model="newPrice"
-                  type="text"
-                  inputmode="decimal"
-                  pattern="[0-9]+([.][0-9]{1,2})?"
-                  required
-                />
-              </div>
-              <div class="input-group">
-                <label for="plan-locations">Límite de locales del negocio</label
-                ><input
-                  id="plan-locations"
-                  v-model="maximumLocations"
-                  type="number"
-                  min="1"
-                  max="10000"
-                  placeholder="Sin límite"
-                />
-              </div>
-              <div class="input-group">
-                <label for="plan-collaborators"
-                  >Límite de colaboradores del negocio</label
-                ><input
-                  id="plan-collaborators"
-                  v-model="maximumCollaborators"
-                  type="number"
-                  min="1"
-                  max="100000"
-                  placeholder="Sin límite"
-                />
-              </div>
-              <div class="input-group">
-                <label for="plan-period">Frecuencia</label
-                ><select id="plan-period" v-model="newInterval">
-                  <option :value="1">Mensual</option>
-                  <option :value="12">Anual</option>
-                </select>
-              </div>
-              <div class="input-group">
-                <label for="plan-unit">Alcance</label
-                ><select id="plan-unit" v-model="newBillingUnit">
-                  <option value="brand">Por marca</option>
-                  <option value="tenant">Por local</option>
-                </select>
-              </div>
-              <button class="btn-primary" :disabled="busy || !pricingPlan">
-                Publicar precio
-              </button>
-            </form></template
+          <router-link
+            v-if="isPlatform"
+            class="btn-primary"
+            to="/platform/plans"
+            >Configurar planes y tarifas</router-link
           >
         </template>
         <template v-if="tab === 'reviews' && isManager"

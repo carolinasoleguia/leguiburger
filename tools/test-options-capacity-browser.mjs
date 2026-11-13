@@ -1,3 +1,4 @@
+import { paidMembership } from "./membership-fixture.mjs";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile, mkdir } from "node:fs/promises";
@@ -66,6 +67,7 @@ const load = () => ({
   prep_max: 35 + delay(),
 });
 const server = createServer(async (req, res) => {
+  if (new URL(req.url, 'http://localhost').pathname === '/api/membership') { res.writeHead(200, {'Content-Type':'application/json'});res.end(JSON.stringify(paidMembership));return; }
   const u = new URL(req.url, "http://localhost"),
     p = u.pathname;
   if (p.startsWith("/api/")) {

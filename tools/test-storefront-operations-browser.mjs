@@ -1,3 +1,4 @@
+import { paidMembership } from "./membership-fixture.mjs";
 let staffRole = "admin";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -41,6 +42,7 @@ const order = (id) => ({
   tenant_id: tenant,
 });
 const server = createServer(async (req, res) => {
+  if (new URL(req.url, 'http://localhost').pathname === '/api/membership') { res.writeHead(200, {'Content-Type':'application/json'});res.end(JSON.stringify(paidMembership));return; }
   const u = new URL(req.url, "http://localhost"),
     p = u.pathname;
   if (p.startsWith("/api/")) {

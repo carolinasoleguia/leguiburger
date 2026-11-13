@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"leguiburger/internal/auth"
 	"leguiburger/internal/buyeraccess"
 	"leguiburger/internal/orderstream"
 	"leguiburger/internal/shopperidentity"
@@ -181,6 +182,13 @@ func buyerLocation(tx *gorm.DB, id string) (Scope, error) {
 	if q.RowsAffected != 1 {
 		return scope, conflict("El local no está recibiendo pedidos online en este momento")
 	}
+	a, err := auth.ReadMembership(tx.Statement.Context, tx, scope.BrandID)
+	if err != nil {
+		return scope, err
+	}
+	if !a.Operational {
+		return scope, conflict("El local no está recibiendo nuevos pedidos en este momento")
+	}
 	// Read availability only after obtaining the tenant lock, so a concurrent
 	// pause committed while waiting is visible in this statement's new snapshot.
 	var receiving bool
@@ -247,7 +255,7 @@ func quoteBuyer(tx *gorm.DB, scope Scope, input BuyerBasket) (BuyerQuote, error)
 			CurrentStock int64
 			TrackStock   bool
 		}
-		q := tx.Raw(`SELECT p.name,coalesce(tp.price_override,p.base_price)::text price,tp.current_stock,tp.track_stock FROM public.products p JOIN public.tenant_products tp ON tp.product_id=p.id WHERE tp.tenant_id=? AND p.brand_id=? AND p.id=? AND p.is_active AND tp.is_active AND tp.is_available FOR SHARE OF p,tp`, scope.TenantID, scope.BrandID, item.ProductID).Scan(&p)
+		q := tx.Raw(`SELECT p.name,coalesce(tp.price_override,p.base_price)::text price,tp.current_stock,(tp.track_stock AND legui_private.tenant_premium(tp.tenant_id)) track_stock FROM public.products p JOIN public.tenant_products tp ON tp.product_id=p.id WHERE tp.tenant_id=? AND p.brand_id=? AND p.id=? AND p.is_active AND tp.is_active AND tp.is_available FOR SHARE OF p,tp`, scope.TenantID, scope.BrandID, item.ProductID).Scan(&p)
 		if q.Error != nil {
 			return quote, q.Error
 		}
@@ -275,7 +283,7 @@ func quoteBuyer(tx *gorm.DB, scope Scope, input BuyerBasket) (BuyerQuote, error)
 				CurrentStock int64
 				TrackStock   bool
 			}
-			q = tx.Raw(`SELECT name,current_price::text price,current_stock,track_stock FROM public.extras WHERE id=? AND tenant_id=? AND is_active FOR SHARE`, extra.ExtraID, scope.TenantID).Scan(&x)
+			q = tx.Raw(`SELECT name,current_price::text price,current_stock,(track_stock AND legui_private.tenant_premium(tenant_id)) track_stock FROM public.extras WHERE id=? AND tenant_id=? AND is_active FOR SHARE`, extra.ExtraID, scope.TenantID).Scan(&x)
 			if q.Error != nil {
 				return quote, q.Error
 			}

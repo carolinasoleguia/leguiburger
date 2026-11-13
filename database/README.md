@@ -91,3 +91,5 @@ Opciones por producto y capacidad de cocina: [guía de uso](../docs/opciones-y-c
 La migración `202611130001_public_menu_slugs` agrega direcciones públicas estables por marca y sucursal. Ver [cartas públicas y protección de pedidos](../docs/cartas-publicas-y-abuso.md).
 
 La migración `202611130002_checkout_security` agrega contadores de riesgo, incidentes y permisos de verificación de compra privados. Ver [seguridad de compras y activación de Turnstile](../docs/seguridad-de-compras.md).
+
+Las migraciones `202611130003_membership_commercial_terms` y `202611130004_membership_access` agregan tarifas mensuales por marca, tiendas adicionales, prueba de siete días y terminales simultáneas por local. Ver [membresías comerciales](../docs/membresias-comerciales.md).

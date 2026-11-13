@@ -1,4 +1,6 @@
 <script setup>
+import { useMembership } from "../../composables/useMembership.js";
+const membership = useMembership();
 import { ref, watch } from "vue";
 import ListPager from "../../components/ListPager.vue";
 import WorkspaceFrame from "../../components/WorkspaceFrame.vue";
@@ -104,8 +106,11 @@ function createExtra() {
     await w.request("/extras", {
       name: extraName.value,
       current_price: Number(extraPrice.value),
-      current_stock: extraTracked.value ? Number(extraStock.value) : 0,
-      track_stock: extraTracked.value,
+      current_stock:
+        membership.premium.value && extraTracked.value
+          ? Number(extraStock.value)
+          : 0,
+      track_stock: membership.premium.value && extraTracked.value,
     });
     extraName.value = "";
     extraPrice.value = "0";
@@ -181,7 +186,7 @@ function createExtra() {
                   pattern="[0-9]+([.][0-9]{1,2})?"
               /></label>
             </div>
-            <label class="options-check"
+            <label v-if="membership.premium.value" class="options-check"
               ><input v-model="extraTracked" type="checkbox" />Controlar stock
               de este extra</label
             ><label v-if="extraTracked"

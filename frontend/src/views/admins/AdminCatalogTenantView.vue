@@ -301,7 +301,7 @@
                   step="0.01"
                 />
               </div>
-              <div class="input-group">
+              <div v-if="membership.premium.value" class="input-group">
                 <label>Stock</label>
                 <input
                   v-model.number="tenantProductForm.current_stock"
@@ -312,7 +312,7 @@
             </div>
 
             <div class="toggle-grid">
-              <label class="checkbox-row">
+              <label v-if="membership.premium.value" class="checkbox-row">
                 <input
                   v-model="tenantProductForm.track_stock"
                   type="checkbox"
@@ -402,6 +402,8 @@ import { confirmAction } from "../../services/confirmation.js";
 import { computed, onMounted, ref, watch } from "vue";
 import { apiFetch, getJSON } from "../../services/api.js";
 import { useAuth } from "../../composables/useAuth.js";
+import { useMembership } from "../../composables/useMembership.js";
+const membership = useMembership();
 
 const auth = useAuth();
 const tenants = ref([]);
@@ -671,8 +673,12 @@ async function submitTenantProduct() {
         tenantProductForm.value.price_override === ""
           ? null
           : tenantProductForm.value.price_override,
-      current_stock: Number(tenantProductForm.value.current_stock || 0),
-      track_stock: tenantProductForm.value.track_stock,
+      ...(membership.premium.value
+        ? {
+            current_stock: Number(tenantProductForm.value.current_stock || 0),
+            track_stock: tenantProductForm.value.track_stock,
+          }
+        : {}),
       is_available: tenantProductForm.value.is_available,
     };
     if (tenantProductForm.value.exists) {

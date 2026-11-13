@@ -163,6 +163,19 @@ func LockSession(ctx context.Context, tx *gorm.DB) error {
 		if q.RowsAffected != 1 || !active && !allowed {
 			return ErrInvalidCredentials
 		}
+		account, _ := ctx.Value(membershipAccountKey).(bool)
+		if !allowed && !account {
+			a, err := ReadMembership(ctx, tx, p.BrandID)
+			if err != nil {
+				return err
+			}
+			if !a.Operational {
+				return &securityError{403, "MEMBERSHIP_EXPIRED", "La membresía no está vigente"}
+			}
+			if previous, ok := MembershipFromContext(ctx); ok && previous.Premium && !a.Premium {
+				return &securityError{403, "MEMBERSHIP_CHANGED", "El plan cambió durante la operación. Volvé a intentar con sus permisos actuales."}
+			}
+		}
 		if p.Kind == "employee" {
 			var tenant string
 			q = tx.WithContext(ctx).Raw(`SELECT a.tenant_id::text FROM legui_private.employee_locations a JOIN public.tenants t ON t.id=a.tenant_id AND t.active WHERE a.employee_id=? AND a.tenant_id=? FOR SHARE OF a,t`, p.ID, p.TenantID).Scan(&tenant)

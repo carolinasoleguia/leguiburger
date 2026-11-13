@@ -78,6 +78,35 @@ func authMiddleware(database *gorm.DB, next http.HandlerFunc, duration time.Dura
 			return
 		}
 		ctx = context.WithValue(ctx, suspensionAccessKey, allowed)
+		if !principal.Platform() && principal.BrandID != "" {
+			a, err := ReadMembership(ctx, database, principal.BrandID)
+			if err != nil {
+				RespondWithError(w, 503, "MEMBERSHIP_UNAVAILABLE", "No se pudo verificar la membresía")
+				return
+			}
+			ctx = context.WithValue(ctx, membershipKey, a)
+			account := membershipAccountPath(r.URL.Path) || principal.Manager() && BusinessPathAllowed(r.URL.Path)
+			ctx = context.WithValue(ctx, membershipAccountKey, account)
+			if !a.Operational && !account {
+				RespondWithError(w, 403, "MEMBERSHIP_EXPIRED", "La prueba o el período pagado terminó. El administrador debe renovar la membresía.")
+				return
+			}
+			if a.Operational && !a.Premium && premiumPath(r.URL.Path) {
+				RespondWithError(w, 403, "PREMIUM_REQUIRED", "Esta función requiere el plan Premium")
+				return
+			}
+			if a.Operational && a.Tier != "legacy" && principal.Kind == "employee" && !account && a.TerminalsPerLocation != nil {
+				var used int64
+				if err = database.WithContext(ctx).Raw(`SELECT count(*) FROM legui_private.auth_sessions WHERE tenant_id=? AND principal_kind='employee' AND revoked_at IS NULL AND expires_at>clock_timestamp() AND last_seen_at>clock_timestamp()-interval '30 minutes'`, principal.TenantID).Scan(&used).Error; err != nil {
+					RespondWithError(w, 503, "MEMBERSHIP_UNAVAILABLE", "No se pudieron verificar las terminales")
+					return
+				}
+				if used > int64(*a.TerminalsPerLocation) {
+					RespondWithError(w, 409, "TERMINAL_LIMIT_REACHED", "Hay más terminales conectadas de las que permite el plan. Pedile al administrador que libere una terminal.")
+					return
+				}
+			}
+		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }

@@ -1,3 +1,4 @@
+import { paidMembership } from "./membership-fixture.mjs";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile, mkdir } from "node:fs/promises";
@@ -100,6 +101,12 @@ try {
   await page.setViewport({ width: 1440, height: 1000 });
   await page.setRequestInterception(true);
   page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/membership")
+      return request.respond({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(paidMembership),
+      });
     const path = new URL(request.url()).pathname;
     if (!path.startsWith("/api/")) return request.continue();
     if (path === "/api/auth/refresh")
@@ -221,6 +228,10 @@ try {
     "mi-borrador",
   );
   hold = false;
+  await page.$eval('button[aria-controls="admin-nav-menu"]', (button) => {
+    if (button.getAttribute("aria-expanded") === "false") button.click();
+  });
+  await page.waitForSelector('a[href="/admin/catalog"]', { visible: true });
   await page.evaluate(() =>
     [...document.querySelectorAll('a[href="/admin/catalog"]')]
       .find((el) => el.getClientRects().length)

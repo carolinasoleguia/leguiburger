@@ -53,6 +53,14 @@ export async function apiFetch(path, options = {}) {
       }
     }
 
+    if (response.status === 403 && !path.startsWith("/public/")) {
+      const problem = await response
+        .clone()
+        .json()
+        .catch(() => ({}));
+      if (problem.code === "MEMBERSHIP_EXPIRED")
+        window.dispatchEvent(new CustomEvent("legui:membership-expired"));
+    }
     if (response.ok && mutation) formSaved(draft);
     return response;
   } finally {

@@ -52,6 +52,7 @@ jobs:
         run: |
           node tools/test-security-browser.mjs
           node tools/test-payments-browser.mjs
+          node tools/test-membership-browser.mjs
           node tools/test-workspace-browser.mjs
           node tools/test-dashboard-overview-browser.mjs
           node tools/test-menu-cash-browser.mjs

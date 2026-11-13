@@ -16,6 +16,7 @@ import { restaurantWorkspace } from "../navigation/restaurant.js";
 import { platformWorkspace } from "../navigation/platform.js";
 import { collaboratorWorkspace } from "../navigation/collaborator.js";
 import { getJSON } from "../services/api.js";
+import { useMembership } from "../composables/useMembership.js";
 import {
   authRequest,
   setSession,
@@ -71,8 +72,20 @@ const workspace = computed(() =>
       : collaboratorWorkspace(auth.userRole.value, auth.tenantId.value),
 );
 const roleLabel = computed(() => workspace.value.label);
+const membership = useMembership();
 const baseNavigation = computed(() => [workspace.value.home]);
-const navigationGroups = computed(() => workspace.value.groups);
+const navigationGroups = computed(() =>
+  workspace.value.groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) =>
+          membership.premium.value ||
+          !["/inventory", "/expenses", "/admin/production"].includes(item.to),
+      ),
+    }))
+    .filter((group) => group.items.length),
+);
 const navigation = computed(() => [
   workspace.value.home,
   ...workspace.value.groups.flatMap((group) => group.items),
@@ -297,6 +310,26 @@ async function logout() {
         </div>
       </header>
       <main id="main-content" class="content-pane" tabindex="-1">
+        <p
+          v-if="membership.access.value?.state === 'trial'"
+          class="status-notice"
+          role="status"
+        >
+          Prueba gratuita hasta
+          {{
+            new Date(membership.access.value.valid_until).toLocaleDateString(
+              "es-AR",
+            )
+          }}.
+          <router-link
+            :to="
+              props.role === 'admin'
+                ? '/admin/membership'
+                : '/employee/membership'
+            "
+            >Ver acceso</router-link
+          >
+        </p>
         <slot
           ><router-view v-slot="{ Component, route }"
             ><Transition name="workspace-route" mode="out-in"

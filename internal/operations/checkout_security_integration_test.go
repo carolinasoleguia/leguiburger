@@ -68,6 +68,7 @@ func TestCheckoutSecurityIntegration(t *testing.T) {
 	}
 	brand, tenant, product, owner, admin, cashier := uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString()
 	must(`INSERT INTO public.brands(id,name) VALUES(?,'__abuse_security_fixture')`, brand)
+	paidLegacyFixture(t, tx, brand)
 	must(`INSERT INTO public.tenants(id,brand_id,subdomain,menu_published,ordering_enabled) VALUES(?,?,'abuse-'||?::text,true,true)`, tenant, brand, tenant)
 	must(`INSERT INTO public.products(id,brand_id,name,base_price,is_active) VALUES(?,?,'Fixture burger',100,true)`, product, brand)
 	must(`INSERT INTO public.tenant_products(tenant_id,product_id,current_stock,is_available,is_active,track_stock) VALUES(?,?,100,true,true,true)`, tenant, product)

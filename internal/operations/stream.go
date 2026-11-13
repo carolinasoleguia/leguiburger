@@ -93,6 +93,15 @@ func (h *Handler) staffOrderStream(w http.ResponseWriter, r *http.Request) {
 		if !available {
 			return "", forbidden()
 		}
+		if !p.Platform() {
+			a, err := auth.ReadMembership(ctx, h.repo.DB, scope.BrandID)
+			if err != nil {
+				return "", err
+			}
+			if !a.Operational {
+				return "", forbidden()
+			}
+		}
 		return "tenant:" + scope.TenantID, nil
 	}
 	id, e := resolve()

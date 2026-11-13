@@ -57,6 +57,20 @@ func AuthorizeLegacy(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if r.Method == http.MethodGet {
+			if PremiumRestricted(r.Context()) {
+				capture := &bufferedResponse{header: make(http.Header)}
+				next(capture, r)
+				for k, v := range capture.header {
+					w.Header()[k] = v
+				}
+				status := capture.status
+				if status == 0 {
+					status = 200
+				}
+				w.WriteHeader(status)
+				_, _ = w.Write(RedactMembershipData(r.Context(), capture.body.Bytes()))
+				return
+			}
 			next(w, r)
 			return
 		}
@@ -96,7 +110,7 @@ func AuthorizeLegacy(next http.HandlerFunc) http.HandlerFunc {
 			capture.status = 200
 		}
 		w.WriteHeader(capture.status)
-		_, _ = w.Write(capture.body.Bytes())
+		_, _ = w.Write(RedactMembershipData(r.Context(), capture.body.Bytes()))
 	}
 }
 

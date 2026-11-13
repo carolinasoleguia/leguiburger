@@ -4,8 +4,11 @@ import { computed, onMounted, ref, watch } from "vue";
 import DashboardShell from "../../components/DashboardShell.vue";
 import StableContent from "../../components/StableContent.vue";
 import { useAuth } from "../../composables/useAuth.js";
+import { useMembership } from "../../composables/useMembership.js";
 import { apiFetch, getJSON } from "../../services/api.js";
 const auth = useAuth();
+const membership = useMembership(),
+  terminals = ref([]);
 const suspended = ref(false);
 const config = ref({}),
   connections = ref([]),
@@ -77,6 +80,27 @@ const money = (value, currency = "ARS") =>
 const when = (value) =>
   value ? new Date(value).toLocaleString("es-AR") : "Por confirmar";
 const pendingKeys = new Map();
+const purchasedLocations = ref(1);
+const selectedPrice = computed(() =>
+  plans.value.find((item) => item.id === plan.value),
+);
+const membershipTotal = computed(
+  () =>
+    Number(selectedPrice.value?.amount || 0) +
+    (selectedPrice.value?.membership_tier === "premium"
+      ? Math.max(0, Number(purchasedLocations.value) - 1) *
+        Number(selectedPrice.value.extra_location_amount || 0)
+      : 0),
+);
+watch(plan, () => {
+  purchasedLocations.value =
+    selectedPrice.value?.membership_tier === "premium"
+      ? Math.max(
+          1,
+          visibleTenants.value.filter((item) => item.active !== false).length,
+        )
+      : 1;
+});
 async function mutate(path, body = {}, method = "POST") {
   const operation = `${method}:${path}:${JSON.stringify(body)}`;
   if (!pendingKeys.has(operation))
@@ -110,8 +134,11 @@ async function execute(fn) {
   }
 }
 async function refreshData() {
+  await membership.refresh();
   const state = await getJSON("/business");
-  suspended.value = !!state.items?.[0]?.suspended_at;
+  suspended.value =
+    !!state.items?.[0]?.suspended_at ||
+    membership.access.value?.operational === false;
   if (suspended.value) tab.value = "membership";
   const [cfg, planList, account] = await Promise.all([
     getJSON("/payments/mercadopago/config"),
@@ -122,6 +149,7 @@ async function refreshData() {
   plans.value = planList.items || [];
   billing.value = account;
   if (!plan.value) plan.value = plans.value[0]?.id || "";
+  terminals.value = (await getJSON("/billing/terminals")).items || [];
   if (!suspended.value) {
     const rows = await Promise.all([
       getJSON("/integrations/mercadopago/connections"),
@@ -170,6 +198,7 @@ function startSubscription() {
       brand_id: brand.value,
       tenant_id: price?.billing_unit === "tenant" ? tenant.value : "",
       payer_email: email.value,
+      purchased_locations: Number(purchasedLocations.value),
     });
     showCheckout(
       await mutate(
@@ -177,6 +206,12 @@ function startSubscription() {
         { payer_email: email.value },
       ),
     );
+  });
+}
+function releaseTerminal(item) {
+  return execute(async () => {
+    await mutate(`/billing/terminals/${item.id}`, {}, "DELETE");
+    notice.value = "Terminal desconectada. El cupo está disponible.";
   });
 }
 function continueSubscription(item) {
@@ -535,7 +570,10 @@ onMounted(async () => {
             @submit.prevent="startSubscription"
           >
             <h3>Elegí tu membresía</h3>
-            <p>La membresía se activa cuando Mercado Pago confirma el cobro.</p>
+            <p>
+              La membresía se activa cuando Mercado Pago confirma el cobro. La
+              prueba gratuita dura siete días y no se renueva.
+            </p>
             <div class="input-group">
               <label for="membership-plan">Plan</label
               ><select id="membership-plan" v-model="plan" required>
@@ -548,6 +586,45 @@ onMounted(async () => {
                 </option>
               </select>
             </div>
+            <div
+              v-if="selectedPrice?.membership_tier === 'premium'"
+              class="input-group"
+            >
+              <label for="membership-locations">Locales a contratar</label>
+              <input
+                id="membership-locations"
+                v-model="purchasedLocations"
+                type="number"
+                min="1"
+                max="10000"
+                step="1"
+                required
+              />
+              <small
+                >Un local incluido. Cada adicional suma
+                {{
+                  money(
+                    selectedPrice.extra_location_amount,
+                    selectedPrice.currency,
+                  )
+                }}
+                al mes. Hasta 5 terminales por local.</small
+              >
+            </div>
+            <p v-else-if="selectedPrice?.membership_tier === 'standard'">
+              Incluye 1 local y hasta 2 terminales.
+            </p>
+            <p v-if="selectedPrice" class="membership-total" aria-live="polite">
+              Total:
+              <strong>{{
+                money(membershipTotal, selectedPrice.currency)
+              }}</strong>
+              {{
+                selectedPrice.interval_months === 1
+                  ? "por mes"
+                  : `cada ${selectedPrice.interval_months} meses`
+              }}. El importe se confirma al continuar.
+            </p>
             <div class="input-group">
               <label for="membership-email">Correo del pagador</label
               ><input
@@ -565,6 +642,39 @@ onMounted(async () => {
             </button>
             <p v-if="!plans.length">Todavía no hay planes publicados.</p>
           </form>
+          <section class="card action-form">
+            <h3>Terminales conectadas</h3>
+            <p>
+              Las pestañas de un mismo navegador comparten sesión. Cerrar sesión
+              libera la terminal; tras 30 minutos sin actividad, también queda
+              libre.
+            </p>
+            <div
+              v-for="item in terminals"
+              :key="item.id"
+              class="connection-row"
+            >
+              <div>
+                <strong>{{ item.location }}</strong>
+                <p>
+                  {{ item.first_name }} {{ item.last_name }} · Última actividad
+                  {{ when(item.last_seen_at) }}
+                </p>
+                <small>{{ item.user_agent }}</small>
+              </div>
+              <button
+                type="button"
+                class="btn-secondary"
+                :disabled="busy"
+                @click="releaseTerminal(item)"
+              >
+                Desconectar terminal
+              </button>
+            </div>
+            <p v-if="!terminals.length">
+              No hay terminales operativas conectadas.
+            </p>
+          </section>
           <div
             v-for="item in billing.subscriptions || []"
             :key="item.id"
@@ -581,6 +691,10 @@ onMounted(async () => {
                 }}
                 · Período hasta {{ when(item.current_period_end) }}
               </p>
+              <small v-if="item.purchased_locations > 1"
+                >{{ item.purchased_locations }} locales contratados · incluye el
+                cargo de los adicionales.</small
+              >
               <small v-if="item.cancel_at_period_end"
                 >La renovación está cancelada.</small
               >

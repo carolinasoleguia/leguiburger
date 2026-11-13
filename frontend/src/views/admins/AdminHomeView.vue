@@ -1,5 +1,7 @@
 <script setup>
 import { computed, ref } from "vue";
+import { useMembership } from "../../composables/useMembership.js";
+const membership = useMembership();
 import AppIcon from "../../components/AppIcon.vue";
 import StableContent from "../../components/StableContent.vue";
 import OverviewAreaChart from "../../components/OverviewAreaChart.vue";
@@ -9,10 +11,7 @@ import {
   shiftDay,
   formatDay,
 } from "../../composables/calendarDates.js";
-import {
-  useWorkspace,
-  money,
-} from "../../composables/useWorkspace.js";
+import { useWorkspace, money } from "../../composables/useWorkspace.js";
 const response = ref(null),
   currency = ref("ARS"),
   showDaily = ref(false);
@@ -349,7 +348,7 @@ const maxUnits = computed(() =>
             </p>
           </div>
         </section>
-        <section class="card overview-result">
+        <section v-if="membership.premium.value" class="card overview-result">
           <h2>Resultado del período</h2>
           <p class="overview-panel-description">{{ periodLabel }}</p>
           <div

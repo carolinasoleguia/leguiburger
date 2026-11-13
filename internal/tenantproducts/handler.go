@@ -82,6 +82,14 @@ func (h *Handler) CreateTenantProduct(w http.ResponseWriter, r *http.Request) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
+	if auth.PremiumRestricted(r.Context()) {
+		if input.CurrentStock != 0 || input.TrackStock != nil && *input.TrackStock {
+			auth.RespondWithError(w, 403, "PREMIUM_REQUIRED", "El seguimiento de stock requiere Premium")
+			return
+		}
+		track := false
+		input.TrackStock = &track
+	}
 
 	tenantProduct, err := h.service.CreateTenantProduct(r.Context(), tenantID, input.ProductID, input.PriceOverride, input.CurrentStock, input.TrackStock, input.IsAvailable)
 	if err != nil {
@@ -128,6 +136,10 @@ func (h *Handler) UpdateTenantProduct(w http.ResponseWriter, r *http.Request, pr
 	var input UpdateInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
+		return
+	}
+	if auth.PremiumRestricted(r.Context()) && (input.CurrentStock != nil || input.TrackStock != nil && *input.TrackStock) {
+		auth.RespondWithError(w, 403, "PREMIUM_REQUIRED", "El seguimiento de stock requiere Premium")
 		return
 	}
 

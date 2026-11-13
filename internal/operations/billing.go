@@ -65,6 +65,9 @@ func (h *Handler) createPlanPrice(r *http.Request, p Principal) (Result, error) 
 	if err != nil {
 		return Result{}, err
 	}
+	if err = normalizePriceTerms(&input); err != nil {
+		return Result{}, err
+	}
 	if !currencyPattern.MatchString(input.Currency) || !validMoney(input.Amount, false) || !isOneOf(input.BillingUnit, "brand", "tenant") || (input.IntervalMonths != 1 && input.IntervalMonths != 12) || input.TrialDays < 0 || input.TrialDays > 365 || (input.MaximumLocations != nil && *input.MaximumLocations < 1) || (input.MaximumCollaborators != nil && *input.MaximumCollaborators < 1) {
 		return Result{}, badInput("Precio o condiciones del plan inválidos")
 	}
@@ -77,8 +80,13 @@ func (h *Handler) createPlanPrice(r *http.Request, p Principal) (Result, error) 
 		if q.RowsAffected == 0 {
 			return nil, 0, notFound()
 		}
-		data, err := jsonQuery(tx, `INSERT INTO legui_private.billing_plan_prices(plan_id,currency,amount,interval_months,billing_unit,trial_days,maximum_locations,maximum_collaborators,version)
-  SELECT ?,?,?::numeric,?,?,?,?,?,coalesce(max(version),0)+1 FROM legui_private.billing_plan_prices WHERE plan_id=? AND currency=? AND interval_months=? AND billing_unit=? RETURNING to_jsonb(billing_plan_prices)::text payload`, id, input.Currency, string(input.Amount), input.IntervalMonths, input.BillingUnit, input.TrialDays, input.MaximumLocations, input.MaximumCollaborators, id, input.Currency, input.IntervalMonths, input.BillingUnit)
+		if *input.Published && input.MembershipTier != "legacy" {
+			if err := tx.Exec(`UPDATE legui_private.billing_plan_prices SET is_active=false WHERE plan_id=? AND currency=? AND interval_months=? AND billing_unit=? AND is_active`, id, input.Currency, input.IntervalMonths, input.BillingUnit).Error; err != nil {
+				return nil, 0, err
+			}
+		}
+		data, err := jsonQuery(tx, `INSERT INTO legui_private.billing_plan_prices(plan_id,currency,amount,interval_months,billing_unit,trial_days,maximum_locations,maximum_collaborators,membership_tier,extra_location_amount,is_active,version)
+  SELECT ?,?,?::numeric,?,?,?,?,?,?,?::numeric,?,coalesce(max(version),0)+1 FROM legui_private.billing_plan_prices WHERE plan_id=? AND currency=? AND interval_months=? AND billing_unit=? RETURNING to_jsonb(billing_plan_prices)::text payload`, id, input.Currency, string(input.Amount), input.IntervalMonths, input.BillingUnit, input.TrialDays, input.MaximumLocations, input.MaximumCollaborators, input.MembershipTier, string(input.ExtraLocationAmount), *input.Published, id, input.Currency, input.IntervalMonths, input.BillingUnit)
 		return data, 201, err
 	})
 }
@@ -131,6 +139,12 @@ func (h *Handler) createSubscription(r *http.Request, p Principal) (Result, erro
 	if input.Quantity == 0 {
 		input.Quantity = 1
 	}
+	if input.PurchasedLocations == 0 {
+		input.PurchasedLocations = 1
+	}
+	if input.PurchasedLocations < 1 || input.PurchasedLocations > 10000 {
+		return Result{}, badInput("Cantidad de locales inválida")
+	}
 	if !validID(input.AccountID) || !validID(input.PlanPriceID) || !isOneOf(input.Environment, "production", "sandbox") || !isOneOf(input.Status, "incomplete", "trialing", "active") || input.Quantity < 1 || input.Quantity > 10000 || (input.PeriodStart.IsZero() != input.PeriodEnd.IsZero()) || (!input.PeriodEnd.IsZero() && !input.PeriodEnd.After(input.PeriodStart)) || (input.Status == "active" && input.PeriodEnd.IsZero()) {
 		return Result{}, badInput("Suscripción, entorno o período inválidos")
 	}
@@ -139,10 +153,10 @@ func (h *Handler) createSubscription(r *http.Request, p Principal) (Result, erro
 		if !input.PeriodStart.IsZero() {
 			starts, ends = input.PeriodStart, input.PeriodEnd
 		}
-		data, err := jsonQuery(tx, `INSERT INTO legui_private.subscriptions(account_id,plan_price_id,currency,interval_months,billing_unit,contracted_amount,quantity,environment,status,current_period_start,current_period_end,trial_ends_at)
-  SELECT a.id,price.id,price.currency,price.interval_months,price.billing_unit,price.amount,?,?,?,?::timestamptz,?::timestamptz,CASE WHEN ?='trialing' AND price.trial_days>0 THEN now()+make_interval(days=>price.trial_days) ELSE NULL END
+		data, err := jsonQuery(tx, `INSERT INTO legui_private.subscriptions(account_id,plan_price_id,currency,interval_months,billing_unit,contracted_amount,quantity,purchased_locations,environment,status,current_period_start,current_period_end,trial_ends_at)
+  SELECT a.id,price.id,price.currency,price.interval_months,price.billing_unit,price.amount,?,?,?,?,?::timestamptz,?::timestamptz,CASE WHEN ?='trialing' AND price.trial_days>0 THEN now()+make_interval(days=>price.trial_days) ELSE NULL END
   FROM legui_private.billing_accounts a JOIN legui_private.billing_plan_prices price ON price.id=? AND price.currency=a.currency AND price.billing_unit=a.billing_unit JOIN legui_private.billing_plans plan ON plan.id=price.plan_id
-  WHERE a.id=? AND a.closed_at IS NULL AND price.is_active AND plan.is_active RETURNING to_jsonb(subscriptions)::text payload`, input.Quantity, input.Environment, input.Status, starts, ends, input.Status, input.PlanPriceID, input.AccountID)
+  WHERE a.id=? AND a.closed_at IS NULL AND price.is_active AND plan.is_active RETURNING to_jsonb(subscriptions)::text payload`, input.Quantity, input.PurchasedLocations, input.Environment, input.Status, starts, ends, input.Status, input.PlanPriceID, input.AccountID)
 		return data, 201, err
 	})
 }

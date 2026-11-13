@@ -1,3 +1,4 @@
+import { paidMembership } from "./membership-fixture.mjs";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile, mkdir } from "node:fs/promises";
@@ -109,6 +110,7 @@ async function setup(width, theme, actor = "admin") {
     };
   }
   page.on("request", (r) => {
+    if (new URL(r.url()).pathname === '/api/membership') return r.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(paidMembership) });
     const u = new URL(r.url()),
       p = u.pathname;
     if (!p.startsWith("/api/")) return r.continue();

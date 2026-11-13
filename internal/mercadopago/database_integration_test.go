@@ -329,8 +329,8 @@ func TestDatabaseIntegration(t *testing.T) {
 	// A platform subscription authorizes billing but does not grant a paid period.
 	plan, price := uuid.NewString(), uuid.NewString()
 	must(`INSERT INTO legui_private.billing_plans(id,code,name) VALUES(?,?,'Fixture membership')`, plan, "fixture_"+strings.ReplaceAll(plan, "-", ""))
-	must(`INSERT INTO legui_private.billing_plan_prices(id,plan_id,currency,amount,interval_months,version,billing_unit) VALUES(?,?,'ARS',1000,1,1,'brand')`, price, plan)
-	selection := request("POST", "/api/billing/subscribe", adminToken, "select-plan", "", map[string]any{"price_id": price, "brand_id": brand, "payer_email": admin + "@example.invalid"}, 201)
+	must(`INSERT INTO legui_private.billing_plan_prices(id,plan_id,currency,amount,interval_months,version,billing_unit,membership_tier,maximum_collaborators,extra_location_amount) VALUES(?,?,'ARS',1000,1,1,'brand','premium',5,250)`, price, plan)
+	selection := request("POST", "/api/billing/subscribe", adminToken, "select-plan", "", map[string]any{"price_id": price, "brand_id": brand, "payer_email": admin + "@example.invalid", "purchased_locations": 3}, 201)
 	subscriptionID := selection.Body["subscription_id"].(string)
 	subCheckout := request("POST", "/api/billing/subscriptions/"+subscriptionID+"/checkout", adminToken, "sub-checkout", "", map[string]any{"payer_email": admin + "@example.invalid"}, 200)
 	if subCheckout.Body["state"] != "created" {
@@ -338,8 +338,11 @@ func TestDatabaseIntegration(t *testing.T) {
 	}
 	var sub checkout
 	tx.Raw(`SELECT `+checkoutColumns+` FROM legui_private.mp_checkouts WHERE id=?`, subCheckout.Body["id"]).Scan(&sub)
+	if !sameMoney(sub.Amount, "1500.00") {
+		t.Fatal("Additional location fees were omitted from Mercado Pago checkout")
+	}
 	count(`SELECT count(*) FROM legui_private.subscriptions WHERE id=? AND status='incomplete' AND current_period_end IS NULL`, 1, subscriptionID)
-	payments["2001"] = newPayment("2001", sub, "999", "1000.00")
+	payments["2001"] = newPayment("2001", sub, "999", "1500.00")
 	payments["2001"]["point_of_interaction"] = map[string]any{"transaction_data": map[string]any{"subscription_id": sub.RemoteID}}
 	if state, e := h.observePayment(context.Background(), sub.ConnectionID, "2001"); e != nil || state != "applied" {
 		t.Fatalf("membership charge failed: %s %v", state, e)

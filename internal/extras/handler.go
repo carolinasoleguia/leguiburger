@@ -102,6 +102,14 @@ func (h *Handler) CreateExtra(w http.ResponseWriter, r *http.Request) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
+	if auth.PremiumRestricted(r.Context()) {
+		if input.CurrentStock != 0 || input.TrackStock != nil && *input.TrackStock {
+			auth.RespondWithError(w, 403, "PREMIUM_REQUIRED", "El seguimiento de stock requiere Premium")
+			return
+		}
+		track := false
+		input.TrackStock = &track
+	}
 
 	extra, err := h.service.CreateExtra(r.Context(), tenantID, input.Name, input.CurrentPrice, input.CurrentStock, input.TrackStock)
 	if err != nil {
@@ -178,6 +186,10 @@ func (h *Handler) UpdateExtra(w http.ResponseWriter, r *http.Request, id string)
 	var input UpdateInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
+		return
+	}
+	if auth.PremiumRestricted(r.Context()) && (input.CurrentStock != nil || input.TrackStock != nil && *input.TrackStock) {
+		auth.RespondWithError(w, 403, "PREMIUM_REQUIRED", "El seguimiento de stock requiere Premium")
 		return
 	}
 

@@ -9,8 +9,6 @@ const items = ref([]),
   tax = ref(""),
   local = ref("centro"),
   email = ref(""),
-  locations = ref(1),
-  collaborators = ref(5),
   selected = ref(null),
   inviteEmail = ref(""),
   password = ref(""),
@@ -36,8 +34,8 @@ function create() {
       tax_id: tax.value,
       local: local.value,
       email: email.value,
-      base_location_limit: Number(locations.value),
-      base_collaborator_limit: Number(collaborators.value),
+      base_location_limit: 1,
+      base_collaborator_limit: 2,
     });
     link.value = data.invitation.invitation_url;
     name.value = "";
@@ -67,7 +65,7 @@ function status(item) {
         },
         "PATCH",
       ),
-    "Estado y límites guardados.",
+    "Estado del restaurante guardado.",
   );
 }
 function revoke(item) {
@@ -99,12 +97,17 @@ function page(n) {
         SMTP está configurado.
       </p>
     </div>
-    <form v-form-care
+    <form
+      v-form-care
       v-if="w.platform.value"
       class="card operation-form"
       @submit.prevent="create"
     >
       <h2>Dar de alta un restaurante</h2>
+      <p>
+        El administrador activa una prueba de siete días: una tienda y dos
+        terminales simultáneas. Después debe contratar Clásico o Premium.
+      </p>
       <div class="form-row">
         <label
           >Nombre del negocio<input
@@ -120,24 +123,7 @@ function page(n) {
             maxlength="63"
             required /></label
         ><label
-          >Correo del dueño<input
-            v-model="email"
-            type="email"
-            required /></label
-        ><label
-          >Locales del acceso base<input
-            v-model.number="locations"
-            type="number"
-            min="1"
-            max="1000"
-            required /></label
-        ><label
-          >Colaboradores del acceso base<input
-            v-model.number="collaborators"
-            type="number"
-            min="1"
-            max="10000"
-            required
+          >Correo del dueño<input v-model="email" type="email" required
         /></label>
       </div>
       <button class="btn-primary" :disabled="w.busy.value">
@@ -150,7 +136,10 @@ function page(n) {
         Responsable principal:
         <strong>{{ item.owner_email || "Pendiente de aceptación" }}</strong>
       </p>
-      <p v-if="item.closed_at" class="status-notice" role="status">Restaurante archivado desde {{ when(item.closed_at) }}. El historial se conserva en Soporte y continuidad.</p>
+      <p v-if="item.closed_at" class="status-notice" role="status">
+        Restaurante archivado desde {{ when(item.closed_at) }}. El historial se
+        conserva en Soporte y continuidad.
+      </p>
       <p v-else-if="item.suspended_at" class="error-msg">
         Restaurante suspendido desde {{ when(item.suspended_at) }}.
         {{ item.suspension_reason }}
@@ -165,20 +154,28 @@ function page(n) {
           >
         </article>
         <article>
-          <h3>Colaboradores activos</h3>
-          <strong
-            >{{ item.collaborators }} /
-            {{ item.maximum_collaborators ?? "Sin límite" }}</strong
-          >
+          <h3>Personal registrado</h3>
+          <strong>{{ item.collaborators }}</strong>
         </article>
       </div>
       <p>
         Capacidad vigente:
         {{
-          item.capacity_source === "subscription"
+          ["subscription", "subscription_per_location"].includes(
+            item.capacity_source,
+          )
             ? "membresía contratada"
-            : "acceso base"
-        }}. Las invitaciones pendientes reservan cupo de colaborador.
+            : item.capacity_source === "trial"
+              ? "prueba gratuita de siete días"
+              : "sin membresía vigente"
+        }}.
+        <template v-if="item.capacity_source !== 'subscription'"
+          >Hasta {{ item.maximum_collaborators }} terminales simultáneas por
+          local. Las altas de personal no consumen terminales.</template
+        ><template v-else
+          >Condiciones anteriores: las invitaciones pendientes reservan
+          cupo.</template
+        >
       </p>
       <div v-if="w.platform.value && !item.closed_at" class="form-row">
         <label
@@ -190,24 +187,12 @@ function page(n) {
           >Motivo de suspensión<input
             v-model="item.suspension_reason"
             maxlength="500" /></label
-        ><label
-          >Límite base de locales<input
-            v-model.number="item.base_location_limit"
-            type="number"
-            min="1"
-            max="1000" /></label
-        ><label
-          >Límite base de colaboradores<input
-            v-model.number="item.base_collaborator_limit"
-            type="number"
-            min="1"
-            max="10000" /></label
         ><button
           class="btn-secondary"
           :disabled="w.busy.value"
           @click="status(item)"
         >
-          Guardar estado y límites
+          Guardar estado
         </button>
       </div>
       <button
@@ -242,7 +227,12 @@ function page(n) {
         }}
       </button>
     </article>
-    <form v-form-care v-if="selected" class="card operation-form" @submit.prevent="invite">
+    <form
+      v-form-care
+      v-if="selected"
+      class="card operation-form"
+      @submit.prevent="invite"
+    >
       <h2>
         {{
           selected.primary_owner_id ? "Transferir restaurante" : "Invitar dueño"

@@ -46,6 +46,7 @@ export function platformWorkspace() {
           item("Restaurantes", "/restaurants", "burger"),
           item("Locales", "/locations", "store"),
           item("Cobros y membresías", "/payments", "card"),
+          item("Planes y tarifas", "/platform/plans", "card"),
           item("Invitaciones", "/team/invitations", "users"),
           item("Estado del sistema", "/platform/health", "clock"),
         ],

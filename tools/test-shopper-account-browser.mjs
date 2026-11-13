@@ -1,3 +1,4 @@
+import { paidMembership } from "./membership-fixture.mjs";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile, mkdir } from "node:fs/promises";
@@ -88,6 +89,7 @@ try {
           body: JSON.stringify(data),
         });
       page.on("request", (r) => {
+    if (new URL(r.url()).pathname === '/api/membership') return r.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(paidMembership) });
         const path = new URL(r.url()).pathname;
         if (!path.startsWith("/api/")) return r.continue();
         const body = r.postData() ? JSON.parse(r.postData()) : null;

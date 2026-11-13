@@ -75,6 +75,8 @@ func TestSecurityIntegration(t *testing.T) {
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	email := func(id string) string { return id + "@example.invalid" }
 	must(`INSERT INTO public.brands(id,name) VALUES(?,'__security_http_a'),(?,'__security_http_b')`, b1, b2)
+	paidLegacyFixture(t, tx, b1)
+	paidLegacyFixture(t, tx, b2)
 	must(`INSERT INTO public.tenants(id,brand_id,subdomain) VALUES(?,?,'__security_http_a'),(?,?,'__security_http_b')`, t1, b1, t2, b2)
 	must(`INSERT INTO public.users(id,first_name,last_name,email,password_hash,role,brand_id,is_active) VALUES(?,'Owner','Fixture',?,?,'owner',NULL,true),(?,'Manager','Fixture',?,?,'admin',?,true)`, owner, email(owner), string(hashed), manager, email(manager), string(hashed), b1)
 	must(`INSERT INTO public.employees(id,tenant_id,first_name,last_name,email,password_hash,role,is_active) VALUES(?,?,'Employee','Fixture',?,?,'employee',true)`, employee, t1, email(employee), string(hashed))
@@ -268,7 +270,7 @@ func TestSecurityIntegration(t *testing.T) {
 	t.Setenv("SMTP_HOST", "smtp.example.invalid")
 	t.Setenv("SMTP_FROM", "noreply@example.invalid")
 	emailActor := uuid.NewString()
-	must(`INSERT INTO public.users(id,first_name,last_name,email,password_hash,role,brand_id,is_active) VALUES(?,'Email','Fixture',?,?,'admin',?,true)`, emailActor, email(emailActor), string(hashed), b1)
+	must(`INSERT INTO public.users(id,first_name,last_name,email,password_hash,role,brand_id,is_active) VALUES(?,'Email','Fixture',?,?,'admin',?,true)`, emailActor, email(emailActor), string(hashed), b2)
 	emailLogin := login(emailActor)
 	emailToken := tokenOf(emailLogin)
 	newEmail := emailActor + "-new@example.invalid"

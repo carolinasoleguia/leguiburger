@@ -75,6 +75,12 @@ func businessError(e error) error {
 	var pg *pgconn.PgError
 	if errors.As(e, &pg) {
 		if pg.Code == "23514" {
+			if pg.ConstraintName == "operating_terminal_capacity" {
+				return &securityError{409, "TERMINAL_LIMIT_REACHED", "Este local ya tiene todas sus terminales conectadas. Cerrá otra sesión o pedile al administrador que libere una terminal."}
+			}
+			if pg.ConstraintName == "business_admin_capacity" {
+				return inputError("La marca admite un único administrador. Usá la transferencia de responsable para reemplazarlo.")
+			}
 			return inputError("Revisá los límites del plan, la asignación al negocio y el responsable principal")
 		}
 		if pg.Code == "23505" {
@@ -391,7 +397,7 @@ func (h *SecurityHandler) acceptBusinessInvitation(w http.ResponseWriter, r *htt
 // A suspended owner retains access only to account security, membership and the
 // business status. Provider webhooks/workers continue reconciling existing money.
 func BusinessPathAllowed(path string) bool {
-	return strings.HasPrefix(path, "/api/auth/") || strings.HasPrefix(path,"/api/care/") || path == "/api/business" || path == "/api/tenants" || strings.HasPrefix(path, "/api/billing/") || path == "/api/payments/mercadopago/config"
+	return strings.HasPrefix(path, "/api/auth/") || strings.HasPrefix(path, "/api/care/") || path == "/api/business" || path == "/api/tenants" || strings.HasPrefix(path, "/api/billing/") || path == "/api/payments/mercadopago/config"
 }
 func businessAvailable(ctx context.Context, database *gorm.DB, p SessionPrincipal) (bool, error) {
 	if p.Platform() || p.BrandID == "" {
