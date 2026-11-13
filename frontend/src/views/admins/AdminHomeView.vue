@@ -1,6 +1,5 @@
 <script setup>
 import { computed, ref } from "vue";
-import LoadingRows from "../../components/LoadingRows.vue";
 import AppIcon from "../../components/AppIcon.vue";
 import StableContent from "../../components/StableContent.vue";
 import OverviewAreaChart from "../../components/OverviewAreaChart.vue";
@@ -13,8 +12,6 @@ import {
 import {
   useWorkspace,
   money,
-  when,
-  statusLabels,
 } from "../../composables/useWorkspace.js";
 const response = ref(null),
   currency = ref("ARS"),
@@ -28,7 +25,6 @@ const report = computed(
       money: [],
       metrics: {},
       top_products: [],
-      recent_orders: [],
       order_states: [],
     },
 );
@@ -366,47 +362,6 @@ const maxUnits = computed(() =>
           </div>
         </section>
       </div>
-      <section class="overview-recent-section">
-        <div class="overview-panel-heading">
-          <div>
-            <h2>Pedidos recientes</h2>
-            <p class="overview-panel-description">
-              Los últimos movimientos de tu local
-            </p>
-          </div>
-        </div>
-        <div class="card table-scroll overview-recent-table">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Pedido</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <LoadingRows v-if="w.loading.value" :columns="4" />
-              <tr
-                v-for="item in report.recent_orders"
-                v-show="!w.loading.value"
-                :key="item.id"
-              >
-                <td>#{{ item.id.slice(0, 8) }}</td>
-                <td>{{ when(item.created_at) }}</td>
-                <td>{{ statusLabels[item.status] }}</td>
-                <td>{{ money(item.total_due, item.currency) }}</td>
-              </tr>
-              <tr
-                v-if="!report.recent_orders?.length"
-                v-show="!w.loading.value"
-              >
-                <td colspan="4">Todavía no hay pedidos en este período.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
     </StableContent>
     <p v-else-if="!w.error.value" class="no-data">
       Creá un local activo para empezar a ver tus números.

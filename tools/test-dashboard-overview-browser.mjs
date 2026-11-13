@@ -255,6 +255,7 @@ try {
           );
           assert.equal(analytics().headers["x-tenant-id"], "tenant-1");
           assert.equal(await page.$('main a[href="/orders"]'), null);
+          assert.equal(await page.$(".overview-recent-section"), null);
           assert.equal(
             (await page.$("header .overview-calendar-trigger")) !== null,
             true,
