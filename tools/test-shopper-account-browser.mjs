@@ -288,6 +288,22 @@ try {
       await page.type("input[type=password]", "Browser-Fixture-123!");
       await button(page, "Crear cuenta");
       await page.waitForSelector(".shopper-order");
+      // An incomplete recovery link must retain the signed-in workspace.
+      await page.goto(origin + "/mi-cuenta?accion=verify", {
+        waitUntil: "networkidle0",
+      });
+      await page.waitForSelector(".shopper-order");
+      await page.waitForFunction(() =>
+        document
+          .querySelector('[role="alert"]')
+          ?.textContent.includes("El enlace está incompleto"),
+      );
+      assert.equal(await page.$(".shopper-auth"), null);
+      checks++;
+      await page.goto(origin + "/mi-cuenta?local=" + localA, {
+        waitUntil: "networkidle0",
+      });
+      await page.waitForSelector(".shopper-order");
       assert.equal((await page.$$(".shopper-order")).length, 2);
       checks++;
       assert.ok(

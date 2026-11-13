@@ -29,6 +29,8 @@ npm --prefix frontend run dev
 
 La interfaz queda normalmente en `http://127.0.0.1:5173/` y Vite reenvía `/api` a `http://localhost:8080`. El backend comprueba la identidad y las migraciones de la base antes de iniciar. Para servir la interfaz desde Go, generá `frontend/dist` con `npm --prefix frontend run build`.
 
+La [organización por perfil](docs/experiencias-por-perfil.md) separa plataforma, restaurante, comprador con cuenta e invitado, conservando componentes visuales y el motor de pedidos compartidos.
+
 ## Base de datos
 
 La guía de [migraciones](database/README.md) explica el ensayo con rollback, la verificación de datos y la aplicación en el proyecto correcto. `resources/migration.slq` es un esquema histórico con comandos destructivos; no se usa para actualizar la base existente.

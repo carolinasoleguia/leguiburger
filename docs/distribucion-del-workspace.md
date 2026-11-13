@@ -3,7 +3,7 @@
 El escritorio prioriza las acciones, cifras y primeras filas de cada pantalla en una notebook de 1366 × 768. La densidad se aplica únicamente dentro de `.app-shell`: la landing, la carta pública y el checkout conservan sus proporciones.
 
 - Encabezado reducido, selector de local junto al título y sin el subtítulo decorativo repetido. El mensaje de falta de locales sigue visible.
-- Resumen: seis métricas en una fila y tres paneles contiguos para gráfico, productos/suscripciones y actividad/pedidos. El detalle diario puede expandirse.
+- Resumen: cuatro indicadores principales, gráfico de área amplio y panel lateral de estados, siguiendo la composición de Al Toque. Productos, resultado y actividad reciente completan la vista. Plataforma y restaurante tienen archivos y consultas independientes; ver [experiencias por perfil](experiencias-por-perfil.md).
 - Caja y pedidos: pendientes primero, pedido de mostrador e historial en columnas. Asignar cliente es una sección opcional desplegable que conserva la selección y el borrador.
 - Turnos de caja: cifras arriba, operación e historial en columnas. Los controles «Ingreso o retiro» y «Arqueo y cierre» conservan ambos formularios; «Turnos» y «Movimientos» cambian la consulta. Elegir un arqueo abre sus movimientos.
 - Clientes, gastos, cupones y opciones por producto: formularios y consultas relacionadas en columnas. Atención del local reúne recepción, capacidad y horarios.

@@ -12,6 +12,9 @@ import { useAuth } from "../composables/useAuth.js";
 import AppIcon from "./AppIcon.vue";
 import BrandLogo from "./BrandLogo.vue";
 import ThemeToggle from "./ThemeToggle.vue";
+import { restaurantWorkspace } from "../navigation/restaurant.js";
+import { platformWorkspace } from "../navigation/platform.js";
+import { collaboratorWorkspace } from "../navigation/collaborator.js";
 import { getJSON } from "../services/api.js";
 import {
   authRequest,
@@ -22,10 +25,7 @@ const assignedLocations = ref([]),
   switching = ref(false),
   contextError = ref("");
 onMounted(async () => {
-  if (
-    auth.userRole.value &&
-    !["owner", "super_admin", "admin"].includes(auth.userRole.value)
-  ) {
+  if (workspace.value.locationSwitcher) {
     try {
       assignedLocations.value =
         (await getJSON("/business/locations")).items || [];
@@ -63,110 +63,41 @@ const route = useRoute(),
 const mobileOpen = ref(false),
   menuButton = ref(null),
   sidebar = ref(null);
-const roleLabel = computed(
-  () =>
-    ({
-      owner: "Plataforma LeguiBurger",
-      admin: "Mi restaurante",
-      employee: "Mi espacio de trabajo",
-    })[props.role],
-);
-const baseNavigation = computed(() =>
+const workspace = computed(() =>
   props.role === "owner"
-    ? [
-        { label: "Resumen", to: "/owner", icon: "grid" },
-        { label: "Restaurantes", to: "/restaurants", icon: "burger" },
-        { label: "Locales", to: "/locations", icon: "store" },
-
-        { label: "Cobros", to: "/payments", icon: "card" },
-        { label: "Invitaciones", to: "/team/invitations", icon: "users" },
-        { label: "Actividad", to: "/audit", icon: "activity" },
-        { label: "Seguridad", to: "/account/security", icon: "shield" },
-      ]
+    ? platformWorkspace()
     : props.role === "admin"
-      ? [
-          { label: "Resumen", to: "/admin", icon: "grid" },
-          { label: "Equipo", to: "/team", icon: "users" },
-          { label: "Mi restaurante", to: "/restaurants", icon: "burger" },
-          { label: "Locales", to: "/locations", icon: "store" },
-          { label: "Producción", to: "/admin/production", icon: "flame" },
-          { label: "Catálogo", to: "/admin/catalog", icon: "burger" },
-          { label: "Cobros", to: "/payments", icon: "card" },
-          { label: "Invitaciones", to: "/team/invitations", icon: "users" },
-          { label: "Actividad", to: "/audit", icon: "activity" },
-          { label: "Seguridad", to: "/account/security", icon: "shield" },
-        ]
-      : [
-          {
-            label: "Mi espacio",
-            to: `/tenant/${auth.tenantId.value}/employee`,
-            icon: "grid",
-          },
-          ...(auth.userRole.value === "cashier"
-            ? [{ label: "Cobros", to: "/payments", icon: "card" }]
-            : []),
-          { label: "Seguridad", to: "/account/security", icon: "shield" },
-        ],
+      ? restaurantWorkspace()
+      : collaboratorWorkspace(auth.userRole.value, auth.tenantId.value),
 );
-const navigation = computed(() => {
-  const shared = [
-    { label: "Novedades", to: "/notifications", icon: "clock" },
-    { label: "Soporte y continuidad", to: "/care", icon: "support" },
-  ];
-  const operational = [
-    ...(["owner", "super_admin", "admin", "cashier"].includes(
-      auth.userRole.value,
-    )
-      ? [
-          { label: "Caja y pedidos", to: "/orders", icon: "receipt" },
-          { label: "Turnos de caja", to: "/cash", icon: "card" },
-          {
-            label: "Disponibilidad de carta",
-            to: "/menu-availability",
-            icon: "burger",
-          },
-          { label: "Clientes", to: "/customers", icon: "users" },
-        ]
-      : []),
-    { label: "Cocina", to: "/kitchen", icon: "flame" },
-    { label: "Stock e insumos", to: "/inventory", icon: "box" },
-    ...(["owner", "super_admin", "admin"].includes(auth.userRole.value)
-      ? [
-          { label: "Gastos", to: "/expenses", icon: "receipt" },
-          { label: "Cupones y compradores", to: "/marketing", icon: "users" },
-          {
-            label: "Combos y opciones",
-            to: "/product-options",
-            icon: "burger",
-          },
-          {
-            label: "Atención del local",
-            to: "/store-operations",
-            icon: "clock",
-          },
-          { label: "Campañas", to: "/campaigns", icon: "send" },
-        ]
-      : []),
-  ];
-  return [
-    ...baseNavigation.value.slice(0, 1),
-    ...operational,
-    ...baseNavigation.value.slice(1),
-    ...shared,
-    ...(props.role === "admin"
-      ? [{ label: "Preparar mi negocio", to: "/onboarding", icon: "store" }]
-      : []),
-    ...(props.role === "owner"
-      ? [{ label: "Estado del sistema", to: "/platform/health", icon: "clock" }]
-      : []),
-  ];
-});
+const roleLabel = computed(() => workspace.value.label);
+const baseNavigation = computed(() => [workspace.value.home]);
+const navigationGroups = computed(() => workspace.value.groups);
+const navigation = computed(() => [
+  workspace.value.home,
+  ...workspace.value.groups.flatMap((group) => group.items),
+]);
+const openedGroups = ref(new Set(["operation"]));
+function toggleGroup(key) {
+  openedGroups.value = openedGroups.value.has(key) ? new Set() : new Set([key]);
+}
 const activeItem = computed(() =>
   [...navigation.value]
     .reverse()
     .find(
       (item) => route.path === item.to || route.path.startsWith(item.to + "/"),
     ),
+);
+watch(
+  () => activeItem.value?.to,
+  (to) => {
+    const group = navigationGroups.value.find((group) =>
+      group.items.some((item) => item.to === to),
+    );
+    if (group && !openedGroups.value.has(group.key))
+      openedGroups.value = new Set([group.key]);
+  },
+  { immediate: true },
 );
 const displayName = computed(
   () => auth.user.value?.name || auth.user.value?.email || "Mi cuenta",
@@ -257,7 +188,7 @@ async function logout() {
       </div>
       <span class="nav-heading">Espacio de trabajo</span>
       <label
-        v-if="!['owner', 'super_admin', 'admin'].includes(auth.userRole.value)"
+        v-if="workspace.locationSwitcher"
         class="input-group sidebar-location-context"
         >Local de trabajo<select
           :value="auth.tenantId.value"
@@ -279,15 +210,51 @@ async function logout() {
       <p v-if="contextError" role="alert">{{ contextError }}</p>
       <nav aria-label="Secciones del sistema">
         <router-link
-          v-for="item in navigation"
-          :key="item.to"
-          :to="item.to"
+          :to="baseNavigation[0].to"
           class="nav-link"
-          :class="{ active: activeItem?.to === item.to }"
-          :aria-current="activeItem?.to === item.to ? 'page' : undefined"
-          ><AppIcon :name="item.icon" :size="18" /><span>{{ item.label }}</span
-          ><span v-if="activeItem?.to === item.to" class="nav-active-dot"
-        /></router-link>
+          :class="{ active: activeItem?.to === baseNavigation[0].to }"
+          :aria-current="
+            activeItem?.to === baseNavigation[0].to ? 'page' : undefined
+          "
+          ><AppIcon :name="baseNavigation[0].icon" :size="18" /><span>{{
+            baseNavigation[0].label
+          }}</span></router-link
+        >
+        <div
+          v-for="group in navigationGroups"
+          :key="group.key"
+          class="sidebar-nav-group"
+        >
+          <button
+            type="button"
+            class="nav-group-toggle"
+            :aria-expanded="openedGroups.has(group.key)"
+            :aria-controls="`${role}-nav-${group.key}`"
+            @click="toggleGroup(group.key)"
+          >
+            <AppIcon :name="group.icon" :size="18" /><span>{{
+              group.label
+            }}</span
+            ><AppIcon name="chevron" :size="14" class="nav-group-chevron" />
+          </button>
+          <Transition name="nav-group"
+            ><div
+              v-if="openedGroups.has(group.key)"
+              :id="`${role}-nav-${group.key}`"
+              class="nav-group-items"
+            >
+              <router-link
+                v-for="item in group.items"
+                :key="item.to"
+                :to="item.to"
+                class="nav-link"
+                :class="{ active: activeItem?.to === item.to }"
+                :aria-current="activeItem?.to === item.to ? 'page' : undefined"
+                ><span>{{ item.label }}</span
+                ><span v-if="activeItem?.to === item.to" class="nav-active-dot"
+              /></router-link></div
+          ></Transition>
+        </div>
       </nav>
       <div class="sidebar-bottom">
         <div class="sidebar-note">
@@ -323,11 +290,7 @@ async function logout() {
         </div>
         <div class="workspace-header-actions">
           <span class="workspace-role">{{
-            role === "owner"
-              ? "Propietario"
-              : role === "admin"
-                ? "Administrador"
-                : "Equipo"
+            workspace.accountLabel
           }}</span><ThemeToggle /><span class="avatar avatar-small">{{
             initials
           }}</span>

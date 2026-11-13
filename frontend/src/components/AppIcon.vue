@@ -1,6 +1,8 @@
 <script setup>
 defineProps({ name: { type: String, default: 'grid' }, size: { type: [Number, String], default: 20 } });
 const paths = {
+  plus: "M12 5v14 M5 12h14",
+  calendar: "M4 5h16v16H4z M8 3v4 M16 3v4 M4 10h16 M8 14h2 M14 14h2 M8 17h2",
   receipt: 'M6 3h12v18l-3-2-3 2-3-2-3 2V3z M9 7h6 M9 11h6 M9 15h3',
   card: 'M3 5h18v14H3z M3 9h18 M7 15h3',
   activity: 'M3 12h4l3-8 4 16 3-8h4',

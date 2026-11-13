@@ -652,3 +652,98 @@
 .app-shell .cash-history > .table-scroll {
   height: clamp(240px, calc(100svh - 500px), 440px);
 }
+
+/* Group the workspace navigation without changing access or destinations. */
+.app-shell .sidebar nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  margin-block: 4px;
+}
+.app-shell .sidebar-nav-group {
+  margin-top: 4px;
+}
+.app-shell .nav-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  color: var(--text-muted);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 12px;
+  text-align: left;
+}
+.app-shell .nav-group-toggle:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.app-shell .nav-group-toggle > span {
+  flex: 1;
+}
+.app-shell .nav-group-toggle[aria-expanded="true"] {
+  color: var(--text);
+}
+.app-shell .nav-group-chevron {
+  transition: transform 160ms ease;
+}
+.app-shell .nav-group-toggle[aria-expanded="true"] .nav-group-chevron {
+  transform: rotate(180deg);
+}
+.app-shell .nav-group-items {
+  margin: 2px 0 8px 20px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+.app-shell .nav-group-items .nav-link {
+  font-size: 12px;
+  gap: 6px;
+  padding-inline: 10px;
+}
+.app-shell .sidebar-bottom {
+  flex: none;
+}
+.nav-group-enter-active {
+  animation: navigation-group-enter 160ms ease-out;
+}
+.nav-group-leave-active {
+  transition: opacity 100ms ease;
+}
+.nav-group-leave-to {
+  opacity: 0;
+}
+@keyframes navigation-group-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 800px) {
+  .app-shell .nav-group-toggle {
+    min-height: 44px;
+  }
+  .app-shell .nav-group-items .nav-link {
+    min-height: 44px;
+  }
+  .app-shell .sidebar-note {
+    display: none;
+  }
+}
+
+@media (min-width: 801px) {
+  .app-shell .nav-group-toggle {
+    min-height: 38px;
+  }
+  .app-shell .nav-group-items .nav-link {
+    min-height: 34px;
+    padding-block: 6px;
+  }
+}

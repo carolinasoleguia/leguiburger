@@ -1,0 +1,439 @@
+/* Al Toque's overview composition, using LeguiBurger's existing color tokens. */
+.app-shell .reference-overview .overview-context {
+  align-items: end;
+  gap: 12px;
+}
+.app-shell .reference-overview .overview-context label {
+  display: grid;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.app-shell .reference-overview .overview-context select {
+  max-width: 180px;
+  min-height: 42px;
+  padding: 8px 30px 8px 10px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--field);
+  color: var(--text);
+}
+.app-shell .reference-overview .stable-overview .metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 144px;
+  margin: 0 0 16px;
+  gap: 14px;
+}
+.app-shell .reference-overview .stable-overview .metric-grid > article {
+  height: 144px;
+  min-height: 144px;
+  padding: 16px;
+  border-radius: 12px;
+}
+.app-shell .reference-overview .overview-metric-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.app-shell .reference-overview .metric-grid h3 {
+  height: auto;
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+}
+.app-shell .reference-overview .overview-metric-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  flex: none;
+}
+.app-shell .reference-overview .metric-grid strong {
+  font-size: clamp(23px, 2vw, 30px);
+  line-height: 34px;
+  margin-top: 8px;
+  font-weight: 550;
+  letter-spacing: -0.025em;
+}
+.app-shell .reference-overview .metric-grid small {
+  height: 32px;
+  max-height: 32px;
+  line-height: 16px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+.app-shell .reference-overview .stable-overview .overview-activity {
+  grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
+  margin: 0 0 16px;
+  gap: 16px;
+}
+.app-shell .reference-overview .stable-overview .overview-activity > section {
+  height: 366px;
+  min-height: 366px;
+  padding: 18px;
+  overflow: visible;
+}
+.app-shell
+  .reference-overview
+  .stable-overview
+  .overview-activity
+  > .is-expanded {
+  height: auto;
+}
+.app-shell
+  .reference-overview
+  :is(.overview-activity, .overview-secondary, .overview-recent-section)
+  h2 {
+  font-size: 15px;
+  font-weight: 550;
+  letter-spacing: 0;
+  margin: 0;
+}
+.app-shell .reference-overview .overview-chart-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  min-height: 60px;
+}
+.app-shell .reference-overview .overview-chart-heading p,
+.app-shell .reference-overview .overview-panel-description {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+.app-shell .reference-overview .overview-range-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: end;
+}
+.app-shell .reference-overview .overview-range-presets {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.app-shell .reference-overview .overview-range-presets button {
+  min-height: 28px;
+  border: 0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.app-shell
+  .reference-overview
+  .overview-range-presets
+  button[aria-pressed="true"] {
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: 0 1px 3px #0001;
+}
+.app-shell .reference-overview .overview-range-presets button:hover {
+  color: var(--text);
+}
+.app-shell .reference-overview .overview-chart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  min-height: 22px;
+}
+.app-shell .reference-overview .overview-chart-footer .text-button {
+  font-size: 11px;
+}
+.app-shell .reference-overview .overview-daily-detail {
+  max-height: 280px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  margin-top: 12px;
+}
+.app-shell .reference-overview .overview-state-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+.app-shell .reference-overview .overview-state > div:first-child,
+.app-shell .reference-overview .overview-product > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12px;
+}
+.app-shell .reference-overview .overview-state strong {
+  font-weight: 550;
+}
+.app-shell .reference-overview .overview-state span {
+  color: var(--text-muted);
+}
+.app-shell .reference-overview .overview-state-track,
+.app-shell .reference-overview .overview-product-track {
+  height: 6px;
+  background: var(--surface-raised);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.app-shell .reference-overview .overview-state-track > span,
+.app-shell .reference-overview .overview-product-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 420ms ease;
+}
+.app-shell .reference-overview .overview-state-track > .state-tone-0 {
+  background: #c88a30;
+}
+.app-shell .reference-overview .overview-state-track > .state-tone-2 {
+  background: var(--success);
+}
+.app-shell .reference-overview .overview-state-track > .state-tone-3 {
+  background: var(--text-muted);
+}
+.app-shell .reference-overview .overview-customers {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 18px;
+}
+.app-shell .reference-overview .overview-customers > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.app-shell .reference-overview .overview-customers h3 {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0;
+  font-weight: 550;
+}
+.app-shell .reference-overview .overview-customers > div > strong {
+  font-size: 23px;
+  font-weight: 550;
+  line-height: 26px;
+}
+.app-shell .reference-overview .overview-customers p {
+  margin: 4px 0 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.app-shell .reference-overview .overview-customers dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0;
+}
+.app-shell .reference-overview .overview-customers dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 11px;
+}
+.app-shell .reference-overview .overview-customers dt {
+  color: var(--text-muted);
+}
+.app-shell .reference-overview .overview-customers dd {
+  margin: 0;
+  font-weight: 550;
+}
+.app-shell .reference-overview .overview-platform-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 18px;
+  height: 54px;
+  overflow: auto;
+  margin: 18px 0 0;
+}
+.app-shell .reference-overview .overview-secondary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.app-shell .reference-overview .overview-secondary > .card {
+  height: 234px;
+  padding: 18px;
+}
+.app-shell .reference-overview .overview-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.app-shell .reference-overview .overview-panel-heading .text-button {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.app-shell .reference-overview .overview-product-list {
+  height: 150px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.app-shell .reference-overview .overview-product {
+  margin-bottom: 14px;
+  padding-right: 4px;
+}
+.app-shell .reference-overview .overview-product-track {
+  height: 5px;
+}
+.app-shell .reference-overview .overview-result-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 6px 12px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.app-shell .reference-overview .overview-result-item:last-child {
+  border-bottom: 0;
+}
+.app-shell .reference-overview .overview-result-item h3 {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0;
+  margin: 0;
+}
+.app-shell .reference-overview .overview-result-item strong {
+  font-size: 23px;
+  font-weight: 550;
+  line-height: 30px;
+}
+.app-shell .reference-overview .overview-result-item small {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 16px;
+  min-height: 32px;
+}
+.app-shell .reference-overview .overview-recent-table {
+  height: 240px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.app-shell
+  .reference-overview
+  .stable-overview.is-loading
+  :is(
+    .overview-states strong,
+    .overview-result-item strong,
+    .overview-product-list
+  ) {
+  color: transparent;
+}
+.app-shell
+  .reference-overview
+  .stable-overview.is-loading
+  .overview-product-list {
+  border-radius: 8px;
+  background: var(--surface-raised);
+  animation: skeleton-pulse 1.3s ease infinite;
+}
+@media (max-width: 1100px) {
+  .app-shell .reference-overview .stable-overview .overview-activity {
+    grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
+  }
+  .app-shell .reference-overview .overview-range-controls {
+    justify-content: start;
+  }
+  .app-shell .reference-overview .overview-chart-heading {
+    min-height: 102px;
+  }
+  .app-shell .reference-overview .stable-overview .overview-activity > section {
+    height: 408px;
+    min-height: 408px;
+  }
+}
+@media (max-width: 800px) {
+  .app-shell .reference-overview .overview-context {
+    width: 100%;
+  }
+  .app-shell .reference-overview .overview-context label {
+    flex: 1;
+    min-width: 0;
+  }
+  .app-shell .reference-overview .overview-context select {
+    width: 100%;
+    max-width: 100%;
+  }
+  .app-shell .reference-overview .overview-context > .btn-primary {
+    flex: 1 1 100%;
+  }
+  .app-shell .reference-overview .stable-overview .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .app-shell .reference-overview .metric-grid strong {
+    font-size: 23px;
+  }
+  .app-shell .reference-overview .stable-overview .overview-activity,
+  .app-shell .reference-overview .overview-secondary {
+    grid-template-columns: 1fr;
+  }
+  .app-shell .reference-overview .stable-overview .overview-activity > section {
+    height: 408px;
+    min-height: 408px;
+  }
+  .app-shell
+    .reference-overview
+    .stable-overview
+    .overview-activity
+    > .overview-sales {
+    height: 448px;
+    min-height: 448px;
+  }
+  .app-shell
+    .reference-overview
+    .stable-overview
+    .overview-activity
+    > .overview-states {
+    height: 366px;
+    min-height: 366px;
+  }
+  .app-shell .reference-overview .overview-range-controls {
+    gap: 8px;
+  }
+  .app-shell .reference-overview .overview-range-presets button {
+    min-height: 44px;
+    padding-inline: 16px;
+  }
+  .app-shell .reference-overview .overview-chart-heading {
+    min-height: 102px;
+  }
+  .app-shell .reference-overview .overview-chart-footer {
+    margin-top: 6px;
+  }
+  .app-shell .reference-overview .overview-secondary > .card {
+    height: 252px;
+  }
+  .app-shell .reference-overview .overview-result-item strong {
+    font-size: 21px;
+  }
+}
+
+.app-shell .reference-overview .overview-context label:first-child select {
+  width: 180px;
+}
+@media (max-width: 800px) {
+  .app-shell .reference-overview .overview-context label:first-child select {
+    width: 100%;
+  }
+}

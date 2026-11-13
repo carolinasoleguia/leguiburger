@@ -189,6 +189,21 @@ const server = createServer(async (req, res) => {
     if (p.endsWith("/buyer-session"))
       return reply({ creation_key: "fresh-key", payment_key: "payment-key" });
     if (p === "/api/public/buyer-order") return reply({}, 404);
+    if (p.endsWith("/orders") && req.method === "POST")
+      return reply(
+        {
+          id: orderId,
+          tenant_id: tenant,
+          status: "pending",
+          currency: "ARS",
+          total_due: "148.00",
+          total_paid: "0.00",
+          fulfillment: body.fulfillment,
+          items: [],
+          created_at: new Date().toISOString(),
+        },
+        201,
+      );
     if (p.endsWith("/quote")) {
       if (body.fulfillment === "delivery" && body.postal_code !== "1896")
         return reply(
@@ -200,11 +215,11 @@ const server = createServer(async (req, res) => {
         );
       return reply({
         items: body.items,
-        total: "160.00",
+        total: body.coupon_code === "VOLVE10" ? "148.00" : "160.00",
         subtotal: "140.00",
         shipping: "20.00",
         shipping_name: "Centro",
-        discount: "0.00",
+        discount: body.coupon_code === "VOLVE10" ? "12.00" : "0.00",
         currency: "ARS",
         digest: "fresh-quote",
       });
@@ -314,6 +329,9 @@ async function settle(page) {
 try {
   for (const width of [1440, 390])
     for (const theme of ["light", "dark"]) {
+      const creationsBefore = calls.filter(
+        (c) => c.p.endsWith("/orders") && c.method === "POST",
+      ).length;
       staff = true;
       zones = [];
       zoned = false;
@@ -439,7 +457,7 @@ try {
       assert.equal(
         calls.filter((c) => c.p.endsWith("/orders") && c.method === "POST")
           .length,
-        0,
+        creationsBefore,
         "repeat must not create a purchase",
       );
       checks++;
@@ -458,6 +476,7 @@ try {
         "postal field has usable touch width",
       );
       checks++;
+      await page.type(".buyer-coupon input", "VOLVE10");
       await page.type('input[name="delivery-postal-code"]', "9999");
       await button(page, "Revisar pedido");
       await text(page, "No tenemos cobertura");
@@ -482,11 +501,41 @@ try {
       assert.equal(quote.items[0].extras[0].quantity, 2);
       assert.ok(!("shipping_method_id" in quote));
       checks += 4;
+      assert.equal(quote.coupon_code, "VOLVE10");
+      assert.deepEqual(
+        await page.evaluate(() => ({
+          name: document.querySelector('input[name="buyer-name"]').value,
+          email: document.querySelector('input[name="buyer-email"]').value,
+          phone: document.querySelector('input[name="buyer-phone"]').value,
+          address: document.querySelector('textarea[name="buyer-address"]')
+            .value,
+        })),
+        {
+          name: profile.name,
+          email: profile.email,
+          phone: profile.phone,
+          address: profile.delivery_address,
+        },
+      );
+      await page.click(".buyer-remember input");
       await settle(page);
       await page.screenshot({
         path: `.cache/commerce-browser/repeat-${width}-${theme}.png`,
         fullPage: true,
       });
+      await button(page, "Confirmar pedido");
+      await page.waitForSelector(".buyer-receipt-status");
+      const created = calls
+        .filter((c) => c.p.endsWith("/orders") && c.method === "POST")
+        .at(-1).body;
+      assert.equal(created.coupon_code, "VOLVE10");
+      assert.equal(created.remember_contact, true);
+      assert.equal(created.name, profile.name);
+      assert.ok(
+        !("shopper_id" in created),
+        "account identity is resolved by the server cookie",
+      );
+      checks += 6;
       staff = true;
       for (const kind of ["kitchen", "receipt"]) {
         await page.goto(

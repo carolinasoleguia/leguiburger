@@ -6,8 +6,6 @@ import {
   optionGroups,
   selectedOptions,
 } from "../composables/productOptions.js";
-import { useRoute } from "vue-router";
-import { shopper, loadShopper } from "../composables/useShopper.js";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { useOrderStream } from "../composables/useOrderStream.js";
 import { notifyOrderChange } from "../composables/useOrderSound.js";
@@ -17,7 +15,10 @@ const props = defineProps({
   tenant: { type: String, required: true },
   menu: Object,
   orderId: String,
-  repeatOrderId: String,
+  initialContact: Object,
+  basketOptions: Object,
+  orderOptions: Object,
+  loadDraft: Function,
 });
 const emit = defineEmits(["closed"]);
 function closePanel() {
@@ -43,8 +44,6 @@ const fulfillment = ref("pickup"),
   email = ref(""),
   address = ref(""),
   payment = ref("at_local");
-const rememberContact = ref(false);
-const couponCode = ref(String(useRoute().query.cupon || ""));
 const recoveryMissing = ref(false);
 const postalCode = ref(""),
   zone = ref(""),
@@ -184,9 +183,7 @@ const unresolvedPayment = computed(() =>
 );
 function basket() {
   return {
-    ...(couponCode.value && shopper.profile
-      ? { coupon_code: couponCode.value }
-      : {}),
+    ...props.basketOptions,
     items: cart.value.map((x) => ({
       product_id: x.id,
       quantity: x.quantity,
@@ -424,9 +421,7 @@ async function confirm() {
       pendingBody = {
         ...basket(),
         quote_digest: quote.value.digest,
-        ...(shopper.profile && rememberContact.value
-          ? { remember_contact: true }
-          : {}),
+        ...props.orderOptions,
         name: name.value,
         phone: phone.value,
         email: email.value,
@@ -525,16 +520,14 @@ async function newOrder() {
   phone.value = "";
   email.value = "";
   address.value = "";
-  if (shopper.profile) {
-    name.value = shopper.profile.name;
-    email.value = shopper.profile.email;
-    phone.value = shopper.profile.phone || "";
-    address.value = shopper.profile.delivery_address || "";
-  }
+  name.value = props.initialContact?.name || "";
+  email.value = props.initialContact?.email || "";
+  phone.value = props.initialContact?.phone || "";
+  address.value = props.initialContact?.delivery_address || "";
   panel.value = false;
 }
 async function importRepeat() {
-  if (!props.repeatOrderId || !alive) return;
+  if (!props.loadDraft || !alive) return;
   if (receipt.value) {
     if (canStartNew.value) await newOrder();
     else {
@@ -547,10 +540,7 @@ async function importRepeat() {
   error.value = "";
   panel.value = true;
   try {
-    const data = await request(
-      `/api/shopper/orders/${encodeURIComponent(props.repeatOrderId)}/repeat`,
-      {},
-    );
+    const data = await props.loadDraft();
     if (!alive) return;
     if (data.tenant_id !== props.tenant)
       throw new Error("El pedido corresponde a otro local.");
@@ -570,21 +560,15 @@ async function importRepeat() {
     if (alive) busy.value = false;
   }
 }
-loadShopper()
-  .then((p) => {
-    if (p && alive) {
-      if (!name.value) name.value = p.name;
-      if (!email.value) email.value = p.email;
-      if (!phone.value) phone.value = p.phone || "";
-      if (!address.value) address.value = p.delivery_address || "";
-    }
-  })
-  .catch(() => {});
+name.value = props.initialContact?.name || "";
+email.value = props.initialContact?.email || "";
+phone.value = props.initialContact?.phone || "";
+address.value = props.initialContact?.delivery_address || "";
 bootstrapBuyer().then(async (ok) => {
   if (!ok || !alive) return;
   await refreshReceipt(true);
   if (alive && receipt.value) panel.value = true;
-  if (props.repeatOrderId) await importRepeat();
+  if (props.loadDraft) await importRepeat();
 });
 
 const { live } = useOrderStream({
@@ -609,6 +593,9 @@ onBeforeUnmount(() => {
 });
 defineExpose({
   open,
+  invalidateQuote: () => {
+    quote.value = null;
+  },
   ready: computed(
     () =>
       !checkingSession.value &&
@@ -1028,20 +1015,11 @@ defineExpose({
                   </p>
                 </template>
               </fieldset>
-              <label v-if="shopper.profile" class="buyer-coupon"
-                >¿Tenés un cupón?<input
-                  v-model="couponCode"
-                  maxlength="32"
-                  placeholder="Código de esta marca"
-                  :disabled="locked"
-                  @input="quote = null"
-              /></label>
-              <p v-else class="buyer-muted">
-                Podés pedir sin cuenta.
-                <router-link :to="`/mi-cuenta?local=${props.tenant}`"
-                  >Ingresá para guardar tus compras y usar cupones.</router-link
-                >
-              </p>
+              <slot
+                name="benefits"
+                :locked="locked"
+                :invalidate="() => (quote = null)"
+              />
               <p v-if="quote && Number(quote.discount) > 0" class="buyer-muted">
                 Descuento aplicado: {{ money(quote.discount) }} sobre productos,
                 sin extras ni envío.
@@ -1106,10 +1084,7 @@ defineExpose({
                       maxlength="500"
                       rows="2"
                     /></label
-                  ><label v-if="shopper.profile" class="buyer-remember"
-                    ><input v-model="rememberContact" type="checkbox" />Guardar
-                    teléfono y dirección para próximas compras</label
-                  ><label
+                  ><slot name="contact-options" /><label
                     >¿Cómo vas a pagar?<select v-model="payment">
                       <option value="at_local">Al retirar o recibir</option>
                       <option
@@ -1121,10 +1096,7 @@ defineExpose({
                     </select></label
                   >
                 </fieldset>
-                <p v-if="shopper.profile" class="buyer-muted">
-                  Comprando como {{ shopper.profile.name }}. Este pedido se
-                  vincula a tu cuenta.
-                </p>
+                <slot name="identity" />
                 <p class="buyer-muted">
                   El local confirmará la disponibilidad al aceptar tu pedido.
                   Tus datos se comparten con este restaurante para coordinar la
