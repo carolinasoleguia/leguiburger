@@ -25,13 +25,13 @@ func NewRepository() Repository {
 }
 
 func (r *repository) Create(ctx context.Context, brand *models.Brand) error {
-	return db.DB.WithContext(ctx).Create(brand).Error
+	return db.ForContext(ctx).Create(brand).Error
 }
 
 func (r *repository) GetByID(ctx context.Context, id string) (*models.Brand, error) {
 	var brand models.Brand
 
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Where("id = ?", id).
 		First(&brand).Error
 
@@ -49,7 +49,7 @@ func (r *repository) GetByID(ctx context.Context, id string) (*models.Brand, err
 func (r *repository) GetAll(ctx context.Context) ([]models.Brand, error) {
 	var brands []models.Brand
 
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Order("name ASC").
 		Find(&brands).Error
 
@@ -59,7 +59,7 @@ func (r *repository) GetAll(ctx context.Context) ([]models.Brand, error) {
 func (r *repository) GetByName(ctx context.Context, name string) (*models.Brand, error) {
 	var brand models.Brand
 
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Where("name = ?", name).
 		First(&brand).Error
 
@@ -75,10 +75,10 @@ func (r *repository) GetByName(ctx context.Context, name string) (*models.Brand,
 }
 
 func (r *repository) Update(ctx context.Context, brand *models.Brand) error {
-	return db.DB.WithContext(ctx).Save(brand).Error
+	return db.ForContext(ctx).Save(brand).Error
 }
 
 func (r *repository) Delete(ctx context.Context, id string) error {
-	return db.DB.WithContext(ctx).
+	return db.ForContext(ctx).
 		Delete(&models.Brand{}, id).Error
 }

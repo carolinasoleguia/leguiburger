@@ -1,0 +1,5 @@
+# Migration checksums must stay identical across Windows and Unix checkouts.
+database/migrations/*.sql text eol=lf
+
+# Preserve imported skills and license/reference bytes across checkouts.
+skills/** -text

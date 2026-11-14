@@ -9,9 +9,7 @@
     </div>
 
     <div class="card">
-      <div v-if="loading" class="centered-loading">
-        <span class="spinner-large"></span>
-      </div>
+      <StatePanel v-if="loading" kind="loading" />
       <div v-else-if="error" class="status-text error">{{ error }}</div>
       <div v-else-if="admins.length === 0" class="status-text">No se encontraron administradores.</div>
       <table v-else class="data-table">
@@ -46,13 +44,13 @@
       </table>
     </div>
 
-    <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
-      <div class="modal-card">
+    <Transition name="modal"><div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeCreateModal" aria-label="Cerrar modal">×</button>
         <h3>Nuevo administrador</h3>
         <p>Registra un administrador asociado a una marca.</p>
 
-        <form @submit.prevent="submitCreate">
+        <form v-form-care @submit.prevent="submitCreate">
           <div class="input-group">
             <label>Marca</label>
             <select v-model="createForm.brand_id">
@@ -80,7 +78,7 @@
 
           <div class="input-group">
             <label>Contraseña</label>
-            <input type="password" v-model="createForm.password" required />
+            <input type="password" minlength="12" maxlength="72" v-model="createForm.password" required />
           </div>
 
           <div class="input-group">
@@ -97,15 +95,15 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
-    <div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
-      <div class="modal-card">
+    <Transition name="modal"><div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeEditModal" aria-label="Cerrar modal">×</button>
         <h3>Editar administrador</h3>
         <p>Actualiza los datos del administrador seleccionado.</p>
 
-        <form @submit.prevent="submitEdit">
+        <form v-form-care @submit.prevent="submitEdit">
           <div class="input-group">
             <label>Nombre</label>
             <input type="text" v-model="editForm.first_name" required />
@@ -123,7 +121,7 @@
 
           <div class="input-group">
             <label>Contraseña (dejar vacío para no cambiar)</label>
-            <input type="password" v-model="editForm.password" />
+            <input type="password" minlength="12" maxlength="72" v-model="editForm.password" />
           </div>
 
           <div class="input-group">
@@ -140,10 +138,10 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
-    <div v-if="isDeleteModalOpen" class="modal-overlay" @click.self="closeDeleteModal">
-      <div class="modal-card">
+    <Transition name="modal"><div v-if="isDeleteModalOpen" class="modal-overlay" @click.self="closeDeleteModal">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeDeleteModal" aria-label="Cerrar modal">×</button>
         <h3>{{ deletingAdmin.is_active ? 'Confirmar eliminación' : 'Confirmar reactivación' }}</h3>
         <p>
@@ -164,7 +162,7 @@
           </button>
         </div>
       </div>
-    </div>
+    </div></Transition>
 
     <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
       <div class="alert-card">
@@ -179,6 +177,7 @@
 </template>
 
 <script setup>
+import StatePanel from "../../components/StatePanel.vue";
 import { ref, onMounted } from 'vue';
 import { getJSON, postJSON, putJSON, deleteJSON } from '../../services/api.js';
 

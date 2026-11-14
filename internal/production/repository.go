@@ -27,12 +27,12 @@ func NewRepository() Repository {
 }
 
 func (r *repository) Create(ctx context.Context, report *models.ProductionReport) error {
-	return db.DB.WithContext(ctx).Create(report).Error
+	return db.ForContext(ctx).Create(report).Error
 }
 
 func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.ProductionReport, error) {
 	var report models.ProductionReport
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Where("tenant_id = ? AND id = ?", tenantID, id).
 		First(&report).Error
 	if err != nil {
@@ -46,7 +46,7 @@ func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.
 
 func (r *repository) GetByDate(ctx context.Context, tenantID string, productionDate time.Time) (*models.ProductionReport, error) {
 	var report models.ProductionReport
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Where("tenant_id = ? AND production_date = ?", tenantID, productionDate).
 		First(&report).Error
 	if err != nil {
@@ -60,7 +60,7 @@ func (r *repository) GetByDate(ctx context.Context, tenantID string, productionD
 
 func (r *repository) FetchAll(ctx context.Context, tenantID string, startDate, endDate *string) ([]models.ProductionReport, error) {
 	var reports []models.ProductionReport
-	query := db.DB.WithContext(ctx).Where("tenant_id = ?", tenantID)
+	query := db.ForContext(ctx).Where("tenant_id = ?", tenantID)
 	if startDate != nil {
 		query = query.Where("production_date >= ?", *startDate)
 	}
@@ -72,11 +72,11 @@ func (r *repository) FetchAll(ctx context.Context, tenantID string, startDate, e
 }
 
 func (r *repository) Update(ctx context.Context, report *models.ProductionReport) error {
-	return db.DB.WithContext(ctx).Save(report).Error
+	return db.ForContext(ctx).Save(report).Error
 }
 
 func (r *repository) Delete(ctx context.Context, tenantID, id string) error {
-	return db.DB.WithContext(ctx).
+	return db.ForContext(ctx).
 		Where("tenant_id = ? AND id = ?", tenantID, id).
 		Delete(&models.ProductionReport{}).Error
 }

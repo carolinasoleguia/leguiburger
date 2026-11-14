@@ -25,12 +25,12 @@ func NewRepository() Repository {
 }
 
 func (r *repository) Create(ctx context.Context, product *models.Product) error {
-	return db.DB.WithContext(ctx).Create(product).Error
+	return db.ForContext(ctx).Create(product).Error
 }
 
 func (r *repository) GetByID(ctx context.Context, brandID, id string) (*models.Product, error) {
 	var product models.Product
-	err := db.DB.WithContext(ctx).Where("brand_id = ? AND id = ?", brandID, id).First(&product).Error
+	err := db.ForContext(ctx).Where("brand_id = ? AND id = ?", brandID, id).First(&product).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -42,7 +42,7 @@ func (r *repository) GetByID(ctx context.Context, brandID, id string) (*models.P
 
 func (r *repository) GetByName(ctx context.Context, brandID, name string) (*models.Product, error) {
 	var product models.Product
-	err := db.DB.WithContext(ctx).Where("brand_id = ? AND name = ?", brandID, name).First(&product).Error
+	err := db.ForContext(ctx).Where("brand_id = ? AND name = ?", brandID, name).First(&product).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -54,14 +54,14 @@ func (r *repository) GetByName(ctx context.Context, brandID, name string) (*mode
 
 func (r *repository) FetchAll(ctx context.Context, brandID string) ([]models.Product, error) {
 	var products []models.Product
-	err := db.DB.WithContext(ctx).Where("brand_id = ?", brandID).Find(&products).Error
+	err := db.ForContext(ctx).Where("brand_id = ?", brandID).Find(&products).Error
 	return products, err
 }
 
 func (r *repository) Update(ctx context.Context, product *models.Product) error {
-	return db.DB.WithContext(ctx).Save(product).Error
+	return db.ForContext(ctx).Save(product).Error
 }
 
 func (r *repository) Delete(ctx context.Context, brandID, id string) error {
-	return db.DB.WithContext(ctx).Where("brand_id = ? AND id = ?", brandID, id).Delete(&models.Product{}).Error
+	return db.ForContext(ctx).Where("brand_id = ? AND id = ?", brandID, id).Delete(&models.Product{}).Error
 }

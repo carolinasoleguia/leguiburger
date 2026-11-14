@@ -394,3 +394,5 @@ func toUserDTO(user *models.User) *UserDTO {
 	}
 	return dto
 }
+
+func IsPlatformRole(role string) bool { return isGlobalRole(strings.ToLower(strings.TrimSpace(role))) }

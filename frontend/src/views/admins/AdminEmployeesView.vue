@@ -22,9 +22,7 @@
         <button class="btn-secondary" @click="clearFilter" v-if="selectedTenantFilter">Limpiar filtro</button>
       </div>
 
-      <div v-if="loading" class="centered-loading">
-        <span class="spinner-large"></span>
-      </div>
+      <StatePanel v-if="loading" kind="loading" />
       <div v-else-if="error" class="status-text error">{{ error }}</div>
       <div v-else-if="filteredEmployees.length === 0" class="status-text">No hay empleados registrados para el filtro seleccionado.</div>
 
@@ -61,13 +59,13 @@
       </table>
     </div>
 
-    <div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
-      <div class="modal-card">
+    <Transition name="modal"><div v-if="isCreateModalOpen" class="modal-overlay" @click.self="closeCreateModal">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeCreateModal">×</button>
         <h3>Nuevo empleado</h3>
         <p>Registra un empleado con el rol adecuado para el tenant.</p>
 
-        <form @submit.prevent="submitCreate">
+        <form v-form-care @submit.prevent="submitCreate">
           <div class="input-grid">
             <div class="input-group">
               <label>Nombre</label>
@@ -106,7 +104,7 @@
                 <option value="employee">employee</option>
                 <option value="cashier">cashier</option>
                 <option value="kitchen">kitchen</option>
-                <option value="admin">admin</option>
+
               </select>
             </div>
           </div>
@@ -114,7 +112,7 @@
           <div class="input-grid">
             <div class="input-group">
               <label>Contraseña</label>
-              <input type="password" v-model="createForm.password" required />
+              <input type="password" minlength="12" maxlength="72" v-model="createForm.password" required />
             </div>
           </div>
 
@@ -127,15 +125,15 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
-    <div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
-      <div class="modal-card">
+    <Transition name="modal"><div v-if="isEditModalOpen" class="modal-overlay" @click.self="closeEditModal">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeEditModal">×</button>
         <h3>Editar empleado</h3>
         <p>Actualiza los datos del empleado seleccionado.</p>
 
-        <form @submit.prevent="submitEdit">
+        <form v-form-care @submit.prevent="submitEdit">
           <div class="input-grid">
             <div class="input-group">
               <label>Nombre</label>
@@ -174,7 +172,7 @@
                 <option value="employee">employee</option>
                 <option value="cashier">cashier</option>
                 <option value="kitchen">kitchen</option>
-                <option value="admin">admin</option>
+
               </select>
             </div>
           </div>
@@ -182,7 +180,7 @@
           <div class="input-grid">
             <div class="input-group">
               <label>Contraseña (dejar vacío para no cambiar)</label>
-              <input type="password" v-model="editForm.password" />
+              <input type="password" minlength="12" maxlength="72" v-model="editForm.password" />
             </div>
           </div>
 
@@ -195,10 +193,10 @@
           </div>
         </form>
       </div>
-    </div>
+    </div></Transition>
 
-    <div v-if="isConfirmModalOpen" class="modal-overlay" @click.self="closeConfirmModal">
-      <div class="modal-card">
+    <Transition name="modal"><div v-if="isConfirmModalOpen" class="modal-overlay" @click.self="closeConfirmModal">
+      <div v-dialog-care class="modal-card">
         <button type="button" class="modal-close" @click="closeConfirmModal">×</button>
         <h3>Confirmar acción</h3>
         <p>¿Estás seguro/a que querés {{ confirmAction }} al empleado <strong>{{ editForm.first_name }} {{ editForm.last_name }}</strong>?</p>
@@ -207,7 +205,7 @@
           <button type="button" class="btn-danger" @click="confirmToggle">Sí, {{ confirmAction }}</button>
         </div>
       </div>
-    </div>
+    </div></Transition>
 
     <div v-if="isAlertOpen" class="alert-overlay" @click.self="closeAlert">
       <div class="alert-card">
@@ -222,6 +220,7 @@
 </template>
 
 <script setup>
+import StatePanel from "../../components/StatePanel.vue";
 import { computed, ref, onMounted } from 'vue';
 import { getJSON, postJSON, putJSON, deleteJSON, apiFetch } from '../../services/api.js';
 import { useAuth } from '../../composables/useAuth.js';

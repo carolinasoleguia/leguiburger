@@ -25,12 +25,12 @@ func NewRepository() Repository {
 }
 
 func (r *repository) Create(ctx context.Context, sm *models.ShippingMethod) error {
-	return db.DB.WithContext(ctx).Create(sm).Error
+	return db.ForContext(ctx).Create(sm).Error
 }
 
 func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.ShippingMethod, error) {
 	var sm models.ShippingMethod
-	err := db.DB.WithContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).First(&sm).Error
+	err := db.ForContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).First(&sm).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil // 💡 Retornamos nil seguro si no existe
@@ -42,7 +42,7 @@ func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.
 
 func (r *repository) GetByName(ctx context.Context, tenantID, name string) (*models.ShippingMethod, error) {
 	var sm models.ShippingMethod
-	err := db.DB.WithContext(ctx).Where("tenant_id = ? AND name = ?", tenantID, name).First(&sm).Error
+	err := db.ForContext(ctx).Where("tenant_id = ? AND name = ?", tenantID, name).First(&sm).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil // 💡 Retornamos nil seguro si no existe
@@ -54,7 +54,7 @@ func (r *repository) GetByName(ctx context.Context, tenantID, name string) (*mod
 
 func (r *repository) GetByNameAndTypification(ctx context.Context, tenantID, name, typification string) (*models.ShippingMethod, error) {
 	var sm models.ShippingMethod
-	err := db.DB.WithContext(ctx).
+	err := db.ForContext(ctx).
 		Where("tenant_id = ? AND name = ? AND typification = ?", tenantID, name, typification).
 		First(&sm).Error
 	if err != nil {
@@ -68,14 +68,14 @@ func (r *repository) GetByNameAndTypification(ctx context.Context, tenantID, nam
 
 func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.ShippingMethod, error) {
 	var methods []models.ShippingMethod
-	err := db.DB.WithContext(ctx).Where("tenant_id = ?", tenantID).Find(&methods).Error
+	err := db.ForContext(ctx).Where("tenant_id = ?", tenantID).Find(&methods).Error
 	return methods, err
 }
 
 func (r *repository) Update(ctx context.Context, sm *models.ShippingMethod) error {
-	return db.DB.WithContext(ctx).Save(sm).Error
+	return db.ForContext(ctx).Save(sm).Error
 }
 
 func (r *repository) Delete(ctx context.Context, tenantID, id string) error {
-	return db.DB.WithContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).Delete(&models.ShippingMethod{}).Error
+	return db.ForContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).Delete(&models.ShippingMethod{}).Error
 }

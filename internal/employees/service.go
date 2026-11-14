@@ -16,7 +16,7 @@ import (
 var (
 	ErrEmployeeNotFound          = errors.New("empleado no encontrado")
 	ErrDuplicateEmployeeEmail    = errors.New("ya existe un empleado con ese email")
-	ErrInvalidEmployeeData       = errors.New("nombre, apellido, email y password son obligatorios")
+	ErrInvalidEmployeeData       = errors.New("completá nombre, apellido y email; usá una contraseña de 12 a 72 bytes sin espacios en los extremos")
 	ErrInvalidEmployeeRole       = errors.New("el rol del empleado no es válido")
 	ErrTenantNotFoundForEmployee = errors.New("el comercio (tenant) especificado no existe")
 	ErrUnauthorizedAction        = errors.New("no tienes permisos para realizar esta acción sobre este usuario")
@@ -47,10 +47,17 @@ func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastN
 	cleanFirstName := strings.TrimSpace(firstName)
 	cleanLastName := strings.TrimSpace(lastName)
 	cleanEmail := strings.ToLower(strings.TrimSpace(email))
-	cleanPassword := strings.TrimSpace(password)
+	cleanPassword := password
 	cleanRole := normalizeRole(role)
 	cleanTenantID := strings.TrimSpace(tenantID)
+	actor, authenticated := auth.GetClaimsFromContext(ctx)
+	if !authenticated || (actor.Role != "owner" && actor.Role != "super_admin" && actor.Role != "admin") {
+		return nil, ErrUnauthorizedAction
+	}
 
+	if !auth.ValidPassword(password) {
+		return nil, ErrInvalidEmployeeData
+	}
 	if cleanFirstName == "" || cleanLastName == "" || cleanEmail == "" || cleanPassword == "" {
 		return nil, ErrInvalidEmployeeData
 	}
@@ -67,7 +74,7 @@ func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastN
 			actorBrandID = strings.TrimSpace(*claims.BrandID)
 		}
 
-		if actorRole != auth.RoleOwner {
+		if actorRole != auth.RoleOwner && actorRole != auth.RoleSuperAdmin {
 			if cleanTenantID == "" {
 				cleanTenantID = actorTenantID
 			}
@@ -127,6 +134,10 @@ func (s *service) CreateEmployee(ctx context.Context, tenantID, firstName, lastN
 }
 
 func (s *service) GetEmployee(ctx context.Context, tenantID, id string) (*models.Employee, error) {
+	if !s.canReadTenant(ctx, tenantID) {
+		return nil, ErrUnauthorizedAction
+	}
+
 	employee, err := s.repo.GetByID(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -134,10 +145,17 @@ func (s *service) GetEmployee(ctx context.Context, tenantID, id string) (*models
 	if employee == nil {
 		return nil, ErrEmployeeNotFound
 	}
+	if employee.TenantID == nil || !s.canReadTenant(ctx, *employee.TenantID) {
+		return nil, ErrUnauthorizedAction
+	}
 	return employee, nil
 }
 
 func (s *service) ListEmployees(ctx context.Context, tenantID string) ([]models.Employee, error) {
+	if !s.canReadTenant(ctx, tenantID) {
+		return nil, ErrUnauthorizedAction
+	}
+
 	cleanTenantID := strings.TrimSpace(tenantID)
 	if cleanTenantID != "" {
 		tenant, err := s.tenantRepo.GetByID(ctx, cleanTenantID)
@@ -171,6 +189,14 @@ func (s *service) GetAllEmployees(ctx context.Context) ([]models.Employee, error
 }
 
 func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, lastName, email, password, phone, role string, isActive *bool) (*models.Employee, error) {
+	actor, authenticated := auth.GetClaimsFromContext(ctx)
+	if !authenticated || (actor.Role != "owner" && actor.Role != "super_admin" && actor.Role != "admin") {
+		return nil, ErrUnauthorizedAction
+	}
+	if role != "" && !isValidRole(normalizeRole(role)) {
+		return nil, ErrInvalidEmployeeRole
+	}
+
 	actorRole := ""
 	actorTenantID := ""
 	actorBrandID := ""
@@ -196,7 +222,7 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 		effectiveTenantID = strings.TrimSpace(*employee.TenantID)
 	}
 
-	if actorRole != auth.RoleOwner {
+	if actorRole != auth.RoleOwner && actorRole != auth.RoleSuperAdmin {
 		if effectiveTenantID == "" {
 			return nil, ErrUnauthorizedAction
 		}
@@ -205,7 +231,7 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 		}
 	}
 
-	if actorRole != auth.RoleOwner && getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
+	if actorRole != auth.RoleOwner && actorRole != auth.RoleSuperAdmin && getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
 		if actorRole != employee.Role {
 			return nil, ErrUnauthorizedAction
 		}
@@ -218,8 +244,11 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 		employee.LastName = strings.TrimSpace(lastName)
 	}
 
-	cleanPassword := strings.TrimSpace(password)
+	cleanPassword := password
 	if cleanPassword != "" {
+		if !auth.ValidPassword(password) {
+			return nil, ErrInvalidEmployeeData
+		}
 		hashedBytes, err := bcrypt.GenerateFromPassword([]byte(cleanPassword), bcrypt.DefaultCost)
 		if err != nil {
 			return nil, fmt.Errorf("error al hashear la contraseña: %w", err)
@@ -265,6 +294,11 @@ func (s *service) UpdateEmployee(ctx context.Context, tenantID, id, firstName, l
 }
 
 func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error {
+	actor, authenticated := auth.GetClaimsFromContext(ctx)
+	if !authenticated || (actor.Role != "owner" && actor.Role != "super_admin" && actor.Role != "admin") {
+		return ErrUnauthorizedAction
+	}
+
 	actorRole := ""
 	actorTenantID := ""
 	actorBrandID := ""
@@ -290,7 +324,7 @@ func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error
 		effectiveTenantID = strings.TrimSpace(*employee.TenantID)
 	}
 
-	if actorRole != auth.RoleOwner {
+	if actorRole != auth.RoleOwner && actorRole != auth.RoleSuperAdmin {
 		if effectiveTenantID == "" {
 			return ErrUnauthorizedAction
 		}
@@ -299,7 +333,7 @@ func (s *service) DeleteEmployee(ctx context.Context, tenantID, id string) error
 		}
 	}
 
-	if actorRole != auth.RoleOwner && getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
+	if actorRole != auth.RoleOwner && actorRole != auth.RoleSuperAdmin && getRoleWeight(actorRole) <= getRoleWeight(employee.Role) {
 		return ErrUnauthorizedAction
 	}
 
@@ -346,7 +380,7 @@ func normalizeRole(role string) string {
 
 func isValidRole(role string) bool {
 	switch role {
-	case "employee", "cashier", "kitchen", "admin", "owner", "super_admin":
+	case "employee", "cashier", "kitchen":
 		return true
 	default:
 		return false
@@ -362,4 +396,21 @@ func getRoleWeight(role string) int {
 	default:
 		return 1
 	}
+}
+
+func (s *service) canReadTenant(ctx context.Context, tenant string) bool {
+	actor, ok := auth.GetClaimsFromContext(ctx)
+	if !ok {
+		return false
+	}
+	if actor.Role == auth.RoleOwner || actor.Role == auth.RoleSuperAdmin {
+		return true
+	}
+	if actor.Role != "admin" || actor.BrandID == nil {
+		return false
+	}
+	if strings.TrimSpace(tenant) == "" {
+		return strings.TrimSpace(*actor.BrandID) != ""
+	}
+	return s.isAllowedTenantForActor(ctx, tenant, actor.Role, "", *actor.BrandID)
 }

@@ -9,18 +9,20 @@ import (
 )
 
 var (
-	ErrProductNotFound         = errors.New("producto no encontrado")
-	ErrDuplicateProductName    = errors.New("ya existe un producto con ese nombre para esta marca")
-	ErrInvalidProductData      = errors.New("el nombre del producto es obligatorio")
-	ErrInvalidProductPrice     = errors.New("el precio del producto no puede ser negativo")
-	ErrBrandNotFoundForProduct = errors.New("la marca especificada no existe")
+	ErrProductNotFound          = errors.New("producto no encontrado")
+	ErrDuplicateProductName     = errors.New("ya existe un producto con ese nombre para esta marca")
+	ErrInvalidProductCategory   = errors.New("La categoría debe tener entre 1 y 60 caracteres")
+	ErrInvalidProductData       = errors.New("el nombre del producto es obligatorio")
+	ErrInvalidProductPrice      = errors.New("el precio del producto no puede ser negativo")
+	ErrBrandNotFoundForProduct  = errors.New("la marca especificada no existe")
+	ErrProductImageUploadFailed = errors.New("no se pudo subir la imagen del producto")
 )
 
 type Service interface {
-	CreateProduct(ctx context.Context, brandID, name, description string, basePrice float64, imageURL string) (*models.Product, error)
+	CreateProduct(ctx context.Context, brandID, name, description string, basePrice float64, imageURL string, category ...string) (*models.Product, error)
 	GetProduct(ctx context.Context, brandID, id string) (*models.Product, error)
 	ListProducts(ctx context.Context, brandID string) ([]models.Product, error)
-	UpdateProduct(ctx context.Context, brandID, id, name, description string, basePrice *float64, imageURL string, isActive *bool) (*models.Product, error)
+	UpdateProduct(ctx context.Context, brandID, id, name, description string, basePrice *float64, imageURL string, isActive *bool, category ...string) (*models.Product, error)
 	DeleteProduct(ctx context.Context, brandID, id string) error
 }
 
@@ -36,7 +38,7 @@ func NewService(repo Repository, brandRepo brands.Repository) Service {
 	}
 }
 
-func (s *service) CreateProduct(ctx context.Context, brandID, name, description string, basePrice float64, imageURL string) (*models.Product, error) {
+func (s *service) CreateProduct(ctx context.Context, brandID, name, description string, basePrice float64, imageURL string, category ...string) (*models.Product, error) {
 	cleanName := strings.TrimSpace(name)
 	cleanBrandID := strings.TrimSpace(brandID)
 	if cleanBrandID == "" || cleanName == "" {
@@ -62,7 +64,15 @@ func (s *service) CreateProduct(ctx context.Context, brandID, name, description 
 		return nil, ErrDuplicateProductName
 	}
 
+	categoryName := "Hamburguesas"
+	if len(category) > 0 && strings.TrimSpace(category[0]) != "" {
+		categoryName = strings.TrimSpace(category[0])
+	}
+	if len([]rune(categoryName)) > 60 {
+		return nil, ErrInvalidProductCategory
+	}
 	product := &models.Product{
+		Category:    categoryName,
 		BrandID:     cleanBrandID,
 		Name:        cleanName,
 		Description: strings.TrimSpace(description),
@@ -105,7 +115,7 @@ func (s *service) ListProducts(ctx context.Context, brandID string) ([]models.Pr
 	return s.repo.FetchAll(ctx, cleanBrandID)
 }
 
-func (s *service) UpdateProduct(ctx context.Context, brandID, id, name, description string, basePrice *float64, imageURL string, isActive *bool) (*models.Product, error) {
+func (s *service) UpdateProduct(ctx context.Context, brandID, id, name, description string, basePrice *float64, imageURL string, isActive *bool, category ...string) (*models.Product, error) {
 	cleanBrandID := strings.TrimSpace(brandID)
 	product, err := s.repo.GetByID(ctx, cleanBrandID, id)
 	if err != nil {
@@ -142,6 +152,13 @@ func (s *service) UpdateProduct(ctx context.Context, brandID, id, name, descript
 	}
 	if imageURL != "" {
 		product.ImageURL = strings.TrimSpace(imageURL)
+	}
+	if len(category) > 0 && category[0] != "" {
+		name := strings.TrimSpace(category[0])
+		if name == "" || len([]rune(name)) > 60 {
+			return nil, ErrInvalidProductCategory
+		}
+		product.Category = name
 	}
 	if isActive != nil {
 		product.IsActive = *isActive

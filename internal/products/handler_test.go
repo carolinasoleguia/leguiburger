@@ -14,11 +14,20 @@ import (
 )
 
 type mockService struct {
-	createProductFunc func(ctx context.Context, brandID, name, description string, basePrice float64, imageURL string) (*models.Product, error)
-	updateProductFunc func(ctx context.Context, brandID, id, name, description string, basePrice *float64, imageURL string, isActive *bool) (*models.Product, error)
+	createProductFunc func(ctx context.Context, brandID, name, description string, basePrice float64, imageURL string, category ...string) (*models.Product, error)
+	updateProductFunc func(ctx context.Context, brandID, id, name, description string, basePrice *float64, imageURL string, isActive *bool, category ...string) (*models.Product, error)
 }
 
-func (m *mockService) CreateProduct(ctx context.Context, brandID, name, description string, basePrice float64, imageURL string) (*models.Product, error) {
+type fakeImageStore struct {
+	imageURL string
+	err      error
+}
+
+func (f fakeImageStore) SaveProductImage(ctx context.Context, fileHeader *multipart.FileHeader) (string, error) {
+	return f.imageURL, f.err
+}
+
+func (m *mockService) CreateProduct(ctx context.Context, brandID, name, description string, basePrice float64, imageURL string, category ...string) (*models.Product, error) {
 	return m.createProductFunc(ctx, brandID, name, description, basePrice, imageURL)
 }
 
@@ -30,7 +39,7 @@ func (m *mockService) ListProducts(ctx context.Context, brandID string) ([]model
 	return nil, nil
 }
 
-func (m *mockService) UpdateProduct(ctx context.Context, brandID, id, name, description string, basePrice *float64, imageURL string, isActive *bool) (*models.Product, error) {
+func (m *mockService) UpdateProduct(ctx context.Context, brandID, id, name, description string, basePrice *float64, imageURL string, isActive *bool, category ...string) (*models.Product, error) {
 	return m.updateProductFunc(ctx, brandID, id, name, description, basePrice, imageURL, isActive)
 }
 
@@ -41,7 +50,7 @@ func (m *mockService) DeleteProduct(ctx context.Context, brandID, id string) err
 func TestHandler_CreateProduct_Success(t *testing.T) {
 	brandID := "brand-ok"
 	mockService := &mockService{
-		createProductFunc: func(ctx context.Context, receivedBrandID, name, description string, basePrice float64, imageURL string) (*models.Product, error) {
+		createProductFunc: func(ctx context.Context, receivedBrandID, name, description string, basePrice float64, imageURL string, category ...string) (*models.Product, error) {
 			if receivedBrandID != brandID {
 				t.Fatalf("se esperaba brand %s, se obtuvo %s", brandID, receivedBrandID)
 			}
@@ -57,7 +66,7 @@ func TestHandler_CreateProduct_Success(t *testing.T) {
 		},
 	}
 
-	handler := NewHandler(mockService)
+	handler := NewHandlerWithImageStore(mockService, fakeImageStore{imageURL: "https://example.supabase.co/storage/v1/object/public/product-images/products/burger.jpg"})
 
 	req := testutil.JSONRequest(t, http.MethodPost, "/api/products", map[string]interface{}{
 		"name":        "Doble Cheddar",
@@ -95,7 +104,7 @@ func TestHandler_CreateProduct_MissingBrand(t *testing.T) {
 func TestHandler_CreateProduct_MultipartImageUpload(t *testing.T) {
 	brandID := "brand-ok"
 	mockService := &mockService{
-		createProductFunc: func(ctx context.Context, receivedBrandID, name, description string, basePrice float64, imageURL string) (*models.Product, error) {
+		createProductFunc: func(ctx context.Context, receivedBrandID, name, description string, basePrice float64, imageURL string, category ...string) (*models.Product, error) {
 			if receivedBrandID != brandID {
 				t.Fatalf("se esperaba brand %s, se obtuvo %s", brandID, receivedBrandID)
 			}
@@ -106,7 +115,7 @@ func TestHandler_CreateProduct_MultipartImageUpload(t *testing.T) {
 		},
 	}
 
-	handler := NewHandler(mockService)
+	handler := NewHandlerWithImageStore(mockService, fakeImageStore{imageURL: "https://example.supabase.co/storage/v1/object/public/product-images/products/burger.jpg"})
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	_ = writer.WriteField("name", "Doble Cheddar")
@@ -138,7 +147,7 @@ func TestHandler_UpdateProduct_MultipartImageUpload(t *testing.T) {
 	newPrice := 5200.0
 	newActive := false
 	mockService := &mockService{
-		updateProductFunc: func(ctx context.Context, receivedBrandID, receivedID, name, description string, basePrice *float64, imageURL string, isActive *bool) (*models.Product, error) {
+		updateProductFunc: func(ctx context.Context, receivedBrandID, receivedID, name, description string, basePrice *float64, imageURL string, isActive *bool, category ...string) (*models.Product, error) {
 			if receivedBrandID != brandID {
 				t.Fatalf("se esperaba brand %s, se obtuvo %s", brandID, receivedBrandID)
 			}
@@ -158,7 +167,7 @@ func TestHandler_UpdateProduct_MultipartImageUpload(t *testing.T) {
 		},
 	}
 
-	handler := NewHandler(mockService)
+	handler := NewHandlerWithImageStore(mockService, fakeImageStore{imageURL: "https://example.supabase.co/storage/v1/object/public/catalog_images/products/burger.jpg"})
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	_ = writer.WriteField("name", "Doble Cheddar")

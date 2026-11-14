@@ -12,6 +12,7 @@ frontend/dist
 
 # Go / Backend
 .cache/
+uploads/
 main
 *.exe
 *.exe~

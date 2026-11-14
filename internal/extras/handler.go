@@ -3,6 +3,7 @@ package extras
 import (
 	"encoding/json"
 	"errors"
+	"github.com/jackc/pgx/v5/pgconn"
 	"leguiburger/internal/auth"
 	"net/http"
 	"strings"
@@ -101,6 +102,14 @@ func (h *Handler) CreateExtra(w http.ResponseWriter, r *http.Request) {
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
+	if auth.PremiumRestricted(r.Context()) {
+		if input.CurrentStock != 0 || input.TrackStock != nil && *input.TrackStock {
+			auth.RespondWithError(w, 403, "PREMIUM_REQUIRED", "El seguimiento de stock requiere Premium")
+			return
+		}
+		track := false
+		input.TrackStock = &track
+	}
 
 	extra, err := h.service.CreateExtra(r.Context(), tenantID, input.Name, input.CurrentPrice, input.CurrentStock, input.TrackStock)
 	if err != nil {
@@ -179,6 +188,10 @@ func (h *Handler) UpdateExtra(w http.ResponseWriter, r *http.Request, id string)
 		h.respondWithError(w, http.StatusBadRequest, "INVALID_INPUT", "JSON inválido")
 		return
 	}
+	if auth.PremiumRestricted(r.Context()) && (input.CurrentStock != nil || input.TrackStock != nil && *input.TrackStock) {
+		auth.RespondWithError(w, 403, "PREMIUM_REQUIRED", "El seguimiento de stock requiere Premium")
+		return
+	}
 
 	extra, err := h.service.UpdateExtra(r.Context(), tenantID, id, input.Name, input.CurrentPrice, input.CurrentStock, input.TrackStock, input.IsActive)
 	if err != nil {
@@ -213,6 +226,11 @@ func (h *Handler) DeleteExtra(w http.ResponseWriter, r *http.Request, id string)
 }
 
 func (h *Handler) handleError(w http.ResponseWriter, err error) {
+	var pg *pgconn.PgError
+	if errors.As(err, &pg) && pg.Code == "23503" {
+		h.respondWithError(w, http.StatusConflict, "EXTRA_IN_USE", "El extra está vinculado a una configuración o historial. Desactivalo o quitá sus vínculos antes de eliminarlo.")
+		return
+	}
 	if errors.Is(err, ErrDuplicateExtraName) {
 		h.respondWithError(w, http.StatusConflict, "DUPLICATE_EXTRA_NAME", err.Error())
 	} else if errors.Is(err, ErrExtraNotFound) {

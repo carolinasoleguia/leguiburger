@@ -25,12 +25,12 @@ func NewRepository() Repository {
 }
 
 func (r *repository) Create(ctx context.Context, extra *models.Extra) error {
-	return db.DB.WithContext(ctx).Create(extra).Error
+	return db.ForContext(ctx).Create(extra).Error
 }
 
 func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.Extra, error) {
 	var extra models.Extra
-	err := db.DB.WithContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).First(&extra).Error
+	err := db.ForContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).First(&extra).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -42,7 +42,7 @@ func (r *repository) GetByID(ctx context.Context, tenantID, id string) (*models.
 
 func (r *repository) GetByName(ctx context.Context, tenantID, name string) (*models.Extra, error) {
 	var extra models.Extra
-	err := db.DB.WithContext(ctx).Where("tenant_id = ? AND name = ?", tenantID, name).First(&extra).Error
+	err := db.ForContext(ctx).Where("tenant_id = ? AND name = ?", tenantID, name).First(&extra).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -54,14 +54,14 @@ func (r *repository) GetByName(ctx context.Context, tenantID, name string) (*mod
 
 func (r *repository) FetchAll(ctx context.Context, tenantID string) ([]models.Extra, error) {
 	var extras []models.Extra
-	err := db.DB.WithContext(ctx).Where("tenant_id = ?", tenantID).Find(&extras).Error
+	err := db.ForContext(ctx).Where("tenant_id = ?", tenantID).Find(&extras).Error
 	return extras, err
 }
 
 func (r *repository) Update(ctx context.Context, extra *models.Extra) error {
-	return db.DB.WithContext(ctx).Save(extra).Error
+	return db.ForContext(ctx).Save(extra).Error
 }
 
 func (r *repository) Delete(ctx context.Context, tenantID, id string) error {
-	return db.DB.WithContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).Delete(&models.Extra{}).Error
+	return db.ForContext(ctx).Where("tenant_id = ? AND id = ?", tenantID, id).Delete(&models.Extra{}).Error
 }
