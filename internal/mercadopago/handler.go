@@ -64,6 +64,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 		"GET /api/billing/my-account":                                   h.myBilling,
 		"GET /api/billing/plans":                                        h.publicPlans,
 		"POST /api/billing/subscribe":                                   h.subscribe,
+		"POST /api/billing/subscriptions/{id}/change-quote":             h.quoteMembershipChange,
 	}
 	for route, fn := range routes {
 		mux.HandleFunc(route, auth.AuthMiddlewareWithDB(h.db, h.wrap(fn)))

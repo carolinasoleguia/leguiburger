@@ -10,7 +10,9 @@ const dist = resolve("frontend/dist");
 let role = "owner",
   expired = false,
   premium = false,
-  failDraft = true;
+  failDraft = true,
+  paidSubscription = false,
+  failQuote = true;
 const calls = [],
   errors = [],
   prices = [];
@@ -120,7 +122,48 @@ const server = createServer(async (req, res) => {
     if (path === "/api/billing/plans") return reply({ items: publicPrices });
     if (path === "/api/billing/terminals") return reply({ items: [] });
     if (path === "/api/billing/my-account")
-      return reply({ subscriptions: [], invoices: [] });
+      return reply({
+        subscriptions: paidSubscription
+          ? [
+              {
+                id: "active-subscription",
+                plan_price_id: "premium-price",
+                status: "active",
+                provider: "mercadopago",
+                provider_reference: "mandate",
+                membership_tier: "premium",
+                environment: "sandbox",
+                currency: "ARS",
+                contracted_amount: "1000",
+                quantity: 1,
+                purchased_locations: 1,
+                version: 3,
+                current_period_end: new Date(
+                  Date.now() + 20 * 86400000,
+                ).toISOString(),
+              },
+            ]
+          : [],
+        invoices: [],
+      });
+    if (
+      path === "/api/billing/subscriptions/active-subscription/change-quote"
+    ) {
+      if (failQuote) {
+        failQuote = false;
+        return reply({ message: "No se pudo cotizar. Reintentá." }, 503);
+      }
+      return reply({
+        id: "quote",
+        source_locations: 1,
+        purchased_locations: body.purchased_locations,
+        source_amount: "1000.00",
+        amount: "1500.00",
+        currency: "ARS",
+        source_period_end: new Date(Date.now() + 20 * 86400000).toISOString(),
+        expires_at: new Date(Date.now() + 900000).toISOString(),
+      });
+    }
     if (path === "/api/billing/subscribe")
       return reply({ subscription_id: "subscription" }, 201);
     if (path === "/api/billing/subscriptions/subscription/checkout")
@@ -155,6 +198,7 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await puppeteer.launch({
   headless: true,
   executablePath: process.env.CHROME_PATH,
+  protocolTimeout: 30000,
   args: process.env.CI ? ["--no-sandbox"] : [],
 });
 await mkdir(".cache/membership-browser", { recursive: true });
@@ -188,6 +232,11 @@ async function fill(selector, value) {
 }
 try {
   page = await browser.newPage();
+  const dialogs = [];
+  page.on("dialog", async (dialog) => {
+    dialogs.push(dialog.type());
+    await dialog.accept();
+  });
   page.on("pageerror", (e) => errors.push(e.message));
   await page.setViewport({ width: 1366, height: 768 });
   await page.goto(origin + "/platform/plans", { waitUntil: "networkidle0" });
@@ -308,8 +357,73 @@ try {
       fullPage: true,
     });
   }
+  paidSubscription = true;
+  expired = false;
+  premium = true;
+  await page.goto(origin + "/payments", { waitUntil: "networkidle0" });
+  await click("Mi membresía");
+  await page.waitForSelector(".change-quote");
+  assert.equal(
+    await page.$("#membership-plan"),
+    null,
+    "A paid member should see their contract and expansion, not a second signup form",
+  );
+  await fill("#change-stores-active-subscription", "3");
+  await click("Cotizar ampliación");
+  await page.waitForFunction(() =>
+    document
+      .querySelector('.change-quote [role="alert"]')
+      ?.textContent.includes("No se pudo cotizar"),
+  );
+  const subscriptionsBeforeQuote = calls.filter(
+    (c) => c.path === "/api/billing/subscribe",
+  ).length;
+  await click("Cotizar ampliación");
+  await page.waitForSelector(".quote-result");
+  const quoteAttempts = calls.filter((c) => c.path.endsWith("/change-quote"));
+  assert.equal(quoteAttempts.length, 2);
+  assert.equal(quoteAttempts[0].key, quoteAttempts[1].key);
+  assert.equal(quoteAttempts[1].body.purchased_locations, 3);
+  assert(
+    (await page.$eval(".quote-result", (e) => e.textContent)).includes("1.500"),
+  );
+  assert.equal(
+    calls.filter((c) => c.path === "/api/billing/subscribe").length,
+    subscriptionsBeforeQuote,
+  );
+  for (const width of [1366, 390]) {
+    await page.setViewport({ width, height: 844 });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await page.waitForFunction(() =>
+      document
+        .getAnimations()
+        .every(
+          (a) =>
+            a.effect?.getTiming().iterations === Infinity ||
+            ["finished", "idle"].includes(a.playState),
+        ),
+    );
+    await page.screenshot({
+      path: `.cache/membership-browser/change-quote-${width}.png`,
+      fullPage: true,
+    });
+  }
+  await fill("#change-stores-active-subscription", "4");
+  assert.equal(await page.$(".quote-result"), null);
+  const dialogsBeforeQuoteNavigation = dialogs.length;
+  expired = true;
+  premium = false;
   role = "cashier";
   await page.goto(origin + "/orders", { waitUntil: "networkidle0" });
+  assert.equal(
+    dialogs.length,
+    dialogsBeforeQuoteNavigation,
+    "Changing a quote filter must not create an unsaved-business-data warning",
+  );
   assert.equal(new URL(page.url()).pathname, "/employee/membership");
   assert(
     !(await page.$eval("main", (e) => e.textContent)).includes(
@@ -321,7 +435,7 @@ try {
   assert.equal(new URL(page.url()).pathname, "/employee/membership");
   assert.deepEqual(errors, []);
   console.log(
-    "Membership browser passed: draft retry/publication, fee preview, expired admin renewal, staff separation, Premium route restriction, mobile and desktop.",
+    "Membership browser passed: draft retry/publication, fee preview, immutable expansion quote/retry, expired admin renewal, staff separation, Premium route restriction, mobile and desktop.",
   );
 } catch (e) {
   console.error(

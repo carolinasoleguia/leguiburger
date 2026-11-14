@@ -93,3 +93,5 @@ La migración `202611130001_public_menu_slugs` agrega direcciones públicas esta
 La migración `202611130002_checkout_security` agrega contadores de riesgo, incidentes y permisos de verificación de compra privados. Ver [seguridad de compras y activación de Turnstile](../docs/seguridad-de-compras.md).
 
 Las migraciones `202611130003_membership_commercial_terms` y `202611130004_membership_access` agregan tarifas mensuales por marca, tiendas adicionales, prueba de siete días y terminales simultáneas por local. Ver [membresías comerciales](../docs/membresias-comerciales.md).
+
+`202611130005_membership_changes` agrega cotizaciones privadas e inmutables para ampliar membresías activas, sin modificar el contrato ni ejecutar cobros. La política de aplicación del cambio sigue pendiente.

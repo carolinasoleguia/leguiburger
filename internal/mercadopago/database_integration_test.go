@@ -343,13 +343,69 @@ func TestDatabaseIntegration(t *testing.T) {
 	}
 	count(`SELECT count(*) FROM legui_private.subscriptions WHERE id=? AND status='incomplete' AND current_period_end IS NULL`, 1, subscriptionID)
 	payments["2001"] = newPayment("2001", sub, "999", "1500.00")
+	// The simulated paid period uses the DB clock, as does quota eligibility.
+	var paidAt time.Time
+	if e := tx.Raw(`SELECT clock_timestamp()`).Scan(&paidAt).Error; e != nil {
+		t.Fatal(e)
+	}
+	payments["2001"]["date_approved"] = paidAt.UTC().Format(time.RFC3339Nano)
 	payments["2001"]["point_of_interaction"] = map[string]any{"transaction_data": map[string]any{"subscription_id": sub.RemoteID}}
 	if state, e := h.observePayment(context.Background(), sub.ConnectionID, "2001"); e != nil || state != "applied" {
 		t.Fatalf("membership charge failed: %s %v", state, e)
 	}
 	count(`SELECT count(*) FROM legui_private.subscriptions WHERE id=? AND status='active' AND current_period_end IS NOT NULL`, 1, subscriptionID)
 	count(`SELECT count(*) FROM legui_private.billing_payments p JOIN legui_private.billing_invoices i ON i.id=p.invoice_id WHERE i.subscription_id=? AND p.status='succeeded'`, 1, subscriptionID)
+	// Preparing an expansion is an immutable quote, never a mandate edit or a charge.
+	mandates[sub.RemoteID]["status"] = "authorized"
+	mandates[sub.RemoteID]["last_modified"] = time.Now().UTC().Add(time.Second).Format(time.RFC3339Nano)
+	if state, e := h.observeMandate(context.Background(), sub.ConnectionID, sub.RemoteID); e != nil || state == "review" {
+		t.Fatalf("authorize fixture mandate: %s %v", state, e)
+	}
+	quoteBody := map[string]any{"price_id": price, "purchased_locations": 4}
+	quotePath := "/api/billing/subscriptions/" + subscriptionID + "/change-quote"
+	mutex.Lock()
+	beforeQuoteCreates, beforeQuoteCancels := creates, cancelWrites
+	mutex.Unlock()
+	expansionQuote := request("POST", quotePath, adminToken, "change-quote", "", quoteBody, 200).Body
+	if expansionQuote["source_amount"] != "1500.00" || expansionQuote["amount"] != "1750.00" || expansionQuote["source_locations"] != float64(3) || expansionQuote["purchased_locations"] != float64(4) {
+		t.Fatalf("incorrect quote: %v", expansionQuote)
+	}
+	if repeat := request("POST", quotePath, adminToken, "change-quote", "", quoteBody, 200).Body; repeat["id"] != expansionQuote["id"] {
+		t.Fatal("Quote retry duplicated an agreement")
+	}
+	request("POST", quotePath, adminToken, "change-quote", "", map[string]any{"price_id": price, "purchased_locations": 5}, 409)
+	request("POST", quotePath, otherToken, "other-change-quote", "", quoteBody, 404)
+	request("POST", quotePath, employeeToken, "staff-change-quote", "", quoteBody, 403)
+	request("POST", quotePath, adminToken, "reduce-change-quote", "", map[string]any{"price_id": price, "purchased_locations": 2}, 400)
+	request("POST", quotePath, adminToken, "unchanged-change-quote", "", map[string]any{"price_id": price, "purchased_locations": 3}, 400)
+	request("POST", quotePath, adminToken, "injected-change-quote", "", map[string]any{"price_id": price, "purchased_locations": 4, "amount": "0.01"}, 400)
+	count(`SELECT count(*) FROM legui_private.membership_changes WHERE source_subscription_id=?`, 1, subscriptionID)
+	count(`SELECT count(*) FROM legui_private.subscriptions WHERE id=? AND purchased_locations=3 AND contracted_amount=1500`, 1, subscriptionID)
+	count(`SELECT count(*) FROM legui_private.billing_invoices WHERE subscription_id=?`, 1, subscriptionID)
+	count(`SELECT count(*) FROM legui_private.billing_payments p JOIN legui_private.billing_invoices i ON i.id=p.invoice_id WHERE i.subscription_id=?`, 1, subscriptionID)
+	if err := tx.Transaction(func(check *gorm.DB) error {
+		return check.Exec(`UPDATE legui_private.membership_changes SET amount=0.01 WHERE id=?`, expansionQuote["id"]).Error
+	}); err == nil {
+		t.Fatal("Quote financial terms were mutable")
+	}
+	mutex.Lock()
+	providerChanged := creates != beforeQuoteCreates || cancelWrites != beforeQuoteCancels
+	mutex.Unlock()
+	if providerChanged {
+		t.Fatal("Quoting an expansion contacted the provider for a financial mutation")
+	}
+	// A withdrawn offer still belongs to the existing contract; other withdrawn
+	// prices cannot be selected by forcing an ID.
+	must(`UPDATE legui_private.billing_plan_prices SET is_active=false WHERE id=?`, price)
+	retained := request("POST", quotePath, adminToken, "retain-contracted-price", "", quoteBody, 200).Body
+	if retained["amount"] != "1750.00" {
+		t.Fatal("Expansion repriced a retained contract")
+	}
+	otherPrice := uuid.NewString()
+	must(`INSERT INTO legui_private.billing_plan_prices(id,plan_id,currency,amount,interval_months,version,billing_unit,membership_tier,maximum_collaborators,extra_location_amount,is_active) VALUES(?,?,'ARS',2000,1,2,'brand','premium',5,500,false)`, otherPrice, plan)
+	request("POST", quotePath, adminToken, "unpublished-forced-price", "", map[string]any{"price_id": otherPrice, "purchased_locations": 4}, 400)
 	request("POST", "/api/billing/subscriptions/"+subscriptionID+"/cancel-renewal", adminToken, "cancel-sub", "", map[string]any{}, 200)
+	request("POST", quotePath, adminToken, "canceled-change-quote", "", quoteBody, 409)
 	count(`SELECT count(*) FROM legui_private.subscriptions WHERE id=? AND status='active' AND cancel_at_period_end`, 1, subscriptionID)
 	request("GET", "/api/payments/mercadopago/transactions", ownerToken, "", "", nil, 200)
 	request("GET", "/api/payments/mercadopago/reviews", adminToken, "", "", nil, 200)

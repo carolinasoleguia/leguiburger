@@ -134,7 +134,7 @@ func (h *Handler) myBilling(w http.ResponseWriter, r *http.Request, p auth.Sessi
 		return bad("Elegí una marca para consultar su membresía")
 	}
 	var row struct{ Payload string }
-	result := h.db.WithContext(r.Context()).Raw(`SELECT jsonb_build_object('accounts',coalesce((SELECT jsonb_agg(to_jsonb(a)) FROM legui_private.billing_accounts a WHERE a.brand_id=?),'[]'::jsonb),'subscriptions',coalesce((SELECT jsonb_agg(to_jsonb(s)) FROM legui_private.subscriptions s JOIN legui_private.billing_accounts a ON a.id=s.account_id WHERE a.brand_id=?),'[]'::jsonb),'invoices',coalesce((SELECT jsonb_agg(to_jsonb(v)) FROM(SELECT i.* FROM legui_private.billing_invoices i JOIN legui_private.billing_accounts a ON a.id=i.account_id WHERE a.brand_id=? ORDER BY i.created_at DESC LIMIT 100)v),'[]'::jsonb))::text payload`, brand, brand, brand).Scan(&row)
+	result := h.db.WithContext(r.Context()).Raw(`SELECT jsonb_build_object('accounts',coalesce((SELECT jsonb_agg(to_jsonb(a)) FROM legui_private.billing_accounts a WHERE a.brand_id=?),'[]'::jsonb),'subscriptions',coalesce((SELECT jsonb_agg(to_jsonb(s)||jsonb_build_object('membership_tier',pp.membership_tier,'plan_name',plan.name)) FROM legui_private.subscriptions s JOIN legui_private.billing_accounts a ON a.id=s.account_id JOIN legui_private.billing_plan_prices pp ON pp.id=s.plan_price_id JOIN legui_private.billing_plans plan ON plan.id=pp.plan_id WHERE a.brand_id=?),'[]'::jsonb),'invoices',coalesce((SELECT jsonb_agg(to_jsonb(v)) FROM(SELECT i.* FROM legui_private.billing_invoices i JOIN legui_private.billing_accounts a ON a.id=i.account_id WHERE a.brand_id=? ORDER BY i.created_at DESC LIMIT 100)v),'[]'::jsonb))::text payload`, brand, brand, brand).Scan(&row)
 	if result.Error != nil {
 		return result.Error
 	}

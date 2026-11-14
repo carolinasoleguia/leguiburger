@@ -1,5 +1,6 @@
 <script setup>
 import LoadingRows from "../../components/LoadingRows.vue";
+import MembershipChangeQuote from "../../components/MembershipChangeQuote.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import DashboardShell from "../../components/DashboardShell.vue";
 import StableContent from "../../components/StableContent.vue";
@@ -21,6 +22,14 @@ const billing = ref({ invoices: [], subscriptions: [] }),
   tenant = ref(auth.tenantId.value || ""),
   email = ref(auth.user.value?.email || ""),
   plan = ref("");
+const hasPaidSubscription = computed(() =>
+  (billing.value.subscriptions || []).some(
+    (item) =>
+      ["active", "past_due"].includes(item.status) &&
+      item.environment === config.value.environment &&
+      new Date(item.current_period_end).getTime() > Date.now(),
+  ),
+);
 const link = ref(""),
   error = ref(""),
   notice = ref(""),
@@ -565,6 +574,7 @@ onMounted(async () => {
         >
         <template v-if="tab === 'membership'"
           ><form
+            v-if="!hasPaidSubscription"
             v-form-care
             class="card action-form"
             @submit.prevent="startSubscription"
@@ -642,39 +652,7 @@ onMounted(async () => {
             </button>
             <p v-if="!plans.length">Todavía no hay planes publicados.</p>
           </form>
-          <section class="card action-form">
-            <h3>Terminales conectadas</h3>
-            <p>
-              Las pestañas de un mismo navegador comparten sesión. Cerrar sesión
-              libera la terminal; tras 30 minutos sin actividad, también queda
-              libre.
-            </p>
-            <div
-              v-for="item in terminals"
-              :key="item.id"
-              class="connection-row"
-            >
-              <div>
-                <strong>{{ item.location }}</strong>
-                <p>
-                  {{ item.first_name }} {{ item.last_name }} · Última actividad
-                  {{ when(item.last_seen_at) }}
-                </p>
-                <small>{{ item.user_agent }}</small>
-              </div>
-              <button
-                type="button"
-                class="btn-secondary"
-                :disabled="busy"
-                @click="releaseTerminal(item)"
-              >
-                Desconectar terminal
-              </button>
-            </div>
-            <p v-if="!terminals.length">
-              No hay terminales operativas conectadas.
-            </p>
-          </section>
+
           <div
             v-for="item in billing.subscriptions || []"
             :key="item.id"
@@ -719,6 +697,53 @@ onMounted(async () => {
               Cancelar renovación
             </button>
           </div>
+          <MembershipChangeQuote
+            v-for="item in (billing.subscriptions || []).filter(
+              (item) =>
+                ['active', 'past_due'].includes(item.status) &&
+                item.provider === 'mercadopago' &&
+                !item.cancel_at_period_end &&
+                ['standard', 'premium'].includes(item.membership_tier) &&
+                item.environment === config.environment &&
+                new Date(item.current_period_end).getTime() > Date.now(),
+            )"
+            :key="`change-${item.id}`"
+            :subscription="item"
+            :plans="plans"
+          />
+          <section class="card action-form">
+            <h3>Terminales conectadas</h3>
+            <p>
+              Las pestañas de un mismo navegador comparten sesión. Cerrar sesión
+              libera la terminal; tras 30 minutos sin actividad, también queda
+              libre.
+            </p>
+            <div
+              v-for="item in terminals"
+              :key="item.id"
+              class="connection-row"
+            >
+              <div>
+                <strong>{{ item.location }}</strong>
+                <p>
+                  {{ item.first_name }} {{ item.last_name }} · Última actividad
+                  {{ when(item.last_seen_at) }}
+                </p>
+                <small>{{ item.user_agent }}</small>
+              </div>
+              <button
+                type="button"
+                class="btn-secondary"
+                :disabled="busy"
+                @click="releaseTerminal(item)"
+              >
+                Desconectar terminal
+              </button>
+            </div>
+            <p v-if="!terminals.length">
+              No hay terminales operativas conectadas.
+            </p>
+          </section>
           <div class="card payment-table">
             <table class="data-table">
               <thead>

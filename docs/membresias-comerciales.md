@@ -1,6 +1,6 @@
 # Membresías comerciales de LeguiBurger
 
-Implementado en Go/Vue y Supabase. Requiere las migraciones `202611130003_membership_commercial_terms` y `202611130004_membership_access`. Los importes y las credenciales de Mercado Pago de la plataforma todavía no están configurados en el entorno local: no se publicaron precios ni se generaron cobros reales.
+Implementado en Go/Vue y Supabase. Requiere las migraciones `202611130003_membership_commercial_terms`, `202611130004_membership_access` y `202611130005_membership_changes`. Los importes y las credenciales de Mercado Pago de la plataforma todavía no están configurados en el entorno local: no se publicaron precios ni se generaron cobros reales.
 
 ## Alcances de dinero y permisos
 
@@ -59,7 +59,21 @@ La DB calcula el importe contratado con `numeric`; el contrato tiene `quantity=1
 
 El alta de checkout o la autorización de un mandato no habilitan un período pago. La conciliación existente verifica cuenta, referencia, entorno, importe y pago aprobado antes de habilitar la membresía. Un pago sandbox no habilita acceso comercial de producción.
 
-Cambiar de tarifa o de cantidad de tiendas de un contrato existente requiere un acuerdo nuevo. El flujo actual conserva el contrato y devuelve conflicto ante una selección incompatible; no implementa prorrateos ni cambia mandatos existentes sin confirmación.
+Cambiar de tarifa o de cantidad de tiendas de un contrato existente requiere un acuerdo nuevo. La selección inicial sigue devolviendo conflicto ante una contratación incompatible para impedir duplicar suscripciones.
+
+## Cotizar una ampliación activa
+
+`POST /api/billing/subscriptions/{id}/change-quote` guarda una cotización inmutable con la marca, cuenta, administrador, contrato y versión de origen, tarifa elegida, cupos anterior/nuevo, importes exactos y período ya pagado. Requiere clave de operación: un reintento devuelve la misma cotización; reutilizar la clave con otro cuerpo devuelve conflicto.
+
+Solo el administrador de la marca o el dueño de la plataforma pueden cotizar. La suscripción debe tener un período mensual comercial pagado, una renovación Mercado Pago autorizada y no estar en proceso de baja. El colaborador no obtiene acceso. No se permiten reducciones de tiendas ni totales enviados por el navegador. El cálculo usa `numeric` y debe cubrir los locales activos.
+
+Un cliente Premium puede conservar su tarifa contratada para calcular tiendas adicionales, aunque esa versión ya no se ofrezca a nuevos clientes. Para pasar de Clásico a Premium se elige una tarifa Premium publicada. La cotización dura como máximo quince minutos y vence antes de que termine el período original.
+
+El panel del administrador ofrece **Calcular una ampliación**, conserva el formulario al fallar y muestra ambos totales. Cambiar los filtros de cotización no deja un aviso de datos de negocio sin guardar. Las cotizaciones viven en una tabla privada con RLS, sin permisos directos para roles de navegador ni `service_role`, y generan un evento de auditoría.
+
+**Esta etapa solo cotiza:** no crea facturas, no cancela ni modifica mandatos, no genera cobros y no habilita tiendas. La confirmación y ejecución esperan la definición comercial pendiente: cobrar un proporcional inmediatamente o aplicar el nuevo total en la próxima renovación. No se eligió una política por defecto.
+
+La documentación oficial permite [modificar el monto de una suscripción](https://www.mercadopago.com.ar/developers/es/docs/subscriptions/subscription-management). La implementación del cambio también tendrá que conciliar sus términos con las pruebas de pago y conservar el acceso ya abonado; la cotización no se utiliza como comprobante de pago.
 
 ## Endpoints y pantallas
 
@@ -68,6 +82,7 @@ Cambiar de tarifa o de cantidad de tiendas de un contrato existente requiere un 
 - `DELETE /api/billing/terminals/{id}`: desconexión auditada, con clave de operación y validación de marca.
 - `POST /api/platform/billing/plans/{id}/prices`: tarifa comercial y borrador; `membership_tier`, `extra_location_amount`, `published`.
 - `PATCH /api/platform/billing/prices/{id}/publication`: publicar o retirar sin cambiar condiciones.
+- `POST /api/billing/subscriptions/{id}/change-quote`: cotización segura de una ampliación, sin ejecución financiera.
 - `POST /api/billing/subscribe`: incorpora `purchased_locations`; devuelve la misma contratación ante reintentos compatibles.
 - `/platform/plans`: configuración del dueño de la app.
 - `/admin/membership`: estado y renovación del restaurante.
